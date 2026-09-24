@@ -1,0 +1,59 @@
+# Project-level Security & Noise Exclusions
+
+# Claude working memory — never commit
+project-log.md
+CLAUDE.md
+.claude/
+settings.local.json
+
+# Notebook & Cold Memory IDs
+notebooks.json
+
+# Data Privacy & Datasets
+*.csv
+*.jsonl
+*.sqlite
+*.db
+*.sqlite3
+*.dump
+*.parquet
+*.h5
+*.pickle
+*.pkl
+
+# Secrets & Credentials
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*_rsa
+*_dsa
+*credentials*
+secrets.*
+
+# OS & Editor Noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.cursor/
+*.swp
+*.suo
+*.user
+*.iml
+.project
+.classpath
+.settings/
+nbproject/private/
+
+# Common Dependency Directories
+__pycache__/
+*.pyc
+venv/
+.venv/
+node_modules/
+dist/
+build/
+.next/
