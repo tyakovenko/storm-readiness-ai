@@ -49,7 +49,7 @@ The AI agent does real work in the loop: it runs the pipeline, turns requests in
 | Area | Existing work | What we take from it | Gap we address |
 |---|---|---|---|
 | Weather/hurricane forecasting | NHC advisories and GIS products; Google DeepMind WeatherNext (AI cyclone forecasting, open weights) | We **consume** forecasts. We don't build a forecast model. | Forecasts stop at the weather. They don't say what it means for a given county's resources. |
-| Post-event damage assessment | Google SKAI (building damage from aerial imagery), Google Flood Hub | n/a (post-landfall) | We work **before** landfall. |
+| Post-event damage assessment | Google SKAI (building damage from aerial imagery, run operationally on Ian and Helene); FEMA/NOAA structured post-event damage records | Structured post-event damage data as a second, independent signal (§4.6) | We don't rebuild imagery-based damage detection (SKAI already does this well, and imagery availability isn't ours to control). We consume existing structured records instead, for a check that outage data alone can't do. |
 | Commercial storm-impact platforms | Urbint Storm Impact (utility crew staging), Tomorrow.io, Esri GeoAI | Confirms the forecast → staging loop is valuable | Closed and enterprise-priced. No open, testable method for small agencies. |
 | Outage prediction research | ORNL EAGLE-I + NWS models (random forest, XGBoost); county-level outage datasets | Training data and model family | Research models, not wired into staging decisions. |
 | Relief pre-positioning research | Two-stage and multi-stage stochastic programs for hurricane relief logistics (e.g. Bhattarai & Song; Siddig & Song; Rawls & Turnquist) | **Our staging method** (§5) | Research code on fixed case studies: no live data, no learned demand, no operational interface. |
@@ -109,7 +109,15 @@ Every agent output passes these checks before display:
 | **Agent followed the required steps** | Checks the agent's sequence of tool calls: no plan without a current-advisory `solve_staging`, no stale-advisory data, no skipped steps | Blocked |
 | **Actionable** | LLM-as-judge with a written rubric. **The judge is first tested against a human-labeled sample;** its scores are shown only if its agreement with the humans is acceptable | Flagged for the reviewer |
 
-### 4.6 Human review
+### 4.6 Post-landfall reconciliation *(stretch — see §11 cut order)*
+Outage data and structural damage are different failure modes, and they call for different resources. A house that's still standing but powerless needs a generator, water, a cooling center. A destroyed house needs search-and-rescue, shelter placement, debris clearance — outage-based staging never plans for that, because outage status alone can't distinguish the two. This step adds a second, independent ground truth so the system can catch that gap.
+
+- **Input:** structured post-event damage records — FEMA Individual Assistance / Housing Assistance data (damage severity by county/ZIP/block group) and NOAA's Damage Assessment Toolkit (wind-damage survey polygons), both public and already structured. We deliberately don't build or run an imagery-based damage-detection pipeline: Google's SKAI already does this well, and it depends on aerial/satellite imagery being tasked and delivered, which isn't guaranteed on any schedule we control.
+- **Live use, once damage data lands for an active storm:** diff it against the impact model's prediction and the current plan. A mismatch (damage where the model predicted low impact, or vice versa) is flagged for the trust layer, and can trigger a re-solve that shifts resource mix toward shelter/debris response in that area, via the same re-plan path as §4.4.
+- **Offline use:** a second backtest ground truth (§10) — not just "did we predict the right outage numbers," but "did we predict where structural-damage response would be needed."
+- **Why it's a stretch, not core:** it's a genuinely new data source and reconciliation path, and it can only ever run after landfall — it extends the **response** half of the challenge rather than the pre-landfall staging plan. The system is complete and defensible without it (§11).
+
+### 4.7 Human review
 Approve / reject / edit for each recommendation, with a reason code. The log is an audit trail, and later a calibration dataset for trust-layer thresholds. Human judgment stays the final control point.
 
 ---
@@ -144,6 +152,7 @@ flowchart TD
     EXP["Census · SVI · NRI"]
     ASSET["Critical facilities, shelters,<br/>FEMA distribution centers"]
     GUIDE["FEMA / Ready.gov guidance"]
+    DAMAGE["FEMA IHP · NOAA DAT<br/>post-event damage records<br/>(stretch)"]
   end
 
   subgraph Offline["Offline (training and backtesting)"]
@@ -158,6 +167,7 @@ flowchart TD
     LOOP["Orchestrate per advisory<br/>what-if → constraints → re-solve<br/>briefs + resident alerts"]
   end
 
+  RECON["Post-landfall reconciliation<br/>(stretch)<br/>predicted vs. observed damage"]
   TRUST["Trust layer<br/>numbers match models · confidence fits lead time<br/>required steps followed · actionability judge"]
   UI["Web app<br/>Emergency manager · Organization · Resident views"]
   REVIEW[("Review log<br/>approve / reject / edit")]
@@ -179,6 +189,10 @@ flowchart TD
   TRUST --> UI
   UI --> REVIEW
   REVIEW -. calibration .-> TRUST
+  DAMAGE --> RECON
+  IMPACT --> RECON
+  RECON -. re-solve trigger .-> LOOP
+  RECON -. backtest ground truth .-> TRAIN
 ```
 
 **Deployment (Google Cloud):**
@@ -239,6 +253,8 @@ All public. Access is to be confirmed before we depend on each one.
 | OpenFEMA | Disaster declarations (context, selecting storms) | API |
 | FEMA / Ready.gov preparedness guidance | Retrieval corpus for briefs and alerts | Public domain |
 | *Stretch:* WeatherNext 2 (Cloud Storage, Zarr) | AI ensemble forecasts as an alternative scenario source | Access request required; requester-pays bucket |
+| *Stretch:* FEMA OpenFEMA — Individuals and Households Program / Housing Assistance data | Post-landfall reconciliation (§4.6) and a second backtest ground truth (§10): damage severity by county/ZIP/block group | API, no PII, county/ZIP/block-group granularity (no street address) |
+| *Stretch:* NOAA Damage Assessment Toolkit (DAT) | Post-landfall reconciliation and backtest: wind-damage survey polygons, EF-scale severity | CSV/GeoJSON/KMZ by date range; mainly built for tornado/convective wind, coverage for hurricane wind swaths to be confirmed |
 
 ---
 
@@ -248,7 +264,7 @@ All public. Access is to be confirmed before we depend on each one.
 |---|---|---|---|
 | Hazard forecast | NHC official forecast | No (consumed as-is) | n/a |
 | Scenario generator | AR(1) forecast-error models (Bhattarai & Song) | Fit to NHC error statistics | Scenario coverage: does the actual track fall inside the scenario spread? |
-| Impact | XGBoost, quantile outputs | Yes | Leave-one-storm-out backtest vs. two baselines (wind-threshold rule; NRI-only) |
+| Impact | XGBoost, quantile outputs | Yes | Leave-one-storm-out backtest vs. two baselines (wind-threshold rule; NRI-only); *stretch:* second backtest against FEMA/NOAA structural-damage records (§4.6, §10) |
 | Staging | Two-stage stochastic program, rolling horizon (+ CVaR option) | No (optimization) | Unmet demand and cost on held-out scenarios and on actual outages; vs. a plan based only on the single forecast track, and vs. the paper's shelter-only plan |
 | Agent | Configurable LLM (Gemini / Claude / Gemma) | No | Tool-call success rate, trust-check pass rate, latency per advisory cycle, compared per model |
 | Actionability judge | LLM-as-judge with rubric | No | Agreement with human labels before its scores are used |
@@ -264,6 +280,7 @@ All public. Access is to be confirmed before we depend on each one.
 | Are the scenarios well calibrated? | Share of actual storm positions inside the scenario spread at each lead time | n/a |
 | Can the agent's outputs be trusted? | Mismatched-number rate before and after the checks; blocked-output rate; human approve rate | No trust layer |
 | Does the model choice matter? | Metrics above for each configured LLM | Across models |
+| *Stretch:* Does the model catch where structural-damage response (shelter/SAR/debris) will be needed, not just outages? | Predicted impact vs. FEMA IHP damage severity / NOAA DAT survey polygons, held-out storms | Outage-only impact model with no reconciliation step |
 
 **Candidate storms** (US landfalls within EAGLE-I coverage): Florence 2018 (reproduction), Ian 2022, Helene 2024, Milton 2024, plus the remaining landfalls from 2014–2024 for leave-one-storm-out training.
 
@@ -282,7 +299,8 @@ All public. Access is to be confirmed before we depend on each one.
 | No GPU quota for the open-model path | Request quota now; fall back to the Vertex API; the startup check fails loudly |
 | Open-weights models unreliable at tool calling | Strict JSON-schema tool outputs; per-model tool-call success rate reported; the agent's step check blocks bad sequences |
 | Shelter-demand assumption can't be validated | Kept as the paper's assumption and labeled in the interface and report |
-| Scope creep | Cut order: multi-model comparison → Spanish alerts → second replay storm. Backtest and trust layer are never cut. |
+| FEMA IHP / NOAA DAT granularity or coverage insufficient for reconciliation | Confirm during build; if unusable, drop §4.6 and keep the eval row it added as future work |
+| Scope creep | Cut order: post-landfall reconciliation (§4.6) → multi-model comparison → Spanish alerts → second replay storm. Backtest and trust layer are never cut. |
 
 ---
 
@@ -300,7 +318,7 @@ All public. Access is to be confirmed before we depend on each one.
 
 | Workstream | Scope |
 |---|---|
-| A — Data & impact model | Ingestion, feature engineering, XGBoost training, backtest |
+| A — Data & impact model | Ingestion, feature engineering, XGBoost training, backtest; *stretch:* post-landfall reconciliation data (§4.6) |
 | B — Scenarios & optimization | Forecast-error scenario generator, Pyomo model, Florence reproduction, outage layer |
 | C — Agent & trust layer | Tool definitions, agent loop, model configuration, trust checks, judge validation |
 | D — App, accessibility & demo | Three user views, map, review flow, accessibility, video and storyline |
@@ -315,7 +333,7 @@ The system is designed to keep running after the hackathon at close to zero cost
 
 - **Idle between storms:** Cloud Scheduler checks NHC for active systems every 6 hours. The API, web app and GPU model service scale to zero.
 - **Automatic activation:** when a storm threatens the US (watch/warning issued, or the forecast cone reaches US land), the pipeline runs on every advisory. It publishes a public read-only resident outlook, plus the full emergency manager view for pilot partners.
-- **Public post-storm scorecard:** after each storm, predicted vs. actual county outages and plan performance are published. The system is continuously re-tested against real events rather than only at launch.
+- **Public post-storm scorecard:** after each storm, predicted vs. actual county outages and plan performance are published, extended with predicted-vs-observed structural damage (§4.6) once that data lands. The system is continuously re-tested against real events rather than only at launch.
 - **Learning loop:** approve/reject/edit decisions from reviewers calibrate trust-layer thresholds. The impact model is retrained each year when new EAGLE-I data is released.
 - **Pilot partner:** one county emergency management office or regional food bank for the 2027 season, to validate the staging recommendations with real operators.
 - **Later hazards:** extend the scenario layer to other hazards with probabilistic forecasts (e.g. riverine flood forecasts, severe-weather outlooks).
@@ -347,7 +365,9 @@ The system is designed to keep running after the hackathon at close to zero cost
 - *Predictive Modeling of Power Outages during Extreme Events: Integrating Weather and Socio-Economic Factors.* https://arxiv.org/html/2512.22699
 - NOAA NHC. *GIS Data and Products.* https://www.nhc.noaa.gov/gis/
 - Google DeepMind. *WeatherNext.* https://deepmind.google/science/weathernext/ · Data on Cloud Storage: https://developers.google.com/weathernext/guides/gcs
-- Google Research. *SKAI.* https://github.com/google-research/skai
+- Google Research. *SKAI.* https://github.com/google-research/skai · WFP Innovation. *SKAI.* https://innovation.wfp.org/project/SKAI
+- FEMA. *OpenFEMA — Individuals and Households Program / Housing Assistance Data.* https://www.fema.gov/openfema-data-page/housing-assistance-program-data-owners-v2
+- NOAA NWS. *Damage Assessment Toolkit.* https://apps.dat.noaa.gov/StormDamage/DamageViewer/
 - *SafeMate: A Modular RAG-Based Agent for Context-Aware Emergency Guidance.* https://arxiv.org/pdf/2505.02306
 - *AI-Driven Disaster Warning System: Integrating Predictive Data with LLM for Contextualized Guideline Generation.* https://dl.acm.org/doi/10.1145/3704522.3704549
 - Urbint. *Storm Impact.* https://www.urbint.com/storm-impact
