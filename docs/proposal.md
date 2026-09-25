@@ -42,6 +42,27 @@ The AI agent does real work in the loop: it runs the pipeline, turns requests in
 
 **Why it matters:** staging decisions are made under forecast uncertainty. Over-staging wastes scarce inventory; under-staging leaves people without water, power or shelter capacity. Large organizations run 24/7 operations centers that connect forecasts to logistics. Most counties and community organizations don't have that capacity.
 
+### 2.1 MVP compliance
+
+The sponsor brief lists ten required MVP components and a specific demo flow. Every one is addressed in the MVP build below — none are pushed to the stretch or phase-2 items in §4.6 / §11.
+
+| Required (MVP) | Where it is addressed |
+|---|---|
+| Storm data ingestion | §4.1 — live NHC advisory ingestion, every 6 hours |
+| Geographic visualization | §7 — React + MapLibre map, four-tier risk drill-down (region → county → tract → facility) |
+| Storm trajectory/forecast | §4.1 — NHC track/intensity forecast plus generated scenarios |
+| Risk/impact analysis | §4.2 — impact model; risk map |
+| At least one predictive capability | §4.2 — trained impact model (XGBoost), backtested against baselines (§10) |
+| Identification of high-risk locations | Risk map + ranked county/facility list, from §4.2 output |
+| AI-generated preparedness recommendations | §4.3 (staging plan) + §4.4 (agent-written operations brief and resident alerts) |
+| **Natural-language interface** | §4.4 — a chat interface in the web app, backed by the agent's tool-calling loop, not just internal orchestration |
+| **Explanation of why an area was identified as high risk** | §4.5 — every displayed recommendation carries the impact model's feature importance in plain language ("why") |
+| **Display of underlying data/sources** | §4.5 — every displayed recommendation carries a sources panel naming the data and model outputs behind it, drawn from the trust layer's own groundedness check |
+
+**Demo flow** (*Select Storm → View Forecast → Analyze Impacts → Identify High-Risk Areas → Ask AI → Receive Recommendations*): matches our replay mode directly — pick a historical storm, the pipeline runs through §4.1–§4.4, the risk map and brief populate, and the chat interface is available at every step for follow-up questions.
+
+Our architecture (§4, §6) also mirrors the sponsor's own suggested design — *Storm Detection → Forecast → Impact Prediction → Risk Assessment → Resource Analysis → Recommended Actions → Human Decision* — stage for stage.
+
 ---
 
 ## 3. Existing work and positioning
@@ -85,6 +106,7 @@ A two-stage stochastic program, re-solved in a rolling window on each advisory:
 - **First stage (now):** where to pre-position each resource and how much.
 - **Second stage (per scenario):** distribution after landfall, with penalties for unmet demand.
 - **Risk-averse option:** optimize the worst-case tail of scenarios (CVaR), not just the average, for emergency managers who prefer to over-stage.
+- **Resource types are a config list, not hard-coded to supplies:** generators, water/ice, shelter capacity, and also personnel and emergency vehicles (Idea C's "personnel staging," "emergency vehicle positioning"). Staging personnel/vehicles uses the same optimizer and the same demand signal — no new data source needed, just another entry in the resource-type list.
 
 Details of what we reuse and extend are in §5.
 
@@ -98,6 +120,7 @@ A tool-calling agent orchestrates the pipeline and handles the interaction:
 - **What-if requests:** turns them into solver constraints ("Shelter 4 is unavailable", "we only have 6 trucks"), re-solves and explains the difference.
 - **Communication:** drafts the operations brief and resident alerts from the approved plan.
 - **Model-agnostic:** the language model is a configuration setting (§7). Gemini, Claude or a self-hosted open-weights model (Gemma) can be swapped without code changes.
+- **Natural-language interface (MVP required):** a chat panel in the web app, available to every user type. It's the same agent and the same tools as the automatic per-advisory run — a typed question ("What does County X need if the track shifts west?") becomes a tool call and a re-solve, not a separate, unverified free-text answer. This is what the "Ask AI → Receive Recommendations" step in the sponsor's demo flow refers to (§2.1).
 
 ### 4.5 Trust layer
 Every agent output passes these checks before display:
@@ -108,6 +131,8 @@ Every agent output passes these checks before display:
 | **Confidence fits lead time** | Rules: allowed certainty and spatial detail depend on forecast lead time and how much the scenarios disagree (e.g. no single-facility certainty 4 days out when the scenarios diverge) | Rewritten with the uncertainty stated |
 | **Agent followed the required steps** | Checks the agent's sequence of tool calls: no plan without a current-advisory `solve_staging`, no stale-advisory data, no skipped steps | Blocked |
 | **Actionable** | LLM-as-judge with a written rubric. **The judge is first tested against a human-labeled sample;** its scores are shown only if its agreement with the humans is acceptable | Flagged for the reviewer |
+
+**What the user sees (MVP required, not just an internal check):** the trust layer's own groundedness check already traces every number in a recommendation back to a model output — that trail is surfaced, not just used internally. Each recommendation shown in the UI carries two things alongside it: a plain-language **"why"** (the impact model's feature importance for that location — e.g. "flagged for wind exposure and low canopy cover, not population alone") and a **sources** list naming the data and model runs it came from (which NHC advisory, which model version, which scenario set). This directly answers the *AI Quality* success criterion ("findings include supporting evidence").
 
 ### 4.6 Post-landfall reconciliation *(stretch — see §11 cut order)*
 Outage data and structural damage are different failure modes, and they call for different resources. A house that's still standing but powerless needs a generator, water, a cooling center. A destroyed house needs search-and-rescue, shelter placement, debris clearance — outage-based staging never plans for that, because outage status alone can't distinguish the two. This step adds a second, independent ground truth so the system can catch that gap.
@@ -169,7 +194,7 @@ flowchart TD
 
   RECON["Post-landfall reconciliation<br/>(stretch)<br/>predicted vs. observed damage"]
   TRUST["Trust layer<br/>numbers match models · confidence fits lead time<br/>required steps followed · actionability judge"]
-  UI["Web app<br/>Emergency manager · Organization · Resident views"]
+  UI["Web app<br/>Emergency manager · Organization · Resident views<br/>NL chat · why + sources panel · risk map drill-down"]
   REVIEW[("Review log<br/>approve / reject / edit")]
 
   OUT --> TRAIN
@@ -224,7 +249,7 @@ Secret Manager: API keys · Cloud Logging: model/provider used per recommendatio
 | Open-model hosting | vLLM on Cloud Run with GPU (1× NVIDIA L4), scales to zero | Pay only while in use. Compute Engine GPU VM as fallback. |
 | Retrieval | Small embedded index over FEMA / Ready.gov guidance | The guidance corpus is small, so no managed vector database |
 | Backend | FastAPI on Cloud Run | Simple, scales to zero |
-| Frontend | React + MapLibre GL (open-source maps, no API key); WCAG AA contrast, keyboard navigation, screen-reader labels | Usability and accessibility are scored |
+| Frontend | React + MapLibre GL (open-source maps, no API key); WCAG AA contrast, keyboard navigation, screen-reader labels; four-tier risk map (🟢🟡🟠🔴) with region → county → tract → facility drill-down; chat panel wired to the agent (§4.4); per-recommendation why/sources panel (§4.5) | Usability and accessibility are scored; the drill-down and chat directly match the sponsor's Idea B and MVP requirements |
 | Review log | Firestore | Serverless; no database to manage |
 | Scheduling | Cloud Scheduler | Advisory polling |
 | Observability | Cloud Logging | Every recommendation records which model and provider produced it. Fallbacks are logged as errors, never silent. |
@@ -255,6 +280,20 @@ All public. Access is to be confirmed before we depend on each one.
 | *Stretch:* WeatherNext 2 (Cloud Storage, Zarr) | AI ensemble forecasts as an alternative scenario source | Access request required; requester-pays bucket |
 | *Stretch:* FEMA OpenFEMA — Individuals and Households Program / Housing Assistance data | Post-landfall reconciliation (§4.6) and a second backtest ground truth (§10): damage severity by county/ZIP/block group | API, no PII, county/ZIP/block-group granularity (no street address) |
 | *Stretch:* NOAA Damage Assessment Toolkit (DAT) | Post-landfall reconciliation and backtest: wind-damage survey polygons, EF-scale severity | CSV/GeoJSON/KMZ by date range; mainly built for tornado/convective wind, coverage for hurricane wind swaths to be confirmed |
+| US Census TIGER/Line | City/county boundary geometries for the map | Public, free |
+| USGS 3DEP elevation | Terrain context for flood modeling (§11 phase 2) | Public, free |
+| *Phase 2 (§11):* FEMA National Flood Hazard Layer (NFHL) | Flood zones, for the multi-hazard impact layer | Public API/download |
+| *Phase 2 (§11):* OpenStreetMap / Overture — roads, bridges, transit infrastructure | Road/bridge/transit risk overlay, for the multi-hazard impact layer | Same source already used for critical facilities above |
+| *Phase 2 (§11):* HIFLD power infrastructure (substations, transmission) | Asset-level power-grid risk, beyond EAGLE-I's county aggregate | Availability to be confirmed, same caveat as HIFLD critical facilities above |
+| *Stretch, map display only:* NOAA OGC WMS / RIDGE2 radar | Live radar as a map overlay layer | Not used for modeling — decorative/situational-awareness layer only |
+
+**§8.1 Considered and not used**
+
+| Source | Why not |
+|---|---|
+| Weather.com API, Tomorrow.io, OpenWeatherMap Weather Maps, Xweather | Paid/proprietary map-tile and forecast APIs. NHC/NWS already give us the forecast fields we need (track, intensity, wind, rainfall context), free and public — these would be redundant, not additive. |
+| Social media / public reports | No reliable public feed; moderation and verification burden is out of scope for a hackathon timeline, and unverified reports don't fit the trust layer's groundedness requirement. |
+| Emergency call data, response times | Not public data. |
 
 ---
 
@@ -268,6 +307,7 @@ All public. Access is to be confirmed before we depend on each one.
 | Staging | Two-stage stochastic program, rolling horizon (+ CVaR option) | No (optimization) | Unmet demand and cost on held-out scenarios and on actual outages; vs. a plan based only on the single forecast track, and vs. the paper's shelter-only plan |
 | Agent | Configurable LLM (Gemini / Claude / Gemma) | No | Tool-call success rate, trust-check pass rate, latency per advisory cycle, compared per model |
 | Actionability judge | LLM-as-judge with rubric | No | Agreement with human labels before its scores are used |
+| *Phase 2, not in MVP (§11):* Multi-hazard impact model (flood zones, road/bridge/transit disruption) | Not built for the hackathon | — | Would follow the same leave-one-storm-out backtest approach as the impact model, against FEMA NFHL and historical road-closure records once identified |
 
 ---
 
@@ -288,8 +328,10 @@ All public. Access is to be confirmed before we depend on each one.
 
 ## 11. Scope, assumptions and risks
 
-**In scope (MVP):** US Atlantic/Gulf tropical storms and hurricanes; replay of historical storms plus live mode when a storm is active.
+**In scope (MVP):** US Atlantic/Gulf tropical storms and hurricanes; replay of historical storms plus live mode when a storm is active; a single, well-tested impact model (power outages/shelter demand, §4.2); the MVP-required NL interface and explanation/sources panel (§2.1, §4.4, §4.5).
 **Out of scope for now:** severe thunderstorms, winter storms, inland flash floods. The scenario method depends on NHC forecasts, which don't exist for these. Listed as future work.
+
+**Phase 2 / improvement plan — multi-hazard impact layer.** The sponsor brief's own example (Idea A) lists several impact types beyond power outages: flooding risk, road closures, transit disruption. We deliberately keep the MVP's predictive core to one impact model, trained and backtested against ten years of real outage data (§4.2, §10), rather than splitting effort across several untested models before Oct 5. The data to extend this is already scoped in §8 (FEMA NFHL for flood zones, OpenStreetMap/Overture for roads and transit, HIFLD for grid assets) — the next model to build, after the MVP, is a road/transit/flood disruption predictor using the same leave-one-storm-out backtest discipline as §4.2, feeding the same optimizer (§4.3) as an additional resource-need category. This keeps the MVP's "at least one predictive capability" requirement rigorously met while giving a credible, data-backed path to the fuller multi-hazard vision in the brief.
 
 | Risk | Mitigation |
 |---|---|
@@ -321,7 +363,7 @@ All public. Access is to be confirmed before we depend on each one.
 | A — Data & impact model | Ingestion, feature engineering, XGBoost training, backtest; *stretch:* post-landfall reconciliation data (§4.6) |
 | B — Scenarios & optimization | Forecast-error scenario generator, Pyomo model, Florence reproduction, outage layer |
 | C — Agent & trust layer | Tool definitions, agent loop, model configuration, trust checks, judge validation |
-| D — App, accessibility & demo | Three user views, map, review flow, accessibility, video and storyline |
+| D — App, accessibility & demo | Three user views, map (four-tier drill-down), NL chat panel, why/sources panel, review flow, accessibility, video and storyline |
 
 A running decision log (approaches tried, what changed and why) is kept throughout. It feeds the "story behind the build" part of the submission.
 
@@ -336,7 +378,7 @@ The system is designed to keep running after the hackathon at close to zero cost
 - **Public post-storm scorecard:** after each storm, predicted vs. actual county outages and plan performance are published, extended with predicted-vs-observed structural damage (§4.6) once that data lands. The system is continuously re-tested against real events rather than only at launch.
 - **Learning loop:** approve/reject/edit decisions from reviewers calibrate trust-layer thresholds. The impact model is retrained each year when new EAGLE-I data is released.
 - **Pilot partner:** one county emergency management office or regional food bank for the 2027 season, to validate the staging recommendations with real operators.
-- **Later hazards:** extend the scenario layer to other hazards with probabilistic forecasts (e.g. riverine flood forecasts, severe-weather outlooks).
+- **Later hazards:** the phase-2 multi-hazard impact layer (§11) is the first concrete step here — extending beyond it to other hazards with their own probabilistic forecasts (e.g. severe-weather outlooks) follows the same pattern.
 
 ---
 
@@ -368,6 +410,10 @@ The system is designed to keep running after the hackathon at close to zero cost
 - Google Research. *SKAI.* https://github.com/google-research/skai · WFP Innovation. *SKAI.* https://innovation.wfp.org/project/SKAI
 - FEMA. *OpenFEMA — Individuals and Households Program / Housing Assistance Data.* https://www.fema.gov/openfema-data-page/housing-assistance-program-data-owners-v2
 - NOAA NWS. *Damage Assessment Toolkit.* https://apps.dat.noaa.gov/StormDamage/DamageViewer/
+- FEMA. *National Flood Hazard Layer.* https://www.fema.gov/flood-maps/national-flood-hazard-layer
+- USGS. *3D Elevation Program (3DEP).* https://www.usgs.gov/3d-elevation-program
+- US Census Bureau. *TIGER/Line Shapefiles.* https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html
+- NOAA NWS. *OGC Web Map Services / RIDGE2 radar.* https://www.weather.gov/gis/
 - *SafeMate: A Modular RAG-Based Agent for Context-Aware Emergency Guidance.* https://arxiv.org/pdf/2505.02306
 - *AI-Driven Disaster Warning System: Integrating Predictive Data with LLM for Contextualized Guideline Generation.* https://dl.acm.org/doi/10.1145/3704522.3704549
 - Urbint. *Storm Impact.* https://www.urbint.com/storm-impact
