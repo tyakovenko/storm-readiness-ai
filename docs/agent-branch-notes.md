@@ -13,10 +13,16 @@ Builds on `c/agent-trust-layer` (Julie's agent + trust layer + React UI). Still 
 | **`diff_plans` tool** | What-ifs now report what changed compared with the full plan (truckloads per county, unmet need, beds, shortfall) |
 | **`get_enso_context` tool** | ONI phase and strength. Works for both the base design and the El Niño variant |
 | **Shelters** | Now use the FEMA ESF #6 shape (evacuation vs post-impact capacity, generator, pets, surge zone). Bed counts use `evacuation_capacity` |
+| **Numbers tied to places** | Part of `numbers_match_tools`: a number in a sentence that names a county or shelter must come from that entity's records or from a field that isn't about any one entity (e.g. total trucks). Stops Dixie's 47% being reported as Levy's |
+| **Places and facilities check** | `entities_match_tools`: every county or shelter named must have come back from a tool this turn. Invented names ("Marion County", "Shelter 6") are blocked, and "no shelters in X" needs an empty `query_assets` lookup for X. Uses `tools.entity_catalog()` |
+| **Retry can fix tool order** | `required_steps` judges a retry on its own tool calls. Before, a wrong order in the first attempt blocked every retry |
+| **Planted-error test** | `backend/evals/planted_errors.py`: plants 10 kinds of mistakes into clean answers and reports which checks catch them. Results table in the main README |
 | **Tests** | `backend/tests/`, mock mode only, no key needed: `cd backend && .venv/bin/pytest -q` |
 | **UI** | Second trust demo ("overconfident") and a judge on/off badge |
 
-Bug fixed: a negative change like "-2 truckloads" was flagged as a made-up number because the number regex drops the sign.
+Bugs fixed:
+- A negative change like "-2 truckloads" was flagged as a made-up number, because the number regex drops the sign.
+- A wrong FIPS code in `predict_impact` or `query_assets` returned an empty list, which the model read as "no impact" or "no shelters". Both now return an error listing the valid codes.
 
 ## Open questions: answers where the code decides
 
@@ -30,7 +36,7 @@ Bug fixed: a negative change like "-2 truckloads" was flagged as a made-up numbe
 - The tools are plain Python functions with JSON schemas, so switching to ADK later is contained (`loop.py` + `llm.py`).
 - Rejected: ADK now, because it adds a Gemini-leaning dependency and we'd lose the mock mode, the only free way for the team to demo.
 
-**Who builds the last 2 trust checks?** First versions are on this branch. Still open: (a) calibrate the 48 h / 60 nm thresholds, (b) a small human-labeled set, about 30 answers, to validate the judge before its verdicts count. (b) needs someone other than the judge's author to label.
+**Who builds the last 2 trust checks?** First versions are on this branch. Still open: (a) calibrate the 48 h / 60 nm thresholds, (b) a small human-labeled set, about 40 answers, to validate the judge before its verdicts count. (b) needs someone other than the judge's author to label.
 
 **Which LLM for the final demo?** It's a config line (`LLM_MODEL`, `JUDGE_MODEL` in `.env`). Tested on this branch: Claude Haiku 4.5 (cheap and fast) for both agent and judge. For the final demo, compare 2 models on trust-check pass rate. The proposal already promises a model comparison, so the eval harness doubles as that.
 
@@ -63,6 +69,8 @@ Bug fixed: a negative change like "-2 truckloads" was flagged as a made-up numbe
 ## Known gaps
 
 - Mock mode is keyword-scripted: it only shows the plumbing, not agent quality.
-- The confidence check matches county names exactly ("Levy County"). If the model writes just "Levy", a missing range can slip through.
+- Made-up timing ("delivery by landfall+1") and relabels ("truckloads" → "water") aren't checked. They need a claim-level check.
+- Number binding works clause by clause: a number in a sentence with no place name is only checked against all tool outputs.
+- The planted mistakes were written by the check authors, so the catch rate is an upper bound.
 - The judge isn't validated. Treat its verdicts as a demo of the mechanism.
 - No replay clock yet. Everything is one fixed stub advisory.

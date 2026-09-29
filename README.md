@@ -178,7 +178,7 @@ npm run dev
 
 ### 6. Try it
 
-Click an example question, or type one like *"We only have 6 trucks and Shelter 2 is closed. Re-plan."* Expand **Trust checks** and **Tool calls** under an answer to see how it got there. In mock mode, the **Trust demo** button shows the trust layer blocking a made-up number.
+Click an example question, or type one like *"We only have 6 trucks and Shelter 2 is closed. Re-plan."* Expand **Trust checks** and **Tool calls** under an answer to see how it got there. In mock mode, the two **Trust demo** buttons show the trust layer blocking a made-up number and an overconfident answer.
 
 Stop both servers with **Ctrl+C**.
 
