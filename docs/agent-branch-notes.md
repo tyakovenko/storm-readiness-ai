@@ -13,7 +13,7 @@ Builds on `c/agent-trust-layer` (Julie's agent + trust layer + React UI). Still 
 | **`diff_plans` tool** | What-ifs now report what changed compared with the full plan (truckloads per county, unmet need, beds, shortfall) |
 | **`get_enso_context` tool** | ONI phase and strength. Works for both the base design and the El Niño variant |
 | **Shelters** | Now use the FEMA ESF #6 shape (evacuation vs post-impact capacity, generator, pets, surge zone). Bed counts use `evacuation_capacity` |
-| **Tests** | `backend/tests/`, 24 tests, mock mode only, no key needed: `cd backend && .venv/bin/pytest -q` |
+| **Tests** | `backend/tests/`, mock mode only, no key needed: `cd backend && .venv/bin/pytest -q` |
 | **UI** | Second trust demo ("overconfident") and a judge on/off badge |
 
 Bug fixed: a negative change like "-2 truckloads" was flagged as a made-up number because the number regex drops the sign.
@@ -48,6 +48,17 @@ Bug fixed: a negative change like "-2 truckloads" was flagged as a made-up numbe
 - Regenerated answers opened with "You're right, let me recalculate". The feedback now tells the model users never see it.
 - The judge is strict: it marks informational answers (El Niño context, a single number) as not actionable. That's a rubric call to settle when we validate it.
 - Haiku writes `**bold**` even when told not to, so the UI renders bold (no markdown library).
+
+## Questions raised on 2026-09-29 (after the live run)
+
+| Question | Answer so far | Needs |
+|---|---|---|
+| Deploy on GCP? | Yes: Cloud Run, one container (FastAPI serves the built React app), private (`--no-allow-unauthenticated` + IAM). Not built yet | GCP project ID, `gcloud` on the dev machine, go-ahead |
+| Use GCP credits instead of an Anthropic key? | Gemini on Vertex AI: it's Google's own model, so it bills to GCP, and on Cloud Run the service account authenticates (no key). Claude on Vertex also bills through GCP, but it's unclear whether promotional credits cover partner models. Check before relying on it | Test the loop on Gemini: newer Gemini models can be strict about how earlier tool-call steps are passed back; `build_llm`'s API-key check may need changing for Vertex |
+| Does the data have to go on GCP? | No. The app only needs small engine outputs (per-county predictions, shelters, model file), which fit in the image. Raw EAGLE-I etc. is for training, which can run anywhere | Revisit if files outgrow the image or the team wants shared storage (Cloud Storage) |
+| Train or tune the judge on the Data Strategy data? | No. That data is ground truth for the impact model, not labels for "actionable". Tune the judge's **prompt**, validated against about 40 human-labeled answers from a real-storm replay. Use the data to set the **confidence thresholds** (forecast track error vs lead time) and to grade advice against what happened (backtest) | Team decision: do informational answers count as actionable? |
+| Should the trust layer check places and facilities? | Yes. The proposal says "quantity, place and facility"; only numbers are checked now. Screenshot 3 shows the gap | Owner |
+| Resource types (water, generators, personnel)? | Needed in the `solve_staging` contract; the agent currently relabels generic truckloads | Workstream B |
 
 ## Known gaps
 

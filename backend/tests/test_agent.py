@@ -90,3 +90,8 @@ def test_short_lead_time_allows_point_estimates():
 def test_unknown_fips_returns_error_not_empty():
     r = tools.run_tool("predict_impact", {"county_fips": ["12083"]})
     assert "error" in r and "12075" in r["error"]
+
+
+def test_query_assets_unknown_fips_is_error_not_no_shelters():
+    assert "error" in tools.run_tool("query_assets", {"county_fips": "12083"})
+    assert tools.run_tool("query_assets", {"county_fips": "12075"})["shelters"]

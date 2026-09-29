@@ -125,6 +125,10 @@ def find_analogs() -> dict:
 
 def query_assets(county_fips: str | None = None) -> dict:
     shelters = [s for s in data.SHELTERS if not county_fips or s["county_fips"] == county_fips]
+    if county_fips and county_fips not in {c["fips"] for c in data.COUNTIES}:
+        # Same guard as predict_impact: [] for a guessed FIPS read as "Levy has no shelters".
+        return {"error": f"Unknown county FIPS {county_fips}. Known counties: "
+                         + ", ".join(f"{c['name']} = {c['fips']}" for c in data.COUNTIES)}
     return {"shelters": copy.deepcopy(shelters), "staging_area": data.STAGING_AREA,
             "source": data.STUB_SOURCE}
 
