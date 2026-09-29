@@ -88,7 +88,7 @@ On live Haiku (screenshot conversation replayed, 2026-09-29), the checks blocked
    - Impact model → `predict_impact`.
 
    Each one only has to pass `contracts.py`.
-2. **Claim checking** (done: numbers tied to places, and places/facilities; still open: timing and relabels). Split answers into single claims and check each against the tool outputs: an LLM, or Jev (TypeSafe), which returns calibrated yes/no probabilities. Flag only, until validated like the judge.
+2. **Claim checking** (done: numbers tied to places, and places/facilities; still open: timing and relabels). Split answers into single claims and check each against the tool outputs with an LLM. Flag only, until validated like the judge.
 3. **Resource types in the contract:** water, generators, personnel. The proposal already treats them as a config list. `solve_staging` returns a per-resource allocation, and the agent can't relabel them.
 4. **Confidence thresholds from data:** set the lead-time cutoff from NHC's published track errors, or from historical forecasts vs HURDAT2 for our storms, instead of the 48 h guess.
 5. **Validate the judge:** replay one real storm (Florence 2018) and generate about 40 answers. Two teammates label them blind, then we measure agreement and adjust the rubric prompt. No fine-tuning. If agreement stays low, turn the judge off and say so.
@@ -99,6 +99,10 @@ On live Haiku (screenshot conversation replayed, 2026-09-29), the checks blocked
    - Gemini on Vertex AI, billed to GCP credits, with no API key: the service account authenticates.
    - Private: `--no-allow-unauthenticated` plus IAM.
    - Data ships in the image; no Cloud Storage or database needed yet.
+
+### Improvement ideas (not planned)
+
+- **Jev (TypeSafe) for the judge and claim checks.** A decision-only model: typed questions in, calibrated probabilities out, which gives a tunable threshold instead of a free-text verdict. Not for number or time checks. Unknowns: early access, whether the key is OK to reuse, and output pricing (input is listed as $42 per billion tokens).
 
 **Open questions (team decisions) and answers so far:** [`docs/agent-branch-notes.md`](docs/agent-branch-notes.md).
 
