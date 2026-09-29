@@ -95,3 +95,68 @@ def test_unknown_fips_returns_error_not_empty():
 def test_query_assets_unknown_fips_is_error_not_no_shelters():
     assert "error" in tools.run_tool("query_assets", {"county_fips": "12083"})
     assert tools.run_tool("query_assets", {"county_fips": "12075"})["shelters"]
+
+
+def _outputs(*calls):
+    return [tools.run_tool(n, a) for n, a in calls]
+
+
+def test_number_bound_to_wrong_county_is_blocked():
+    outs = _outputs(("get_advisory", {}), ("predict_impact", {}))
+    cat = tools.entity_catalog()
+    levy, dixie = (next(c for c in outs[1]["counties"] if c["name"] == n) for n in ("Levy County", "Dixie County"))
+    ok = f"Levy: {levy['pct_customers_out']['median']:g}%"
+    bad = f"Levy: {dixie['pct_customers_out']['median']:g}%"
+    assert trust.check_numbers(ok, outs, "", cat).passed
+    c = trust.check_numbers(bad, outs, "", cat)
+    assert c.passed is False and "Dixie County" in c.detail
+
+
+def test_entity_not_returned_this_turn_is_blocked():
+    outs = _outputs(("get_advisory", {}))
+    assert trust.check_entities("Levy County is at risk.", outs, tools.entity_catalog()).passed is False
+
+
+def test_no_shelters_claim_needs_empty_lookup_for_that_county():
+    cat = tools.entity_catalog()
+    claim = "Levy County has no shelters."
+    unfiltered = _outputs(("predict_impact", {}), ("query_assets", {"county_fips": "12075"}))
+    assert trust.check_entities(claim, unfiltered, cat).passed is False  # lookup found Shelter 1
+    empty = [*_outputs(("predict_impact", {})), {"county_fips": "12075", "shelters": [], "staging_area": "x", "source": "t"}]
+    assert trust.check_entities(claim, empty, cat).passed is True
+
+
+def test_planted_errors_all_catchable_caught_no_false_alarms():
+    from evals.planted_errors import run
+    res = run()
+    assert res["false_alarms"] == []
+    for r in res["rows"]:
+        if r["expected"] != "expected_miss":
+            assert r["tried"] > 0 and r["caught"] == r["tried"], r
+
+
+def test_retry_can_fix_wrong_tool_order():
+    """Attempt 1 calls predict_impact before get_advisory; the retry re-runs them in order."""
+    import json as _json
+
+    from agent.llm import ToolCall, Turn
+
+    class Scripted:
+        model = "scripted"
+        plans = [["predict_impact", "get_advisory"], ["get_advisory", "predict_impact"]]
+
+        def __init__(self):
+            self.step = 0
+
+        def complete(self, messages, tools_):
+            if messages[-1]["role"] != "tool":  # new question or trust feedback -> call tools
+                names = self.plans.pop(0)
+                calls = [ToolCall(f"c{self.step}_{i}", n, {}) for i, n in enumerate(names)]
+                self.step += 1
+                return Turn("", calls, {"role": "assistant", "content": None, "tool_calls": [
+                    {"id": c.id, "type": "function", "function": {"name": c.name, "arguments": "{}"}}
+                    for c in calls]})
+            return Turn("Demo stub data.", [], {"role": "assistant", "content": "Demo stub data."})
+
+    r = run_agent("outage risk?", [], Scripted())
+    assert r["status"] == "regenerated", _json.dumps(r["attempts"], indent=1)

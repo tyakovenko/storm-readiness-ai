@@ -9,7 +9,7 @@ import logging
 
 from . import judge as judge_mod
 from . import trust
-from .tools import TOOL_SCHEMAS, run_tool
+from .tools import TOOL_SCHEMAS, entity_catalog, run_tool
 
 MAX_TOOL_ROUNDS = 8
 TRUST_FEEDBACK_PREFIX = "[trust-layer]"
@@ -64,15 +64,18 @@ def run_agent(question: str, history: list[dict], llm, judge=None) -> dict:
     messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history,
                 {"role": "user", "content": question}]
     all_calls, outputs, attempts = [], [], []
+    catalog = entity_catalog()
     status = "blocked"
 
     for attempt in range(2):
         attempt_calls = []
         text = _run_tools(messages, llm, attempt_calls, outputs)
         all_calls += attempt_calls
-        # Steps are checked per attempt; numbers against everything the tools returned.
-        checks = trust.run_checks(text, [c["name"] for c in attempt_calls] if attempt == 0
-                                  else [c["name"] for c in all_calls], outputs, question)
+        # Order is checked on this attempt's calls if it made any, so a retry that re-runs
+        # the tools in order can pass; "was solve_staging called" looks at the whole turn.
+        names_all = [c["name"] for c in all_calls]
+        names_now = [c["name"] for c in attempt_calls] or names_all
+        checks = trust.run_checks(text, names_all, outputs, question, catalog, order_calls=names_now)
         attempts.append({"text": text, "checks": trust.to_dicts(checks)})
         failed = [c for c in checks if c.blocking and c.passed is False]
         if not failed:
@@ -81,7 +84,8 @@ def run_agent(question: str, history: list[dict], llm, judge=None) -> dict:
         messages.append({"role": "user", "content": (
             f"{TRUST_FEEDBACK_PREFIX} Your answer was blocked: "
             + "; ".join(c.detail for c in failed)
-            + ". Rewrite it to fix these. Use only numbers from tool results; call tools again if you need to. "
+            + ". Rewrite it to fix these. Use only numbers from tool results; call tools again if you need to "
+            "(if the tool order was wrong, call get_advisory first, then re-run the other tools). "
             "Reply with the corrected answer only: users never see this feedback, so don't apologize or mention it.")})
 
     # Judge runs once, on the answer users will see; a blocked answer is never graded.

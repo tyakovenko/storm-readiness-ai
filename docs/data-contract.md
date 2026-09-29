@@ -25,7 +25,7 @@ The agent, trust layer and UI only depend on these shapes. How you compute them 
 | `solve_staging` | `allocations[]` (`truckloads_needed/assigned/unmet` per county), `shelter_beds_available`, `shelter_demand_estimate`, `shelter_bed_shortfall`, `shelter_demand_assumption`, `method` | Workstream B optimizer (or highest-need-first). Shelter beds = sum of ESF #6 `evacuation_capacity` of open shelters |
 | `diff_plans` | `county_changes[]`, before/after for unmet truckloads, beds, shortfall | Computed from two `solve_staging` runs; no new data |
 | `find_analogs` | `storm`, `year`, `enso_phase`, `similarity` (0–1), `peak_pct_customers_out_median` | HURDAT2 + ONI; outages from EAGLE-I (so only 2014–2022 analogs have outage numbers) |
-| `query_assets` | shelters: `id`, `name`, `county_fips`, `lat`, `lon`, `evacuation_capacity`, `post_impact_capacity`, `status`, `generator`, `wheelchair_accessible`, `pets_allowed`, `in_surge_zone` (booleans may be `null` = unknown) | FEMA ESF #6 National Shelter System (Source 7) |
+| `query_assets` | `county_fips` (the filter used; `null` = all). Shelters: `id`, `name`, `county_fips`, `lat`, `lon`, `evacuation_capacity`, `post_impact_capacity`, `status`, `generator`, `wheelchair_accessible`, `pets_allowed`, `in_surge_zone` (booleans may be `null` = unknown) | FEMA ESF #6 National Shelter System (Source 7) |
 | `retrieve_guidance` | `snippets[]` | FEMA / Ready.gov (retrieval index pending) |
 
 ## Still open on the data side (affects the contract)

@@ -129,14 +129,27 @@ def query_assets(county_fips: str | None = None) -> dict:
         # Same guard as predict_impact: [] for a guessed FIPS read as "Levy has no shelters".
         return {"error": f"Unknown county FIPS {county_fips}. Known counties: "
                          + ", ".join(f"{c['name']} = {c['fips']}" for c in data.COUNTIES)}
-    return {"shelters": copy.deepcopy(shelters), "staging_area": data.STAGING_AREA,
-            "source": data.STUB_SOURCE}
+    # county_fips echoes the filter so an empty list is evidence for "no shelters in X".
+    return {"county_fips": county_fips, "shelters": copy.deepcopy(shelters),
+            "staging_area": data.STAGING_AREA, "source": data.STUB_SOURCE}
 
 
 def retrieve_guidance(topic: str) -> dict:
     words = set(topic.lower().replace("?", " ").split())
     scored = sorted(data.GUIDANCE, key=lambda g: -len(words & set(g["keywords"])))
     return {"snippets": [g["text"] for g in scored[:2]], "source": data.GUIDANCE_SOURCE}
+
+
+def entity_catalog() -> list[dict]:
+    """Every county and shelter the data knows, with the names an answer may use for each.
+
+    The trust layer uses this to spot places and facilities in free text.
+    """
+    counties = [{"kind": "county", "key": c["fips"], "label": c["name"],
+                 "names": [c["name"], c["name"].removesuffix(" County")]} for c in data.COUNTIES]
+    shelters = [{"kind": "shelter", "key": s["id"], "label": s["id"], "names": [s["id"], s["name"]]}
+                for s in data.SHELTERS]
+    return counties + shelters
 
 
 def _schema(name: str, description: str, properties: dict | None = None, required: list | None = None) -> dict:

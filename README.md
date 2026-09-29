@@ -19,7 +19,7 @@ A chat app. An emergency manager asks a question ("where should we stage trucks?
 > - "delivery by landfall+1" is **made up**: no tool returns a delivery time.
 > - "5 truckloads **of water**" is a relabel: the plan only has generic truckloads, no water resource type.
 >
-> Kept on purpose, as evidence that the trust layer checks numbers but not places, facilities or timing. See "Known problems" and next steps #2–3.
+> Taken **before** the places/facilities check existed. Kept on purpose: it shows why that check was needed. The "no shelters" claim would now be blocked. The timing and water relabel still would not be (see "Known problems").
 
 ![Follow-up question: contains a wrong answer, see warning above](docs/screenshots/03-followup-water.png)
 
@@ -32,7 +32,8 @@ Screenshots use Claude Haiku 4.5 as both agent and judge, on **stub data**.
 | Agent loop | `backend/agent/loop.py` | Tool calling (LiteLLM, so Claude, Gemini or a scripted `mock` are one `.env` line), then trust checks, one regenerate, block |
 | Tools (9) | `backend/agent/tools.py` | `get_advisory`, `generate_scenarios`, `get_enso_context`, `predict_impact`, `solve_staging`, `diff_plans`, `find_analogs`, `query_assets`, `retrieve_guidance` |
 | Data contract | `backend/agent/contracts.py`, [`docs/data-contract.md`](docs/data-contract.md) | Output shape per tool, validated on every call. This is what the data and optimization workstreams build to |
-| Trust layer | `backend/agent/trust.py`, `judge.py` | 1. numbers match tool outputs · 2. required steps and no mixed advisories · 3. confidence fits lead time (ranges and no certainty words beyond 48 h) · 4. actionable (LLM judge, flag only) |
+| Trust layer | `backend/agent/trust.py`, `judge.py` | 1. numbers match tool outputs **for the place they're next to** · 1b. places/facilities named came from a tool, and "no shelters in X" needs an empty lookup for X · 2. required steps and no mixed advisories (a retry can fix a wrong order) · 3. confidence fits lead time (ranges and no certainty words beyond 48 h) · 4. actionable (LLM judge, flag only) |
+| Planted-error test | `backend/evals/planted_errors.py` | Plants known mistakes in clean answers and counts what the trust layer catches (below) |
 | UI | `frontend/src/App.jsx` | Chat, trust badge, Why / Sources / Trust checks / Tool calls panels |
 | Tests | `backend/tests/` | Mock-mode tests, no key: `cd backend && .venv/bin/pytest -q` |
 
@@ -41,7 +42,7 @@ Screenshots use Claude Haiku 4.5 as both agent and judge, on **stub data**.
 | Real (works now) | Placeholder (stub) |
 |---|---|
 | Agent loop, tool calling, what-if re-planning and plan diff | **All data**: storm, counties, outage %, truckloads, shelters, analogs, El Niño values are invented (`backend/agent/stub_data.py`) |
-| Trust checks 1–3 (deterministic, blocking) | Impact model: `predict_impact` returns fixed numbers, not XGBoost |
+| Trust checks 1, 1b, 2, 3 (deterministic, blocking) | Impact model: `predict_impact` returns fixed numbers, not XGBoost |
 | Judge mechanism (check 4) | Optimizer: `solve_staging` is highest-need-first on made-up truckload needs, not the stochastic program |
 | Output contracts and tests | Judge is **unvalidated** (not yet compared against human labels) |
 | Model swap via `.env` | Confidence thresholds (48 h, 60 nm) are placeholders |
@@ -50,10 +51,34 @@ Screenshots use Claude Haiku 4.5 as both agent and judge, on **stub data**.
 
 ### Known problems (from the screenshots and live runs)
 
-- **Facility and place claims aren't checked, only numbers.** Screenshot 3 says "Levy County has no shelters"; the stub has one. Likely cause: the model guessed a wrong FIPS, got an empty list and concluded "none". Fixed at the tool level: unknown FIPS now returns an error listing valid codes. The check itself is still missing.
-- **There are no resource types.** The user asked about water, the plan only has generic truckloads, and the agent relabeled them as water. It also made up "delivery by landfall+1".
+- **Screenshot 3's "Levy County has no shelters"** would now be blocked. A "no shelters" claim needs an empty `query_assets` lookup for that county, and a wrong FIPS guess returns an error instead of an empty list. Screenshot 3 was taken before both fixes.
+- **Made-up timing** ("delivery by landfall+1") is still not checked. It's caught only when the number happens not to appear in any tool output.
+- **There are no resource types.** The user asked about water, and the plan only has generic truckloads. In the latest live run, Haiku said honestly that it has no tool for cargo mix. Earlier it relabeled truckloads as water, which no check catches.
 - **Markdown tables show as raw text** (screenshot 1). The UI only renders bold.
 - The judge fails informational answers as "not actionable". The rubric needs a team decision.
+
+### Planted-error test: what the trust layer catches
+
+`cd backend && .venv/bin/python -m evals.planted_errors` plants one mistake at a time into the 6 clean mock answers, then runs the deterministic checks.
+
+| Planted mistake | Should be caught by | Caught / planted | Checks that fired |
+|---|---|---|---|
+| invented number | numbers_match_tools | 6 / 6 | numbers_match_tools |
+| number moved to the wrong county | numbers_match_tools | 3 / 3 | numbers_match_tools |
+| unit rewrite (0.82 similarity → 82%) | numbers_match_tools | 1 / 1 | numbers_match_tools |
+| invented county | entities_match_tools | 6 / 6 | entities_match_tools |
+| invented shelter | entities_match_tools | 6 / 6 | entities_match_tools, numbers_match_tools |
+| false 'no shelters' (screenshot 3) | entities_match_tools | 6 / 6 | entities_match_tools |
+| certainty word at 72 h | confidence_fits_lead_time | 6 / 6 | confidence_fits_lead_time, entities_match_tools |
+| median without its range | confidence_fits_lead_time | 3 / 3 | confidence_fits_lead_time |
+| made-up timing (landfall+1) | expected_miss | 3 / 6 | numbers_match_tools |
+| relabel truckloads as water | expected_miss | 0 / 2 | — |
+
+Catchable plants caught: 37 / 37. False alarms on clean answers: 0 / 6.
+
+The mistakes were written by the same people who wrote the checks, so treat this as an upper bound. The "expected_miss" rows are known gaps, kept on purpose. The 3 catches for "landfall+1" are luck: those answers happened not to contain a "1".
+
+On live Haiku (screenshot conversation replayed, 2026-09-29), the checks blocked answers where Haiku calculated customer counts itself (e.g. 38% × 24,000 ≈ 13,200) and answers with a wrong tool order. Each time the retry passed. No clean answer was blocked by the new checks.
 
 ### Next steps (suggested strategy)
 
@@ -63,7 +88,7 @@ Screenshots use Claude Haiku 4.5 as both agent and judge, on **stub data**.
    - Impact model → `predict_impact`.
 
    Each one only has to pass `contracts.py`.
-2. **Entity check (trust check 1b):** every county, facility and staging area named in an answer must appear in a tool output. Same approach as the number check. This would have blocked screenshot 3.
+2. **Claim checking** (done: numbers tied to places, and places/facilities; still open: timing and relabels). Split answers into single claims and check each against the tool outputs: an LLM, or Jev (TypeSafe), which returns calibrated yes/no probabilities. Flag only, until validated like the judge.
 3. **Resource types in the contract:** water, generators, personnel. The proposal already treats them as a config list. `solve_staging` returns a per-resource allocation, and the agent can't relabel them.
 4. **Confidence thresholds from data:** set the lead-time cutoff from NHC's published track errors, or from historical forecasts vs HURDAT2 for our storms, instead of the 48 h guess.
 5. **Validate the judge:** replay one real storm (Florence 2018) and generate about 40 answers. Two teammates label them blind, then we measure agreement and adjust the rubric prompt. No fine-tuning. If agreement stays low, turn the judge off and say so.

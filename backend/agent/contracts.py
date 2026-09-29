@@ -170,6 +170,7 @@ class Shelter(_Strict):
 
 
 class Assets(_Strict):
+    county_fips: str | None = Field(default=None, pattern=r"^\d{5}$", description="Filter used; None = all")
     shelters: list[Shelter]
     staging_area: str
     source: str
