@@ -20,6 +20,13 @@ const STATUS = {
   blocked: { label: "Blocked by trust layer", className: "badge bad" },
 };
 
+// LLMs emit **bold** even when told not to; render just that, no markdown library.
+function AnswerText({ text }) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : part,
+  );
+}
+
 function CheckList({ checks }) {
   return (
     <ul className="checks">
@@ -40,7 +47,7 @@ function AgentReply({ result }) {
     <div className="reply">
       <span className={status.className}>{status.label}</span>
       {result.answer ? (
-        <p className="answer">{result.answer}</p>
+        <p className="answer"><AnswerText text={result.answer} /></p>
       ) : (
         <p className="answer muted">This answer was blocked, so it is not shown. See the trust checks below.</p>
       )}

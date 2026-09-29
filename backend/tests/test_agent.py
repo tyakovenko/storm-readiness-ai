@@ -85,3 +85,8 @@ def test_short_lead_time_allows_point_estimates():
     adv = {**tools.get_advisory(), "lead_time_to_landfall_h": 24}
     c = trust.check_confidence("Levy County: 55% out", [adv, tools.predict_impact()])
     assert c.passed is True
+
+
+def test_unknown_fips_returns_error_not_empty():
+    r = tools.run_tool("predict_impact", {"county_fips": ["12083"]})
+    assert "error" in r and "12075" in r["error"]

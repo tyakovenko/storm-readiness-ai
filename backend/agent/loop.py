@@ -81,7 +81,8 @@ def run_agent(question: str, history: list[dict], llm, judge=None) -> dict:
         messages.append({"role": "user", "content": (
             f"{TRUST_FEEDBACK_PREFIX} Your answer was blocked: "
             + "; ".join(c.detail for c in failed)
-            + ". Rewrite it to fix these. Use only numbers from tool results; call tools again if you need to.")})
+            + ". Rewrite it to fix these. Use only numbers from tool results; call tools again if you need to. "
+            "Reply with the corrected answer only: users never see this feedback, so don't apologize or mention it.")})
 
     # Judge runs once, on the answer users will see; a blocked answer is never graded.
     final = (_judge_check(judge, question, attempts[-1]["text"]) if status != "blocked"

@@ -32,7 +32,7 @@ Bug fixed: a negative change like "-2 truckloads" was flagged as a made-up numbe
 
 **Who builds the last 2 trust checks?** First versions are on this branch. Still open: (a) calibrate the 48 h / 60 nm thresholds, (b) a small human-labeled set, about 30 answers, to validate the judge before its verdicts count. (b) needs someone other than the judge's author to label.
 
-**Which LLM for the final demo?** It's a config line (`LLM_MODEL`, `JUDGE_MODEL` in `.env`). Default on this branch: Claude Haiku 4.5 (cheap and fast) for both agent and judge. For the final demo, compare 2 models on trust-check pass rate. The proposal already promises a model comparison, so the eval harness doubles as that.
+**Which LLM for the final demo?** It's a config line (`LLM_MODEL`, `JUDGE_MODEL` in `.env`). Tested on this branch: Claude Haiku 4.5 (cheap and fast) for both agent and judge. For the final demo, compare 2 models on trust-check pass rate. The proposal already promises a model comparison, so the eval harness doubles as that.
 
 ## Open questions for the meeting (not code)
 
@@ -40,6 +40,14 @@ Bug fixed: a negative change like "-2 truckloads" was flagged as a made-up numbe
 - Who pays for the LLM? Should we ask the sponsor for credits?
 - Who owns the UI from here (map, the three user views, approve/reject)?
 - Data Strategy action items 1–4 (geography, years, target definition, features): the target definition changes the contract (see `data-contract.md`).
+
+## Live Haiku run (2026-09-29)
+
+- The trust layer caught real mistakes: Haiku computed a beds-lost number itself (900) and rewrote a 0.82 similarity as "82". Both were blocked, and the regenerate passed.
+- Haiku guessed a wrong FIPS code for Levy. `predict_impact` now returns an error listing the known codes instead of an empty list.
+- Regenerated answers opened with "You're right, let me recalculate". The feedback now tells the model users never see it.
+- The judge is strict: it marks informational answers (El Niño context, a single number) as not actionable. That's a rubric call to settle when we validate it.
+- Haiku writes `**bold**` even when told not to, so the UI renders bold (no markdown library).
 
 ## Known gaps
 

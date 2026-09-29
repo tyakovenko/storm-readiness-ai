@@ -25,6 +25,10 @@ def get_enso_context() -> dict:
 
 def predict_impact(county_fips: list[str] | None = None) -> dict:
     rows = [c for c in data.COUNTIES if not county_fips or c["fips"] in county_fips]
+    if county_fips and not rows:
+        # LLMs guess FIPS codes; an empty list would read as "no impact" instead of "wrong code".
+        return {"error": f"No impact prediction for FIPS {county_fips}. Known counties: "
+                         + ", ".join(f"{c['name']} = {c['fips']}" for c in data.COUNTIES)}
     counties = []
     for c in rows:
         # Quantile order is enforced by contracts.Quantiles when run_tool validates.
@@ -205,6 +209,8 @@ def run_tool(name: str, arguments: dict) -> dict:
     if unknown:
         return {"error": f"Unknown arguments for {name}: {sorted(unknown)}"}
     result = fn(**arguments)
+    if "error" in result:  # tool-level error for the model to correct, not an engine output
+        return result
     # Engine bug, not a model mistake: raise so it surfaces, don't hand the LLM a bad shape.
     CONTRACTS[name].model_validate(result)
     return result
