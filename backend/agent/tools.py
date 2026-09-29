@@ -8,6 +8,7 @@ Every output carries a "source" so the UI can show where numbers came from.
 import copy
 
 from . import stub_data as data
+from .contracts import CONTRACTS
 
 
 def get_advisory() -> dict:
@@ -18,16 +19,17 @@ def generate_scenarios() -> dict:
     return {"advisory_number": data.ADVISORY["advisory_number"], **copy.deepcopy(data.SCENARIOS)}
 
 
+def get_enso_context() -> dict:
+    return copy.deepcopy(data.ENSO)
+
+
 def predict_impact(county_fips: list[str] | None = None) -> dict:
     rows = [c for c in data.COUNTIES if not county_fips or c["fips"] in county_fips]
     counties = []
     for c in rows:
-        q = c["pct_customers_out"]
-        # CLAUDE.md rule 4: enforce quantile order, don't assume it.
-        if not q["low"] <= q["median"] <= q["high"]:
-            raise ValueError(f"Quantiles out of order for {c['fips']}: {q}")
+        # Quantile order is enforced by contracts.Quantiles when run_tool validates.
         counties.append({k: copy.deepcopy(c[k]) for k in
-                         ("fips", "name", "risk_tier", "pct_customers_out", "customers_served", "why")})
+                         ("fips", "name", "state", "risk_tier", "pct_customers_out", "customers_served", "why")})
     return {
         "advisory_number": data.ADVISORY["advisory_number"],
         "model_version": data.IMPACT_MODEL_VERSION,
@@ -56,7 +58,8 @@ def solve_staging(max_trucks: int | None = None, unavailable_sites: list[str] | 
 
     open_shelters = [s for s in data.SHELTERS if s["id"].lower() not in closed]
     closed_shelters = [s["id"] for s in data.SHELTERS if s["id"].lower() in closed]
-    beds = sum(s["beds"] for s in open_shelters)
+    # Pre-landfall plan, so evacuation (not post-impact) capacity is the bed count.
+    beds = sum(s["evacuation_capacity"] for s in open_shelters)
     demand = sum(round(c["vulnerable_population"] * data.SHELTER_DEMAND_PCT_OF_VULNERABLE / 100)
                  for c in data.COUNTIES)
 
@@ -77,6 +80,34 @@ def solve_staging(max_trucks: int | None = None, unavailable_sites: list[str] | 
             "goes to public shelters (Bhattarai & Song); not validated"
         ),
         "source": data.STUB_SOURCE,
+    }
+
+
+def diff_plans(max_trucks: int | None = None, unavailable_sites: list[str] | None = None) -> dict:
+    """What changes versus the unconstrained plan when the what-if constraints apply."""
+    before = solve_staging()
+    after = solve_staging(max_trucks, unavailable_sites)
+    after_by_fips = {a["fips"]: a for a in after["allocations"]}
+    changes = []
+    for b in before["allocations"]:
+        a = after_by_fips[b["fips"]]
+        if a["truckloads_assigned"] != b["truckloads_assigned"]:
+            changes.append({"county": b["county"], "fips": b["fips"],
+                            "truckloads_before": b["truckloads_assigned"],
+                            "truckloads_after": a["truckloads_assigned"],
+                            "change": a["truckloads_assigned"] - b["truckloads_assigned"]})
+    return {
+        "advisory_number": after["advisory_number"],
+        "baseline": {"trucks_available": before["trucks_available"], "shelters_closed": before["shelters_closed"]},
+        "what_if": {"trucks_available": after["trucks_available"], "shelters_closed": after["shelters_closed"]},
+        "county_changes": changes,
+        "unmet_truckloads_before": before["total_truckloads_unmet"],
+        "unmet_truckloads_after": after["total_truckloads_unmet"],
+        "shelter_beds_before": before["shelter_beds_available"],
+        "shelter_beds_after": after["shelter_beds_available"],
+        "shelter_bed_shortfall_before": before["shelter_bed_shortfall"],
+        "shelter_bed_shortfall_after": after["shelter_bed_shortfall"],
+        "source": after["source"],
     }
 
 
@@ -124,6 +155,9 @@ TOOLS = {
     "generate_scenarios": (generate_scenarios, _schema(
         "generate_scenarios",
         "Get the spread of possible storm tracks around the official forecast.")),
+    "get_enso_context": (get_enso_context, _schema(
+        "get_enso_context",
+        "Get the current El Niño / La Niña state (NOAA Oceanic Niño Index) for seasonal context.")),
     "predict_impact": (predict_impact, _schema(
         "predict_impact",
         "Predict peak percent of customers without power per county (low/median/high), "
@@ -134,6 +168,14 @@ TOOLS = {
         "solve_staging",
         "Build the resource staging plan: truckloads per county and shelter capacity. "
         "Turn what-if statements into arguments and call again to re-plan.",
+        {"max_trucks": {"type": "integer", "description": "Trucks available, if the user limits them."},
+         "unavailable_sites": {"type": "array", "items": {"type": "string"},
+                               "description": "Closed sites by id, e.g. [\"Shelter 4\"]."}})),
+    "diff_plans": (diff_plans, _schema(
+        "diff_plans",
+        "Compare the plan under what-if constraints with the unconstrained plan: which counties "
+        "gain or lose truckloads, and how unmet need and shelter beds change. Use the same "
+        "arguments you gave solve_staging.",
         {"max_trucks": {"type": "integer", "description": "Trucks available, if the user limits them."},
          "unavailable_sites": {"type": "array", "items": {"type": "string"},
                                "description": "Closed sites by id, e.g. [\"Shelter 4\"]."}})),
@@ -162,4 +204,7 @@ def run_tool(name: str, arguments: dict) -> dict:
     unknown = set(arguments) - set(allowed)
     if unknown:
         return {"error": f"Unknown arguments for {name}: {sorted(unknown)}"}
-    return fn(**arguments)
+    result = fn(**arguments)
+    # Engine bug, not a model mistake: raise so it surfaces, don't hand the LLM a bad shape.
+    CONTRACTS[name].model_validate(result)
+    return result

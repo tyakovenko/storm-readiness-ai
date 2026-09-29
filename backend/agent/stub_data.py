@@ -9,7 +9,9 @@ STUB_SOURCE = "STUB demo data (not a real forecast)"
 IMPACT_MODEL_VERSION = "stub-impact-v0"
 
 ADVISORY = {
+    "storm_id": "AL992026",
     "storm_name": "Demo Storm Alpha",
+    "basin": "AL",
     "advisory_number": 14,
     "issued_utc": "2026-09-27T15:00Z",
     "category": 3,
@@ -28,11 +30,21 @@ SCENARIOS = {
     "source": STUB_SOURCE,
 }
 
+ENSO = {
+    "season": "JAS",
+    "year": 2026,
+    "oni_c": 1.4,
+    "phase": "El Niño",
+    "strength": "moderate",
+    "source": f"{STUB_SOURCE}; stands in for the NOAA CPC Oceanic Niño Index",
+}
+
 # FIPS codes are real 5-digit strings; every other number is invented.
 COUNTIES = [
     {
         "fips": "12075",
         "name": "Levy County",
+        "state": "FL",
         "customers_served": 24000,
         "vulnerable_population": 9800,
         "pct_customers_out": {"low": 38, "median": 55, "high": 71},
@@ -43,6 +55,7 @@ COUNTIES = [
     {
         "fips": "12029",
         "name": "Dixie County",
+        "state": "FL",
         "customers_served": 9100,
         "vulnerable_population": 4300,
         "pct_customers_out": {"low": 30, "median": 47, "high": 66},
@@ -53,6 +66,7 @@ COUNTIES = [
     {
         "fips": "12017",
         "name": "Citrus County",
+        "state": "FL",
         "customers_served": 88000,
         "vulnerable_population": 21500,
         "pct_customers_out": {"low": 18, "median": 31, "high": 49},
@@ -63,6 +77,7 @@ COUNTIES = [
     {
         "fips": "12123",
         "name": "Taylor County",
+        "state": "FL",
         "customers_served": 11200,
         "vulnerable_population": 3900,
         "pct_customers_out": {"low": 12, "median": 24, "high": 40},
@@ -75,12 +90,28 @@ COUNTIES = [
 TRUCKS_AVAILABLE = 10
 STAGING_AREA = "Gainesville staging area"
 
+# FEMA ESF #6 shape. "id" is what users say in what-ifs ("Shelter 2 is closed").
 SHELTERS = [
-    {"id": "Shelter 1", "county_fips": "12075", "beds": 400},
-    {"id": "Shelter 2", "county_fips": "12017", "beds": 900},
-    {"id": "Shelter 3", "county_fips": "12017", "beds": 450},
-    {"id": "Shelter 4", "county_fips": "12029", "beds": 250},
-    {"id": "Shelter 5", "county_fips": "12123", "beds": 300},
+    {"id": "Shelter 1", "name": "Levy demo shelter A", "county_fips": "12075",
+     "lat": 29.45, "lon": -82.64, "evacuation_capacity": 400, "post_impact_capacity": 250,
+     "status": "open", "generator": True, "wheelchair_accessible": True, "pets_allowed": False,
+     "in_surge_zone": False},
+    {"id": "Shelter 2", "name": "Citrus demo shelter A", "county_fips": "12017",
+     "lat": 28.90, "lon": -82.59, "evacuation_capacity": 900, "post_impact_capacity": 600,
+     "status": "open", "generator": True, "wheelchair_accessible": True, "pets_allowed": True,
+     "in_surge_zone": False},
+    {"id": "Shelter 3", "name": "Citrus demo shelter B", "county_fips": "12017",
+     "lat": 28.85, "lon": -82.49, "evacuation_capacity": 450, "post_impact_capacity": 300,
+     "status": "open", "generator": False, "wheelchair_accessible": True, "pets_allowed": False,
+     "in_surge_zone": False},
+    {"id": "Shelter 4", "name": "Dixie demo shelter A", "county_fips": "12029",
+     "lat": 29.63, "lon": -83.13, "evacuation_capacity": 250, "post_impact_capacity": 150,
+     "status": "open", "generator": None, "wheelchair_accessible": None, "pets_allowed": None,
+     "in_surge_zone": None},
+    {"id": "Shelter 5", "name": "Taylor demo shelter A", "county_fips": "12123",
+     "lat": 30.12, "lon": -83.58, "evacuation_capacity": 300, "post_impact_capacity": 200,
+     "status": "open", "generator": True, "wheelchair_accessible": False, "pets_allowed": False,
+     "in_surge_zone": True},
 ]
 
 # Bhattarai & Song assumption (CLAUDE.md rule 7): must be labeled as an assumption.

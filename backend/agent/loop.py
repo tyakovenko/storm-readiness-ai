@@ -5,12 +5,16 @@
 """
 
 import json
+import logging
 
+from . import judge as judge_mod
 from . import trust
 from .tools import TOOL_SCHEMAS, run_tool
 
 MAX_TOOL_ROUNDS = 8
 TRUST_FEEDBACK_PREFIX = "[trust-layer]"
+
+log = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """You are the Storm Readiness assistant. You help emergency managers \
 understand a hurricane forecast's impact and the resource staging plan.
@@ -21,7 +25,12 @@ mention must come from a tool result in this conversation. If no tool gives it, 
 - In every turn, call get_advisory before any other tool so you use the current advisory.
 - For any question about resources, trucks, shelters or staging, call solve_staging. Turn \
 what-if statements into its arguments (e.g. "only 6 trucks" -> max_trucks=6; \
-"Shelter 4 is closed" -> unavailable_sites=["Shelter 4"]).
+"Shelter 4 is closed" -> unavailable_sites=["Shelter 4"]). For a what-if, also call \
+diff_plans with the same arguments and say what changed versus the full plan.
+- The forecast is uncertain far from landfall. When you give a county's outage percentage, \
+give its low-high range too, and never use certainty words (definitely, certainly, will lose power).
+- For El Niño or seasonal questions, call get_enso_context; El Niño changes seasonal odds, \
+never the forecast for this storm.
 - When you give the shelter demand estimate, say it is an assumption.
 - The data is demo stub data; say so briefly.
 - Be brief: a few sentences or a short list. Plain language."""
@@ -41,7 +50,17 @@ def _run_tools(messages: list[dict], llm, calls: list[dict], outputs: list[dict]
     raise RuntimeError(f"Agent did not finish within {MAX_TOOL_ROUNDS} tool rounds")
 
 
-def run_agent(question: str, history: list[dict], llm) -> dict:
+def _judge_check(judge, question: str, answer: str) -> trust.Check:
+    if judge is None:
+        return judge_mod.not_configured()
+    try:
+        return judge.grade(question, answer)
+    except Exception as e:  # judge is advisory: surface the failure, don't drop the answer
+        log.error("Actionable judge failed: %s", e)
+        return trust.Check(judge_mod.NAME, None, False, f"Judge call failed: {e}")
+
+
+def run_agent(question: str, history: list[dict], llm, judge=None) -> dict:
     messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history,
                 {"role": "user", "content": question}]
     all_calls, outputs, attempts = [], [], []
@@ -62,7 +81,12 @@ def run_agent(question: str, history: list[dict], llm) -> dict:
         messages.append({"role": "user", "content": (
             f"{TRUST_FEEDBACK_PREFIX} Your answer was blocked: "
             + "; ".join(c.detail for c in failed)
-            + ". Rewrite it using only numbers from tool results. Call tools again if you need to.")})
+            + ". Rewrite it to fix these. Use only numbers from tool results; call tools again if you need to.")})
+
+    # Judge runs once, on the answer users will see; a blocked answer is never graded.
+    final = (_judge_check(judge, question, attempts[-1]["text"]) if status != "blocked"
+             else trust.Check(judge_mod.NAME, None, False, "Not graded: answer was blocked"))
+    attempts[-1]["checks"] += trust.to_dicts([final])
 
     impact = next((o for o in reversed(outputs) if "counties" in o), None)
     return {

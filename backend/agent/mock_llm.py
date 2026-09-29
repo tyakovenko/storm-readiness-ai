@@ -2,7 +2,9 @@
 
 It makes real tool calls (chosen by keywords) and writes its answer only from
 the tool outputs, so the whole pipeline and trust layer run without an API key.
-Asking it to "hallucinate" makes it invent a number once, to demo a trust block.
+Trust demos (each misbehaves once, then the regenerate passes):
+  "hallucinate"   -> invents a number (numbers_match_tools)
+  "overconfident" -> certainty words and no ranges (confidence_fits_lead_time)
 """
 
 import json
@@ -25,7 +27,10 @@ class MockLLM:
         results = _tool_results(messages[q_idx + 1:])
         if not results:
             return self._call_tools(question)
-        text = _compose(question, results, hallucinate=not regenerating and "hallucinat" in question.lower())
+        q = question.lower()
+        text = _compose(question, results,
+                        hallucinate=not regenerating and "hallucinat" in q,
+                        overconfident=not regenerating and "overconfident" in q)
         return Turn(text, [], {"role": "assistant", "content": text})
 
     def _call_tools(self, question: str) -> Turn:
@@ -35,6 +40,7 @@ class MockLLM:
                                           "plan", "shelter", "closed", "need"))
         wants_analogs = any(w in q for w in ("similar", "analog", "past", "history", "before"))
         wants_guidance = any(w in q for w in ("resident", "prepare", "guidance", "alert", "people"))
+        wants_enso = any(w in q for w in ("el niño", "el nino", "enso", "la niña", "la nina", "season"))
         if wants_plan:
             args = {}
             if m := re.search(r"(\d+)\s+trucks?", q):
@@ -43,6 +49,10 @@ class MockLLM:
             if closed and any(w in q for w in ("closed", "unavailable", "out of", "down")):
                 args["unavailable_sites"] = [f"Shelter {n}" for n in closed]
             calls += [("predict_impact", {}), ("solve_staging", args)]
+            if args:
+                calls.append(("diff_plans", args))
+        if wants_enso:
+            calls.append(("get_enso_context", {}))
         if wants_analogs:
             calls.append(("find_analogs", {}))
         if wants_guidance:
@@ -72,7 +82,7 @@ def _pct(q: dict) -> str:
     return f"{q['median']:g}% of customers out (range {q['low']:g}–{q['high']:g}%)"
 
 
-def _compose(question: str, r: dict, hallucinate: bool) -> str:
+def _compose(question: str, r: dict, hallucinate: bool, overconfident: bool = False) -> str:
     lines = []
     if a := r.get("get_advisory"):
         lines.append(f"{a['storm_name']}, advisory {a['advisory_number']}: Category {a['category']}, "
@@ -81,7 +91,11 @@ def _compose(question: str, r: dict, hallucinate: bool) -> str:
     if imp := r.get("predict_impact"):
         lines.append("\nExpected power outages by county:")
         for c in imp["counties"]:
-            lines.append(f"- {c['name']} ({c['risk_tier']}): {_pct(c['pct_customers_out'])}")
+            if overconfident:
+                lines.append(f"- {c['name']} will definitely lose power: "
+                             f"{c['pct_customers_out']['median']:g}% of customers out")
+            else:
+                lines.append(f"- {c['name']} ({c['risk_tier']}): {_pct(c['pct_customers_out'])}")
     if s := r.get("solve_staging"):
         lines.append(f"\nStaging plan from {s['staging_area']} with {s['trucks_available']} trucks "
                      f"({s['method']}):")
@@ -94,6 +108,17 @@ def _compose(question: str, r: dict, hallucinate: bool) -> str:
         lines.append(f"Shelter beds open: {s['shelter_beds_available']}; estimated demand "
                      f"{s['shelter_demand_estimate']}; shortfall {s['shelter_bed_shortfall']}. "
                      f"({s['shelter_demand_assumption']})")
+    if d := r.get("diff_plans"):
+        lines.append(f"\nWhat changed versus the full plan ({d['baseline']['trucks_available']} trucks, "
+                     f"{len(d['baseline']['shelters_closed'])} shelters closed):")
+        for c in d["county_changes"]:
+            lines.append(f"- {c['county']}: {c['truckloads_before']} → {c['truckloads_after']} truckloads")
+        lines.append(f"- Unmet truckloads: {d['unmet_truckloads_before']} → {d['unmet_truckloads_after']}")
+        lines.append(f"- Shelter beds: {d['shelter_beds_before']} → {d['shelter_beds_after']}; "
+                     f"shortfall {d['shelter_bed_shortfall_before']} → {d['shelter_bed_shortfall_after']}")
+    if e := r.get("get_enso_context"):
+        lines.append(f"\nSeasonal context: {e['phase']} ({e['strength']}), ONI {e['oni_c']:g} °C "
+                     f"for {e['season']} {e['year']}. This shifts seasonal odds, not this storm's forecast.")
     if an := r.get("find_analogs"):
         lines.append("\nMost similar past storms:")
         for x in an["analogs"]:

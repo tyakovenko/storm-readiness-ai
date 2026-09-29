@@ -9,8 +9,10 @@ const EXAMPLES = [
   "We only have 6 trucks and Shelter 2 is closed. Re-plan.",
   "Were there similar storms before?",
   "What should residents do now?",
+  "How does El Niño affect this season?",
 ];
-const TRUST_DEMO = "Trust demo: hallucinate a number";
+// Mock-only: the scripted client misbehaves once so the trust layer has something to block.
+const TRUST_DEMOS = ["Trust demo: hallucinate a number", "Trust demo: overconfident outage risk"];
 
 const STATUS = {
   passed: { label: "Trust checks passed", className: "badge ok" },
@@ -128,7 +130,7 @@ export default function App() {
     }
   }
 
-  const examples = health?.mock ? [...EXAMPLES, TRUST_DEMO] : EXAMPLES;
+  const examples = health?.mock ? [...EXAMPLES, ...TRUST_DEMOS] : EXAMPLES;
 
   return (
     <div className="app">
@@ -138,6 +140,9 @@ export default function App() {
           <span className={health.mock ? "badge warn" : "badge ok"}>
             {health.mock ? "Mock mode: scripted, no LLM" : `Model: ${health.model}`}
           </span>
+        )}
+        {health && (
+          <span className="badge">{health.judge ? `Judge: ${health.judge}` : "Judge: off"}</span>
         )}
       </header>
       <p className="banner" role="note">

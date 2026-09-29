@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 
 load_dotenv(find_dotenv())  # finds the repo-root .env
 
+from agent.judge import build_judge  # noqa: E402
 from agent.llm import build_llm  # noqa: E402
 from agent.loop import run_agent  # noqa: E402
 
@@ -26,6 +27,7 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     # Fail loudly: a bad model config or missing key stops the server here.
     app.state.llm = build_llm()
+    app.state.judge = build_judge()
     yield
 
 
@@ -45,10 +47,11 @@ class ChatRequest(BaseModel):
 @app.get("/api/health")
 def health(request: Request):
     model = request.app.state.llm.model
-    return {"model": model, "mock": model == "mock"}
+    judge = request.app.state.judge
+    return {"model": model, "mock": model == "mock", "judge": judge.model if judge else None}
 
 
 @app.post("/api/chat")
 def chat(body: ChatRequest, request: Request):
     history = [h.model_dump() for h in body.history]
-    return run_agent(body.message, history, request.app.state.llm)
+    return run_agent(body.message, history, request.app.state.llm, request.app.state.judge)
