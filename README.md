@@ -13,8 +13,15 @@ A chat app. An emergency manager asks a question ("where should we stage trucks?
 | ![Outage risk by county](docs/screenshots/01-outage-risk.png) | ![Staging plan, regenerated after a trust block](docs/screenshots/02-staging-regenerated.png) |
 | *Outage risk with low–high ranges (72 h to landfall, so ranges are required)* | *Staging plan. The first draft was blocked by the trust layer and regenerated* |
 
-![Follow-up question](docs/screenshots/03-followup-water.png)
-*Follow-up. The shelter claim here is wrong, see "Known problems" below.*
+> [!WARNING]
+> **The answer in this screenshot is wrong, and it passed all trust checks.**
+> - "Levy County has no shelters" is **false**: the stub data has Shelter 1 in Levy County.
+> - "delivery by landfall+1" is **made up**: no tool returns a delivery time.
+> - "5 truckloads **of water**" is a relabel: the plan only has generic truckloads, no water resource type.
+>
+> Kept on purpose, as evidence that the trust layer checks numbers but not places, facilities or timing. See "Known problems" and next steps #2–3.
+
+![Follow-up question: contains a wrong answer, see warning above](docs/screenshots/03-followup-water.png)
 
 Screenshots use Claude Haiku 4.5 as both agent and judge, on **stub data**.
 
