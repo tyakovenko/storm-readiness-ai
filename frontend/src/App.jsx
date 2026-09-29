@@ -144,12 +144,12 @@ export default function App() {
       <header>
         <h1>Storm Readiness AI</h1>
         {health && (
-          <span className={health.mock ? "badge warn" : "badge ok"}>
-            {health.mock ? "Mock mode: scripted, no LLM" : `Model: ${health.model}`}
-          </span>
-        )}
-        {health && (
-          <span className="badge">{health.judge ? `Judge: ${health.judge}` : "Judge: off"}</span>
+          <div className="badges">
+            <span className={health.mock ? "badge warn" : "badge ok"}>
+              {health.mock ? "Mock mode: scripted, no LLM" : `Model: ${health.model}`}
+            </span>
+            <span className="badge neutral">{health.judge ? `Judge: ${health.judge}` : "Judge: off"}</span>
+          </div>
         )}
       </header>
       <p className="banner" role="note">

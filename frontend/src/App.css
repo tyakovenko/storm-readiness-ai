@@ -25,6 +25,8 @@ h1 { font-size: 1.4rem; margin: 0; }
 .badge.ok { background: var(--ok-bg); color: var(--ok-text); }
 .badge.warn { background: var(--warn-bg); color: var(--warn-text); }
 .badge.bad { background: var(--bad-bg); color: var(--bad-text); }
+.badge.neutral { background: #e8ecf1; color: #3b4452; }
+.badges { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .chat { flex: 1; display: flex; flex-direction: column; gap: 12px; }
 .msg { padding: 12px 14px; border-radius: 10px; max-width: 100%; }
