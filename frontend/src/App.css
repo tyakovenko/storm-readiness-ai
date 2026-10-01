@@ -40,6 +40,8 @@ h1 { font-size: 1.4rem; margin: 0; }
 details { border-top: 1px solid var(--border); padding: 6px 0; font-size: 0.9rem; }
 summary { cursor: pointer; font-weight: 600; color: var(--accent); }
 details ul, details ol { margin: 6px 0; padding-left: 20px; }
+details ul { list-style: disc; }
+details ol { list-style: decimal; }
 .checks { list-style: none; padding-left: 0; }
 .draft { margin-top: 8px; padding: 8px; background: var(--bad-bg); border-radius: 6px; }
 code { font-size: 0.85rem; overflow-wrap: anywhere; }

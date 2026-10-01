@@ -160,3 +160,21 @@ def test_retry_can_fix_wrong_tool_order():
 
     r = run_agent("outage risk?", [], Scripted())
     assert r["status"] == "regenerated", _json.dumps(r["attempts"], indent=1)
+
+
+def test_overview_endpoint_returns_contract_data_and_applies_what_if():
+    from fastapi.testclient import TestClient
+
+    from app import app
+
+    client = TestClient(app)  # no `with`: lifespan (LLM startup) isn't needed for this read-only route
+    base = client.get("/api/overview").json()
+    assert set(base) == {"advisory", "scenarios", "enso", "impact", "staging", "assets"}
+    assert base["staging"]["shelters_closed"] == []
+
+    what_if = client.get("/api/overview", params={"max_trucks": 6, "closed": ["Shelter 2"]}).json()
+    assert what_if["staging"]["trucks_available"] == 6
+    assert what_if["staging"]["shelters_closed"] == ["Shelter 2"]
+
+    none_left = client.get("/api/overview", params={"max_trucks": 0}).json()
+    assert none_left["staging"]["trucks_available"] == 0  # 0 is a real what-if, not "unset"

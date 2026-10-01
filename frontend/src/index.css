@@ -1,0 +1,4 @@
+@import "tailwindcss";
+/* Chat styles sit in the base layer: they still style the Ask AI tab, but
+   Tailwind utilities on the dashboard screens take priority over them. */
+@import "./App.css" layer(base);
