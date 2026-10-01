@@ -1,0 +1,67 @@
+.app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--header-height);
+  background: var(--color-navy);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 20px;
+}
+
+.app-header__brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.app-header__title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.app-header__subtitle {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.ask-ai-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #ffffff;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ask-ai-trigger:hover {
+  background: var(--accent-dark);
+}
+
+.ask-ai-trigger.is-active {
+  background: var(--accent-dark);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+@media (max-width: 520px) {
+  .app-header {
+    padding: 0 14px;
+  }
+
+  .app-header__subtitle {
+    display: none;
+  }
+}

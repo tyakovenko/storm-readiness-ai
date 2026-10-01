@@ -1,0 +1,12 @@
+.storm-metrics {
+  display: flex;
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .storm-metrics { flex-wrap: wrap; }
+}

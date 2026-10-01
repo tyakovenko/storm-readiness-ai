@@ -1,0 +1,111 @@
+.forecast-map {
+  position: relative;
+  /* Leaflet assigns its own internal panes/controls z-index values up to
+     1000 (zoom control), which otherwise get compared directly against the
+     app's fixed header/sub-nav (z-index 100/90) and can paint over them
+     while scrolling. Isolating this subtree traps all of Leaflet's internal
+     stacking inside its own context, so none of it can escape above
+     page-level fixed elements, without touching Leaflet's own z-indexes or
+     inflating the header's. */
+  isolation: isolate;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.forecast-map__container {
+  width: 100%;
+  height: 420px;
+}
+
+@media (max-width: 760px) {
+  .forecast-map__container {
+    height: 320px;
+  }
+}
+
+.forecast-map__legend {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 500;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.72rem;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.forecast-map__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.forecast-map__legend-swatch {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid #2878b5;
+  background: #2878b5;
+}
+
+.forecast-map__legend-swatch--current {
+  background: #2878b5;
+  border-color: #2878b5;
+}
+
+.forecast-map__legend-swatch--forecast {
+  background: #ffffff;
+  border-color: #2878b5;
+}
+
+.forecast-map__legend-swatch--landfall {
+  border-radius: 2px;
+  border-color: #c62828;
+  background: #c62828;
+  transform: rotate(45deg);
+}
+
+/* Leaflet marker + tooltip overrides, scoped to this map's markup via
+   library-generated classes (react-leaflet renders these globally). */
+.forecast-marker span {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.forecast-marker--landfall span {
+  background: #c62828;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(15, 39, 68, 0.35);
+  transform: rotate(45deg);
+}
+
+.leaflet-tooltip.leaflet-tooltip-top {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(15, 39, 68, 0.15);
+  font-family: inherit;
+}
+
+.forecast-point-tooltip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.forecast-point-tooltip strong {
+  color: var(--color-navy);
+}

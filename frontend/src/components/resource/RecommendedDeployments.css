@@ -1,0 +1,22 @@
+.recommended-deployments {
+  margin-top: 24px;
+}
+
+.recommended-deployments__heading h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.recommended-deployments__subtitle {
+  margin: 2px 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.recommended-deployments__summary {
+  margin: 10px 0 14px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}

@@ -1,0 +1,93 @@
+.impact-card {
+  flex: 1 1 0;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
+  border-radius: 6px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.impact-card--low { border-left-color: var(--risk-low); }
+.impact-card--moderate { border-left-color: var(--risk-moderate); }
+.impact-card--high { border-left-color: var(--risk-high); }
+.impact-card--severe { border-left-color: var(--risk-severe); }
+
+.impact-card__badge {
+  align-self: flex-start;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.impact-card__badge--low { color: var(--risk-low); background: var(--risk-low-bg); }
+.impact-card__badge--moderate { color: var(--risk-moderate); background: var(--risk-moderate-bg); }
+.impact-card__badge--high { color: var(--risk-high); background: var(--risk-high-bg); }
+.impact-card__badge--severe { color: var(--risk-severe); background: var(--risk-severe-bg); }
+
+.impact-card__county {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.impact-card__stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.impact-card__pct {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-navy);
+  line-height: 1.1;
+}
+
+.impact-card__pct-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.impact-card__drivers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.78rem;
+}
+
+.impact-card__drivers-label {
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 0.66rem;
+  letter-spacing: 0.4px;
+}
+
+.impact-card__drivers-text {
+  color: var(--text);
+}
+
+.impact-card__link {
+  margin-top: auto;
+  align-self: flex-start;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.impact-card__link:hover {
+  color: var(--accent-dark);
+  text-decoration: underline;
+}

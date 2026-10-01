@@ -1,0 +1,36 @@
+.resource-requirements {
+  margin-top: 24px;
+}
+
+.resource-requirements__heading h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.resource-requirements__subtitle {
+  margin: 2px 0 10px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.resource-summary {
+  display: flex;
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+@media (max-width: 760px) {
+  .resource-summary { flex-wrap: wrap; }
+}
+
+.resource-requirements__disclaimer {
+  margin: 10px 0 0;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+}
