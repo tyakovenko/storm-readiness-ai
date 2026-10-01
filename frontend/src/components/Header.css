@@ -14,6 +14,25 @@
   padding: 0 20px;
 }
 
+.app-header__identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-header__logo {
+  height: 48px;
+  width: 48px;
+  padding: 4px;
+  box-sizing: border-box;
+  background: #ffffff;
+  border-radius: 6px;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
 .app-header__brand {
   display: flex;
   flex-direction: column;

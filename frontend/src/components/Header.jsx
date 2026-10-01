@@ -1,4 +1,5 @@
 import "./Header.css";
+import logo from "../assets/storm-readiness-logo.png";
 
 function ChatIcon() {
   return (
@@ -16,9 +17,12 @@ function ChatIcon() {
 export default function Header({ onAskAIClick, askAIOpen }) {
   return (
     <header className="app-header">
-      <div className="app-header__brand">
-        <span className="app-header__title">Storm Readiness AI</span>
-        <span className="app-header__subtitle">Storm Preparedness &amp; Response Intelligence</span>
+      <div className="app-header__identity">
+        <img src={logo} alt="StormReady AI logo" className="app-header__logo" />
+        <div className="app-header__brand">
+          <span className="app-header__title">StormReady AI</span>
+          <span className="app-header__subtitle">Storm Preparedness &amp; Response Intelligence</span>
+        </div>
       </div>
       <button
         type="button"
