@@ -1,4 +1,58 @@
 @import "tailwindcss";
-/* Chat styles sit in the base layer: they still style the Ask AI tab, but
-   Tailwind utilities on the dashboard screens take priority over them. */
-@import "./App.css" layer(base);
+
+/* The app's design tokens as Tailwind theme values, so classes like bg-navy,
+   text-muted, border-line and text-risk-severe use one shared palette.
+   Tailwind also exposes each as a CSS variable (e.g. var(--color-risk-severe)). */
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --color-navy: #0f2744;
+  --color-accent: #2878b5;
+  --color-accent-dark: #1f5f91;
+
+  --color-canvas: #f5f8fa;
+  --color-surface: #ffffff;
+  --color-ink: #1a1d23;
+  --color-muted: #5b6472;
+  --color-line: #d7dee5;
+
+  --color-ok-bg: #e3f4e8;
+  --color-ok-text: #1b5e2f;
+  --color-warn-bg: #fff3d6;
+  --color-warn-text: #7a4b00;
+  --color-bad-bg: #fde4e4;
+  --color-bad-text: #8f1d1d;
+
+  --color-risk-low: #2e7d32;
+  --color-risk-moderate: #c98a00;
+  --color-risk-high: #d9641e;
+  --color-risk-severe: #c62828;
+  --color-risk-low-bg: #e6f4ea;
+  --color-risk-moderate-bg: #fff2d9;
+  --color-risk-high-bg: #fde9db;
+  --color-risk-severe-bg: #fbe2e2;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-canvas font-sans text-ink;
+  }
+  button:disabled {
+    @apply cursor-not-allowed opacity-55;
+  }
+  :is(button, input, summary, a):focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
+
+/* Leaflet renders tooltips outside React, so they can only be styled by their library class. */
+@layer components {
+  .leaflet-tooltip.leaflet-tooltip-top {
+    @apply rounded border border-line px-2 py-1.5 font-sans shadow-[0_1px_3px_rgba(15,39,68,0.15)];
+  }
+}
