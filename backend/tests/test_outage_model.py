@@ -141,3 +141,35 @@ def test_tool_predict_impact_with_ml_toggle(monkeypatch):
     assert res["counties"][0]["fips"] == "12075"
     assert res["counties"][0]["risk_tier"] in {"green", "yellow", "orange", "red"}
 
+
+def test_temporal_period_split_no_leakage():
+    from backend.models.split import temporal_period_split
+    df, y = generate_bootstrap_dataset(n_samples=600, random_seed=42)
+    df["pct_customers_out"] = y
+
+    df_train, df_test = temporal_period_split(df, train_end_year=2021, test_start_year=2022)
+    assert len(df_train) > 0
+    assert len(df_test) > 0
+    # Strict temporal boundary check: zero overlap
+    train_years = set(df_train["year"])
+    test_years = set(df_test["year"])
+    assert train_years.isdisjoint(test_years)
+    assert max(train_years) <= 2021
+    assert min(test_years) >= 2022
+
+
+def test_held_out_storm_split_no_leakage():
+    from backend.models.split import held_out_storm_split
+    df, y = generate_bootstrap_dataset(n_samples=600, random_seed=42)
+    df["pct_customers_out"] = y
+
+    test_storms = ["Idalia", "Ian", "Hilary", "Michael"]
+    df_train, df_test = held_out_storm_split(df, test_storms)
+    assert len(df_train) > 0
+    assert len(df_test) > 0
+    # Strict storm group boundary check: zero overlap
+    train_storms = set(df_train["storm_name"])
+    assert train_storms.isdisjoint(set(test_storms))
+    assert set(df_test["storm_name"]).issubset(set(test_storms))
+
+
