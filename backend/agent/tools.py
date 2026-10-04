@@ -6,9 +6,13 @@ Every output carries a "source" so the UI can show where numbers came from.
 """
 
 import copy
+import logging
+import os
 
 from . import stub_data as data
 from .contracts import CONTRACTS
+
+log = logging.getLogger(__name__)
 
 
 def get_advisory() -> dict:
@@ -24,6 +28,13 @@ def get_enso_context() -> dict:
 
 
 def predict_impact(county_fips: list[str] | None = None) -> dict:
+    if os.getenv("USE_ML_IMPACT_MODEL", "false").lower() in {"true", "1", "yes"}:
+        try:
+            from backend.models.pipeline import run_impact_pipeline
+            return run_impact_pipeline(county_fips=county_fips, advisory=data.ADVISORY)
+        except Exception as e:
+            log.warning(f"ML impact model execution failed ({e}), falling back to stub data")
+
     rows = [c for c in data.COUNTIES if not county_fips or c["fips"] in county_fips]
     if county_fips and not rows:
         # LLMs guess FIPS codes; an empty list would read as "no impact" instead of "wrong code".
