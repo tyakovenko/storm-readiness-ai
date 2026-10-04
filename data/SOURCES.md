@@ -35,3 +35,13 @@ All raw datasets are centralized in Google Cloud Storage for team-wide access:
   - County boundary geometries, population, and housing exposure data.
 - **Automated Tropical Cyclone Forecasting (ATCF):** `data/raw/atcf/`
   - Historical advisory and track forecast records.
+
+---
+
+## 3. Dallas County (48113) — `raw/dallas/`, `processed/dallas/`
+
+- **Full list + caveats:** `gs://uc3-storm-impact-intelligence-data/raw/dallas/MANIFEST.md`; source map in `docs/dallas-data-sources.md`.
+- **Pull:** `python data/sync_cloud_data.py pull --dataset dallas`
+- **Build processed tables:** from `backend/`: `python -m dallas.build` (add `--push` to upload `processed/dallas/`). The app reads `processed/dallas/` locally or from GCS (`backend/dallas/store.py`) and fails at startup if neither has it.
+- **Retrieved:** 2026-10-02 to 2026-10-04. 311 (Dallas OpenData `4n3h-rfqm`), NOAA Storm Events, OpenFEMA, EAGLE-I (Jan–Feb 2021/2023/2025, filtered to 48113), DFW weather (IEM ASOS hourly + GHCN-Daily totals), council districts (`j5st-d7r8`), FEMA NSS shelters, city memo + OEM briefing PDFs.
+- **Hand-entered facts** (memos, briefings, news) live in `backend/dallas/sources.py`, each with its source.

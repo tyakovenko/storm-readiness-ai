@@ -11,6 +11,7 @@ notebooks.json
 
 # Data Privacy & Datasets
 data/raw/
+data/processed/
 *.csv
 *.jsonl
 *.sqlite
