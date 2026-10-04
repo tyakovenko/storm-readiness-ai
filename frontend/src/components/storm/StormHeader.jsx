@@ -1,25 +1,27 @@
 import { getStormSeverityLevel } from "../../utils/stormSeverity.js";
-import "./StormHeader.css";
+import { RISK_CLASSES } from "../../utils/riskTier.js";
 
 export default function StormHeader({ storm }) {
-  const severityLevel = getStormSeverityLevel(storm.category);
+  const severity = RISK_CLASSES[getStormSeverityLevel(storm.category)];
 
   return (
-    <div className="storm-header">
-      <div className="storm-header__main">
-        <div className="storm-header__title-row">
-          <h3 className="storm-header__name">{storm.stormName}</h3>
-          <span className={`storm-header__severity storm-header__severity--${severityLevel}`}>
+    <div className="mb-4 flex flex-wrap items-start justify-between gap-4 border-b border-line pb-4">
+      <div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h3 className="text-[1.4rem] font-bold text-navy">{storm.stormName}</h3>
+          <span
+            className={`inline-flex items-center whitespace-nowrap rounded border px-2 py-[3px] text-[0.72rem] font-bold uppercase tracking-[0.3px] ${severity.badge} ${severity.border}`}
+          >
             Category {storm.category} &bull; {storm.classification}
           </span>
         </div>
-        <p className="storm-header__meta">
+        <p className="mt-1 text-[0.85rem] text-muted">
           Latest forecast <span aria-hidden="true">•</span> Updated {storm.updatedAt}
         </p>
       </div>
-      <div className="storm-header__advisory">
-        <span className="storm-header__advisory-label">Advisory</span>
-        <span className="storm-header__advisory-value">#{storm.advisoryNumber}</span>
+      <div className="flex shrink-0 flex-col items-end text-right">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.4px] text-muted">Advisory</span>
+        <span className="text-[1.1rem] font-bold text-navy">#{storm.advisoryNumber}</span>
       </div>
     </div>
   );

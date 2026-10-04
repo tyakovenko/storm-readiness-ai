@@ -1,17 +1,19 @@
 import MetricItem from "../storm/MetricItem.jsx";
-import "./ResourceSummary.css";
+import SectionHeading from "../SectionHeading.jsx";
 
 export default function ResourceSummary({ requirements }) {
   return (
-    <section className="resource-requirements" aria-labelledby="resource-requirements-heading">
-      <div className="resource-requirements__heading">
-        <h3 id="resource-requirements-heading">Resource Requirements</h3>
-        <p className="resource-requirements__subtitle">
-          Estimated resources required across predicted impact areas
-        </p>
-      </div>
+    <section className="mt-6" aria-labelledby="resource-requirements-heading">
+      <SectionHeading
+        id="resource-requirements-heading"
+        title="Resource Requirements"
+        subtitle="Estimated resources required across predicted impact areas"
+      />
 
-      <dl className="resource-summary" aria-label="Resource requirement summary">
+      <dl
+        className="mt-2.5 flex overflow-hidden rounded-md border border-line bg-surface max-[760px]:flex-wrap"
+        aria-label="Resource requirement summary"
+      >
         {requirements.map((item) => (
           <MetricItem
             key={item.type}
@@ -22,7 +24,7 @@ export default function ResourceSummary({ requirements }) {
         ))}
       </dl>
 
-      <p className="resource-requirements__disclaimer">Prototype planning data — not a real optimizer output.</p>
+      <p className="mt-2.5 text-xs italic text-muted">Prototype planning data — not a real optimizer output.</p>
     </section>
   );
 }

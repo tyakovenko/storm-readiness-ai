@@ -3,18 +3,18 @@ import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Tooltip, useMa
 import { useEffect, useMemo } from "react";
 import { getStormSeverityHex } from "../../utils/stormSeverity.js";
 import "leaflet/dist/leaflet.css";
-import "./ForecastMap.css";
 
-// Matches --accent in App.css. Leaflet's SVG renderer needs a literal
+// Matches the accent theme color. Leaflet's SVG renderer needs a literal
 // color string, not a CSS custom property.
 const TRACK_COLOR = "#2878b5";
 
 const FALLBACK_CENTER = [27, -84];
 const FALLBACK_ZOOM = 5;
 
+// className "" drops Leaflet's default white box; the span carries the look.
 const landfallIcon = L.divIcon({
-  className: "forecast-marker forecast-marker--landfall",
-  html: '<span></span>',
+  className: "",
+  html: '<span class="block size-full rotate-45 border-2 border-white bg-[#c62828] shadow-[0_0_0_1px_rgba(15,39,68,0.35)]"></span>',
   iconSize: [14, 14],
   iconAnchor: [7, 7],
 });
@@ -31,23 +31,33 @@ function FitTrackBounds({ track }) {
 
 function ForecastPointTooltip({ point }) {
   return (
-    <div className="forecast-point-tooltip">
-      <strong>{point.forecastTime}</strong>
+    <div className="flex flex-col gap-0.5 text-[0.78rem] text-ink">
+      <strong className="text-navy">{point.forecastTime}</strong>
       <span>{point.windKt} kt &bull; Category {point.category}</span>
     </div>
   );
 }
 
+// Map legend, shared look with the staging and risk maps.
+export const LEGEND =
+  "absolute bottom-2.5 left-2.5 z-500 flex flex-col gap-1 rounded border border-line bg-white/92 px-2.5 py-1.5 text-[0.72rem] leading-[1.1] text-ink";
+export const LEGEND_ITEM = "inline-flex items-center gap-1.5 whitespace-nowrap";
+export const LEGEND_SWATCH = "size-2.5 shrink-0 rounded-full border-2";
+// isolate: Leaflet's internal z-indexes (up to 1000) stay inside the map box
+// instead of painting over the fixed header, sub-nav and Ask AI panel.
+export const MAP_FRAME = "relative isolate overflow-hidden rounded-md border border-line bg-surface";
+export const MAP_SIZE = "h-[420px] w-full max-[760px]:h-80";
+
 export default function ForecastMap({ track }) {
   const polylinePositions = useMemo(() => track.map((p) => [p.latitude, p.longitude]), [track]);
 
   return (
-    <div className="forecast-map">
+    <div className={MAP_FRAME}>
       <MapContainer
         center={FALLBACK_CENTER}
         zoom={FALLBACK_ZOOM}
         scrollWheelZoom={false}
-        className="forecast-map__container"
+        className={MAP_SIZE}
         aria-label="Forecast track map"
       >
         <TileLayer
@@ -87,17 +97,17 @@ export default function ForecastMap({ track }) {
         })}
       </MapContainer>
 
-      <div className="forecast-map__legend" aria-hidden="true">
-        <span className="forecast-map__legend-item">
-          <span className="forecast-map__legend-swatch forecast-map__legend-swatch--current" />
+      <div className={LEGEND} aria-hidden="true">
+        <span className={LEGEND_ITEM}>
+          <span className={`${LEGEND_SWATCH} border-[#2878b5] bg-[#2878b5]`} />
           Current Position
         </span>
-        <span className="forecast-map__legend-item">
-          <span className="forecast-map__legend-swatch forecast-map__legend-swatch--forecast" />
+        <span className={LEGEND_ITEM}>
+          <span className={`${LEGEND_SWATCH} border-[#2878b5] bg-white`} />
           Forecast Position
         </span>
-        <span className="forecast-map__legend-item">
-          <span className="forecast-map__legend-swatch forecast-map__legend-swatch--landfall" />
+        <span className={LEGEND_ITEM}>
+          <span className="size-2.5 shrink-0 rotate-45 rounded-[2px] border-2 border-[#c62828] bg-[#c62828]" />
           Expected Landfall
         </span>
       </div>

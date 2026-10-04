@@ -1,17 +1,16 @@
 import DeploymentList from "./DeploymentList.jsx";
-import "./RecommendedDeployments.css";
+import SectionHeading from "../SectionHeading.jsx";
 
 export default function RecommendedDeployments({ deployments, onSelectDeployment }) {
   return (
-    <section className="recommended-deployments" aria-labelledby="recommended-deployments-heading">
-      <div className="recommended-deployments__heading">
-        <h3 id="recommended-deployments-heading">Recommended Deployments</h3>
-        <p className="recommended-deployments__subtitle">
-          Priority staging recommendations based on predicted county impacts
-        </p>
-      </div>
+    <section className="mt-6" aria-labelledby="recommended-deployments-heading">
+      <SectionHeading
+        id="recommended-deployments-heading"
+        title="Recommended Deployments"
+        subtitle="Priority staging recommendations based on predicted county impacts"
+      />
 
-      <p className="recommended-deployments__summary">{deployments.length} priority staging areas</p>
+      <p className="mb-3.5 mt-2.5 text-[0.82rem] text-muted">{deployments.length} priority staging areas</p>
 
       <DeploymentList deployments={deployments} onSelectDeployment={onSelectDeployment} />
     </section>

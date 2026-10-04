@@ -1,10 +1,12 @@
 import MetricItem from "./MetricItem.jsx";
 import { getStormSeverityColor } from "../../utils/stormSeverity.js";
-import "./StormMetrics.css";
 
 export default function StormMetrics({ storm }) {
   return (
-    <dl className="storm-metrics" aria-label="Primary storm metrics">
+    <dl
+      className="flex overflow-hidden rounded-md border border-line bg-surface max-[760px]:flex-wrap"
+      aria-label="Primary storm metrics"
+    >
       <MetricItem
         label="Category"
         value={storm.category}

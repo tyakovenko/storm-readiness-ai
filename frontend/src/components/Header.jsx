@@ -1,4 +1,3 @@
-import "./Header.css";
 import logo from "../assets/storm-readiness-logo.png";
 
 function ChatIcon() {
@@ -16,17 +15,19 @@ function ChatIcon() {
 
 export default function Header({ onAskAIClick, askAIOpen }) {
   return (
-    <header className="app-header">
-      <div className="app-header__identity">
-        <img src={logo} alt="StormReady AI logo" className="app-header__logo" />
-        <div className="app-header__brand">
-          <span className="app-header__title">StormReady AI</span>
-          <span className="app-header__subtitle">Storm Preparedness &amp; Response Intelligence</span>
+    <header className="fixed inset-x-0 top-0 z-100 flex h-14 items-center justify-between gap-4 bg-navy px-5 text-white max-[520px]:px-3.5">
+      <div className="flex min-w-0 items-center gap-3">
+        <img src={logo} alt="StormReady AI logo" className="block size-12 shrink-0 rounded-md bg-white object-contain p-1" />
+        <div className="flex flex-col leading-[1.25]">
+          <span className="text-[1.05rem] font-semibold tracking-[0.2px]">StormReady AI</span>
+          <span className="text-[0.72rem] font-normal text-white/65 max-[520px]:hidden">Storm Preparedness &amp; Response Intelligence</span>
         </div>
       </div>
       <button
         type="button"
-        className={`ask-ai-trigger${askAIOpen ? " is-active" : ""}`}
+        className={`inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded border px-3.5 py-[7px] text-[0.85rem] font-semibold text-white hover:bg-accent-dark ${
+          askAIOpen ? "border-white/40 bg-accent-dark" : "border-transparent bg-accent"
+        }`}
         onClick={onAskAIClick}
         aria-expanded={askAIOpen}
       >

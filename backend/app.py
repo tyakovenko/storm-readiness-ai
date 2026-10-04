@@ -1,7 +1,9 @@
 """FastAPI server for the agent demo.
 
-  GET  /api/health  -> which LLM is configured
-  POST /api/chat    -> run the agent + trust layer on one question
+  GET  /api/health   -> which LLM is configured
+  GET  /api/overview -> tool outputs for the dashboard screens (no LLM)
+  POST /api/chat     -> run the agent + trust layer on one question
+  GET  /api/impact, /api/storm, /api/staging -> single-tool reads (no LLM)
 
 Run from backend/:  uvicorn app:app --reload --port 8001
 """
@@ -13,7 +15,7 @@ from pathlib import Path
 from typing import Literal
 
 from dotenv import find_dotenv, load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Query, Request
 from pydantic import BaseModel, Field
 
 # Ensure backend directory is in sys.path
@@ -26,6 +28,7 @@ load_dotenv(find_dotenv())  # finds the repo-root .env
 from agent.judge import build_judge  # noqa: E402
 from agent.llm import build_llm  # noqa: E402
 from agent.loop import run_agent  # noqa: E402
+from agent.tools import run_tool  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 
@@ -56,6 +59,30 @@ def health(request: Request):
     model = request.app.state.llm.model
     judge = request.app.state.judge
     return {"model": model, "mock": model == "mock", "judge": judge.model if judge else None}
+
+
+@app.get("/api/overview")
+def overview(max_trucks: int | None = Query(None, ge=0),
+             closed: list[str] = Query(default_factory=list)):
+    """Read-only data for the dashboard screens: the same tools the agent calls, no LLM.
+
+    run_tool validates every output against contracts.py, so the screens get
+    exactly the shapes the data team builds to. max_trucks/closed are the
+    Resource Planner's what-if inputs, passed straight to solve_staging.
+    """
+    staging_args = {}
+    if max_trucks is not None:  # 0 trucks is a valid what-if
+        staging_args["max_trucks"] = max_trucks
+    if closed:
+        staging_args["unavailable_sites"] = closed
+    return {
+        "advisory": run_tool("get_advisory", {}),
+        "scenarios": run_tool("generate_scenarios", {}),
+        "enso": run_tool("get_enso_context", {}),
+        "impact": run_tool("predict_impact", {}),
+        "staging": run_tool("solve_staging", staging_args),
+        "assets": run_tool("query_assets", {}),
+    }
 
 
 @app.post("/api/chat")

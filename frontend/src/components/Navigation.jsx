@@ -1,19 +1,23 @@
-import "./Navigation.css";
-
 const NAV_ITEMS = [
   { id: "storm-overview", label: "Storm Overview" },
-  { id: "risk-map", label: "Risk Map" },
   { id: "resource-planner", label: "Resource Planner" },
 ];
 
 export default function Navigation({ activePage, onNavigate }) {
   return (
-    <nav className="sub-nav" aria-label="Primary">
+    <nav
+      className="fixed inset-x-0 top-14 z-90 flex h-[46px] items-center justify-center gap-8 overflow-x-auto border-b border-line bg-surface px-5 max-[560px]:gap-4"
+      aria-label="Primary"
+    >
       {NAV_ITEMS.map((item) => (
         <button
           key={item.id}
           type="button"
-          className={`sub-nav__item${activePage === item.id ? " is-active" : ""}`}
+          className={`inline-flex h-full cursor-pointer items-center whitespace-nowrap border-b-2 bg-transparent px-0.5 text-[0.9rem] max-[560px]:text-[0.82rem] ${
+            activePage === item.id
+              ? "border-accent font-semibold text-accent"
+              : "border-transparent font-medium text-muted hover:text-ink"
+          }`}
           onClick={() => onNavigate(item.id)}
           aria-current={activePage === item.id ? "page" : undefined}
         >

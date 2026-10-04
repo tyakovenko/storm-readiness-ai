@@ -3,13 +3,13 @@ import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Tooltip, useMa
 import { useEffect, useMemo } from "react";
 import { RESOURCE_TYPE_LABELS } from "../../data/resourcePlannerMock.js";
 import "leaflet/dist/leaflet.css";
-import "./StagingMap.css";
+import { LEGEND, LEGEND_ITEM, LEGEND_SWATCH, MAP_FRAME, MAP_SIZE } from "../storm/ForecastMap.jsx";
 
-// Matches --accent in App.css. Leaflet's SVG renderer needs a literal
+// Matches the accent theme color. Leaflet's SVG renderer needs a literal
 // color string, not a CSS custom property.
 const STAGING_COLOR = "#2878b5";
 
-// Mirrors --risk-* tokens in App.css for the same reason.
+// Mirrors the --color-risk-* theme values in index.css for the same reason.
 const RISK_HEX = { low: "#2e7d32", moderate: "#c98a00", high: "#d9641e", severe: "#c62828" };
 const RISK_LABELS = {
   low: "Low-Risk Impact Area",
@@ -25,10 +25,14 @@ const FALLBACK_ZOOM = 7;
 // staging location reads unmistakably as "resources here", distinct from
 // the round impact-area markers and from the Forecast Track map's storm
 // icons.
+// className "" drops Leaflet's default white box; the span carries the look.
 function createStagingIcon(selected) {
+  const look = selected
+    ? "bg-[#1f5f91] shadow-[0_0_0_2px_rgba(15,39,68,0.5)]"
+    : "bg-[#2878b5] shadow-[0_0_0_1px_rgba(15,39,68,0.35)]";
   return L.divIcon({
-    className: `staging-marker${selected ? " staging-marker--selected" : ""}`,
-    html: "<span></span>",
+    className: "",
+    html: `<span class="block size-full rounded-[3px] border-2 border-white ${look}"></span>`,
     iconSize: selected ? [18, 18] : [14, 14],
     iconAnchor: selected ? [9, 9] : [7, 7],
   });
@@ -54,9 +58,9 @@ function PanToSelected({ position }) {
 
 function StagingTooltip({ deployment }) {
   return (
-    <div className="staging-point-tooltip">
-      <strong>{deployment.stagingLocation.name}</strong>
-      <ul>
+    <div className="flex max-w-[200px] flex-col gap-0.5 text-[0.78rem] text-ink">
+      <strong className="text-navy">{deployment.stagingLocation.name}</strong>
+      <ul className="my-0.5 list-disc pl-4">
         {deployment.resources.map((r) => (
           <li key={r.type}>
             {r.quantity} {RESOURCE_TYPE_LABELS[r.type] ?? r.type}
@@ -70,8 +74,8 @@ function StagingTooltip({ deployment }) {
 
 function ImpactTooltip({ deployment }) {
   return (
-    <div className="staging-point-tooltip">
-      <strong>
+    <div className="flex max-w-[200px] flex-col gap-0.5 text-[0.78rem] text-ink">
+      <strong className="text-navy">
         {deployment.county}, {deployment.state}
       </strong>
       <span>{RISK_LABELS[deployment.riskTier] ?? "Impact Area"}</span>
@@ -98,12 +102,12 @@ export default function StagingMap({ deployments, selectedId, onSelect }) {
   const riskLevelsPresent = useMemo(() => [...new Set(deployments.map((d) => d.riskTier))], [deployments]);
 
   return (
-    <div className="staging-map">
+    <div className={MAP_FRAME}>
       <MapContainer
         center={FALLBACK_CENTER}
         zoom={FALLBACK_ZOOM}
         scrollWheelZoom={false}
-        className="staging-map__container"
+        className={MAP_SIZE}
         aria-label="Resource staging map"
       >
         <TileLayer
@@ -161,15 +165,15 @@ export default function StagingMap({ deployments, selectedId, onSelect }) {
         })}
       </MapContainer>
 
-      <div className="staging-map__legend" aria-hidden="true">
-        <span className="staging-map__legend-item">
-          <span className="staging-map__legend-swatch staging-map__legend-swatch--staging" />
+      <div className={LEGEND} aria-hidden="true">
+        <span className={LEGEND_ITEM}>
+          <span className={`${LEGEND_SWATCH} rounded-[2px] border-[#2878b5] bg-[#2878b5]`} />
           Staging Location
         </span>
         {riskLevelsPresent.map((level) => (
-          <span className="staging-map__legend-item" key={level}>
+          <span className={LEGEND_ITEM} key={level}>
             <span
-              className="staging-map__legend-swatch"
+              className={LEGEND_SWATCH}
               style={{ background: RISK_HEX[level], borderColor: RISK_HEX[level] }}
             />
             {RISK_LABELS[level] ?? `${level} Impact Area`}

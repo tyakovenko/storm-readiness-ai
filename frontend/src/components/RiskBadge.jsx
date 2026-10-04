@@ -1,4 +1,4 @@
-import "./RiskBadge.css";
+import { RISK_CLASSES } from "../utils/riskTier.js";
 
 const DEFAULT_LABELS = {
   low: "Low Risk",
@@ -11,5 +11,11 @@ const DEFAULT_LABELS = {
 // high/severe). Pass children to override the text (e.g. "HIGH" for a
 // priority column) while keeping the level-based color.
 export default function RiskBadge({ level, children }) {
-  return <span className={`risk-badge risk-badge--${level}`}>{children ?? DEFAULT_LABELS[level] ?? level}</span>;
+  return (
+    <span
+      className={`inline-block whitespace-nowrap rounded px-2 py-[3px] text-[0.68rem] font-bold uppercase tracking-[0.4px] ${RISK_CLASSES[level]?.badge ?? ""}`}
+    >
+      {children ?? DEFAULT_LABELS[level] ?? level}
+    </span>
+  );
 }

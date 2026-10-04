@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import "./AskAI.css";
 
 // All agent/trust logic lives in the backend. This panel only sends a
 // question to POST /api/chat and displays what comes back. Moved out of
@@ -16,11 +15,22 @@ const EXAMPLES = [
 // Mock-only: the scripted client misbehaves once so the trust layer has something to block.
 const TRUST_DEMOS = ["Trust demo: hallucinate a number", "Trust demo: overconfident outage risk"];
 
+const BADGE = "inline-block rounded-full px-2.5 py-[3px] text-xs font-semibold";
+const BADGE_OK = `${BADGE} bg-ok-bg text-ok-text`;
+const BADGE_WARN = `${BADGE} bg-warn-bg text-warn-text`;
+const BADGE_BAD = `${BADGE} bg-bad-bg text-bad-text`;
+const BADGE_NEUTRAL = `${BADGE} bg-[#e8ecf1] text-[#3b4452]`;
+
 const STATUS = {
-  passed: { label: "Trust checks passed", className: "badge ok" },
-  regenerated: { label: "Regenerated after a trust block", className: "badge warn" },
-  blocked: { label: "Blocked by trust layer", className: "badge bad" },
+  passed: { label: "Trust checks passed", className: BADGE_OK },
+  regenerated: { label: "Regenerated after a trust block", className: BADGE_WARN },
+  blocked: { label: "Blocked by trust layer", className: BADGE_BAD },
 };
+
+// The expandable Why / Sources / Trust checks / Tool calls sections under each answer.
+const DETAILS = "border-t border-line py-1.5 text-[0.85rem]";
+const SUMMARY = "cursor-pointer font-semibold text-accent";
+const ANSWER = "my-2 whitespace-pre-wrap leading-normal";
 
 // LLMs emit **bold** even when told not to; render just that, no markdown library.
 function AnswerText({ text }) {
@@ -31,7 +41,7 @@ function AnswerText({ text }) {
 
 function CheckList({ checks }) {
   return (
-    <ul className="checks">
+    <ul className="my-1.5">
       {checks.map((c) => (
         <li key={c.name}>
           <span aria-hidden="true">{c.passed === true ? "✔" : c.passed === false ? "✖" : "…"}</span>{" "}
@@ -46,18 +56,18 @@ function AgentReply({ result }) {
   const status = STATUS[result.status];
   const blockedDrafts = result.attempts.filter((a) => a.checks.some((c) => c.passed === false));
   return (
-    <div className="reply">
+    <div>
       <span className={status.className}>{status.label}</span>
       {result.answer ? (
-        <p className="answer"><AnswerText text={result.answer} /></p>
+        <p className={ANSWER}><AnswerText text={result.answer} /></p>
       ) : (
-        <p className="answer muted">This answer was blocked, so it is not shown. See the trust checks below.</p>
+        <p className={`${ANSWER} text-muted`}>This answer was blocked, so it is not shown. See the trust checks below.</p>
       )}
 
       {result.why.length > 0 && (
-        <details>
-          <summary>Why</summary>
-          <ul>
+        <details className={DETAILS}>
+          <summary className={SUMMARY}>Why</summary>
+          <ul className="my-1.5 list-disc pl-5">
             {result.why.map((w) => (
               <li key={w.county}>
                 <strong>{w.county}:</strong> {w.reasons.join("; ")}
@@ -66,26 +76,26 @@ function AgentReply({ result }) {
           </ul>
         </details>
       )}
-      <details>
-        <summary>Sources</summary>
-        <ul>{result.sources.map((s) => <li key={s}>{s}</li>)}</ul>
+      <details className={DETAILS}>
+        <summary className={SUMMARY}>Sources</summary>
+        <ul className="my-1.5 list-disc pl-5">{result.sources.map((s) => <li key={s}>{s}</li>)}</ul>
       </details>
-      <details>
-        <summary>Trust checks</summary>
+      <details className={DETAILS}>
+        <summary className={SUMMARY}>Trust checks</summary>
         <CheckList checks={result.checks} />
         {blockedDrafts.map((a, i) => (
-          <div key={i} className="draft">
+          <div key={i} className="mt-2 rounded bg-bad-bg p-2">
             <p><strong>Blocked draft (never shown to users):</strong></p>
             <CheckList checks={a.checks.filter((c) => c.passed === false)} />
-            <p className="answer muted">{a.text}</p>
+            <p className={`${ANSWER} text-muted`}>{a.text}</p>
           </div>
         ))}
       </details>
-      <details>
-        <summary>Tool calls ({result.tool_calls.length})</summary>
-        <ol>
+      <details className={DETAILS}>
+        <summary className={SUMMARY}>Tool calls ({result.tool_calls.length})</summary>
+        <ol className="my-1.5 list-decimal pl-5">
           {result.tool_calls.map((t, i) => (
-            <li key={i}><code>{t.name}({JSON.stringify(t.arguments)})</code></li>
+            <li key={i}><code className="text-[0.8rem] [overflow-wrap:anywhere]">{t.name}({JSON.stringify(t.arguments)})</code></li>
           ))}
         </ol>
       </details>
@@ -153,53 +163,68 @@ export default function AskAI({ open, onClose }) {
 
   return (
     <>
-      {open && <div className="ask-ai-backdrop" onClick={onClose} aria-hidden="true" />}
-      <aside className={`ask-ai-panel${open ? " is-open" : ""}`} aria-hidden={!open} aria-label="Ask AI">
-        <div className="ask-ai-panel__header">
+      {/* Backdrop and panel sit above the fixed header (z 100) and sub-nav (z 90). */}
+      {open && <div className="fixed inset-0 z-110 bg-[rgba(15,39,68,0.15)]" onClick={onClose} aria-hidden="true" />}
+      <aside
+        className={`fixed right-0 top-0 z-120 flex h-screen w-[420px] max-w-full flex-col gap-3 overflow-y-auto border-l border-line bg-surface p-4 shadow-[-2px_0_8px_rgba(15,39,68,0.08)] transition-transform duration-[180ms] ease-[ease] max-[640px]:w-full ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+        aria-hidden={!open}
+        aria-label="Ask AI"
+      >
+        <div className="flex items-start justify-between gap-3">
           <div>
-            <h2>Ask AI</h2>
+            <h2 className="mb-1.5 text-[1.05rem] font-bold text-ink">Ask AI</h2>
             {health && (
-              <div className="badges">
-                <span className={health.mock ? "badge warn" : "badge ok"}>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                <span className={health.mock ? BADGE_WARN : BADGE_OK}>
                   {health.mock ? "Mock mode: scripted, no LLM" : `Model: ${health.model}`}
                 </span>
-                <span className="badge neutral">{health.judge ? `Judge: ${health.judge}` : "Judge: off"}</span>
+                <span className={BADGE_NEUTRAL}>{health.judge ? `Judge: ${health.judge}` : "Judge: off"}</span>
               </div>
             )}
           </div>
-          <button type="button" className="ask-ai-panel__close" onClick={onClose} aria-label="Close Ask AI">
+          <button type="button" className="size-7 shrink-0 cursor-pointer rounded border border-line bg-transparent text-base leading-none text-muted hover:border-muted hover:text-ink" onClick={onClose} aria-label="Close Ask AI">
             &times;
           </button>
         </div>
 
-        <p className="banner" role="note">
+        <p className="rounded bg-warn-bg px-3 py-2 text-[0.85rem] text-warn-text" role="note">
           Demo data only. Every number comes from stub tools, not a real forecast.
         </p>
 
-        <main className="chat" aria-live="polite">
+        <div className="flex min-h-[120px] flex-1 flex-col gap-3 overflow-y-auto" aria-live="polite">
           {messages.length === 0 && (
-            <p className="muted">Ask about the storm's impact, the staging plan, or a what-if.</p>
+            <p className="text-muted">Ask about the storm's impact, the staging plan, or a what-if.</p>
           )}
           {messages.map((m, i) =>
             m.role === "user" ? (
-              <div key={i} className="msg user">{m.content}</div>
+              <div key={i} className="max-w-[85%] self-end rounded-md bg-accent px-3.5 py-3 text-white">{m.content}</div>
             ) : (
-              <div key={i} className="msg agent"><AgentReply result={m.result} /></div>
+              <div key={i} className="rounded-md border border-line bg-canvas px-3.5 py-3"><AgentReply result={m.result} /></div>
             ),
           )}
-          {loading && <p className="muted">Agent is working…</p>}
-          {error && <p className="error" role="alert">{error}</p>}
+          {loading && <p className="text-muted">Agent is working…</p>}
+          {error && <p className="rounded bg-bad-bg px-3 py-2 text-bad-text" role="alert">{error}</p>}
           <div ref={endRef} />
-        </main>
+        </div>
 
-        <div className="examples">
+        <div className="flex flex-wrap gap-1.5">
           {examples.map((q) => (
-            <button key={q} type="button" onClick={() => send(q)} disabled={loading}>{q}</button>
+            <button
+              key={q}
+              type="button"
+              onClick={() => send(q)}
+              disabled={loading}
+              className="cursor-pointer rounded-full border border-line bg-surface px-3 py-1.5 text-[0.8rem] text-accent"
+            >
+              {q}
+            </button>
           ))}
         </div>
 
         <form
-          className="composer"
+          className="flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             send(input);
@@ -208,12 +233,19 @@ export default function AskAI({ open, onClose }) {
           <label htmlFor="question" className="sr-only">Ask the agent</label>
           <input
             id="question"
+            className="min-w-0 flex-1 rounded border border-line px-3 py-2.5 text-[0.95rem]"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask a question, e.g. What if Shelter 4 is closed?"
             disabled={loading}
           />
-          <button type="submit" disabled={loading || !input.trim()}>Send</button>
+          <button
+            type="submit"
+            disabled={loading || !input.trim()}
+            className="cursor-pointer rounded bg-accent px-4 py-2.5 font-semibold text-white"
+          >
+            Send
+          </button>
         </form>
       </aside>
     </>

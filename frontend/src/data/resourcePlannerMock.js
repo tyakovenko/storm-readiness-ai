@@ -10,8 +10,8 @@
 // anywhere else in the frontend.
 //
 // Storm identity (name, advisory number) and operational context
-// (planning window, counties at risk) intentionally come from
-// STORM_OVERVIEW_MOCK instead of being repeated here — see
+// (planning window, counties at risk) come from the backend via
+// /api/overview, the same source as the Storm Overview — see
 // pages/ResourcePlanner.jsx.
 export const RESOURCE_REQUIREMENTS_MOCK = [
   { type: "utility_crews", label: "Utility Crews", quantity: 24, unit: "crews", sublabel: "Recommended" },
