@@ -11,6 +11,9 @@ from __future__ import annotations
 import difflib
 import json
 import logging
+import re
+import time
+import urllib.error
 import urllib.request
 from datetime import date
 from urllib.parse import urlparse
@@ -24,10 +27,13 @@ CONTEXT_CHARS = 600          # passage around the quote given to the entailment 
 MAX_CANDIDATES = 3           # corroborating pages fetched per key fact
 MAX_PICK_LINES = 60          # lines of a candidate page shown when asking which number states the metric
 SYNDICATED_RATIO = 0.9       # share of the shorter sentence found in the other: at or above = a copy
+RETRIES = 4                  # on 429 / 503 only
+BACKOFF_S = 5                # 5, 10, 20, 40 s
 ENTAIL_LABELS = ("supports", "wrong_metric", "wrong_scope", "wrong_time", "not_enough")
 
 ENTAIL_PROMPT = """You check one claim against one passage from its cited source. Decide only whether the \
-passage states this claim: the same metric (capacity is not occupancy; staff is not volunteers), the same \
+passage states this claim: the same metric as defined (capacity is not occupancy; staff is not volunteers or \
+utility workers), the same organization, the same \
 place (a city figure is not the county's; a FEMA applicant's home county is not where the damage was), and \
 the same time or storm. The number itself was already matched by code: do not re-check its digits.
 
@@ -57,8 +63,11 @@ List the sources you found."""
 def _claim(fact: Fact, target: Target) -> str:
     storm = next((f"{s.name} {s.year}" for s in target.storms if s.id == fact.storm_id), None)
     value = "no number" if fact.value is None else f"{fact.qualifier.replace('_', ' ')} {fact.value_raw}"
-    parts = [f"metric: {fact.metric} ({fact.unit})", f"value: {value}",
-             f"place: {fact.place or target.county}, {target.state}"]
+    m = policy.metric(fact.metric)
+    parts = [f"metric: {fact.metric} ({fact.unit})" + (f" = {m.definition}" if m.definition else ""),
+             f"value: {value}", f"place: {fact.place or target.county}, {target.state}"]
+    if fact.subject:
+        parts.append(f"whose figure: {fact.subject}")
     if storm:
         parts.append(f"storm: {storm}")
     if fact.as_of:
@@ -85,13 +94,20 @@ def _resolve(url: str) -> str:
     """Grounding links are vertexaisearch redirects; store and compare the real URL (R0)."""
     if "grounding-api-redirect" not in url:
         return url
-    req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
-    try:
-        with urllib.request.urlopen(req, timeout=15) as r:
-            return r.geturl()
-    except Exception as e:
-        log.warning("could not resolve grounding redirect: %s", e)
-        return url
+    err = None
+    for method in ("HEAD", "GET"):  # some redirects answer HEAD with 403 (Harris run); GET follows them
+        req = urllib.request.Request(url, method=method, headers={"User-Agent": USER_AGENT})
+        try:
+            with urllib.request.urlopen(req, timeout=15) as r:
+                return r.geturl()
+        except urllib.error.HTTPError as e:
+            if e.url and "grounding-api-redirect" not in e.url:
+                return e.url  # redirected fine; the target itself refused us - the fetch will report it
+            err = e
+        except Exception as e:
+            err = e
+    log.warning("could not resolve grounding redirect: %s", err)
+    return url
 
 
 class GeminiCalls:
@@ -102,14 +118,24 @@ class GeminiCalls:
         from google import genai
         self.model, self.cap, self.count = model, cap, 0
         self.client = genai.Client()
+        self._sleep = time.sleep
 
     def _go(self, prompt: str, **cfg):
         from google.genai import types
-        if self.count >= self.cap:
-            raise RuntimeError(f"judge model-call cap reached ({self.cap})")
-        self.count += 1
-        return self.client.models.generate_content(model=self.model, contents=prompt,
-                                                   config=types.GenerateContentConfig(**cfg))
+        for attempt in range(RETRIES + 1):
+            if self.count >= self.cap:
+                raise RuntimeError(f"judge model-call cap reached ({self.cap})")
+            self.count += 1
+            try:
+                return self.client.models.generate_content(model=self.model, contents=prompt,
+                                                           config=types.GenerateContentConfig(**cfg))
+            except Exception as e:
+                # Quota (429) and overload (503) pass; anything else, or the last try, surfaces as UNCHECKED.
+                if attempt == RETRIES or not re.search(r"\b(429|503)\b|RESOURCE_EXHAUSTED|UNAVAILABLE", str(e)):
+                    raise
+                wait = BACKOFF_S * 2 ** attempt
+                log.warning("judge call rate-limited (%s); retry %d in %d s", str(e)[:60], attempt + 1, wait)
+                self._sleep(wait)
 
     def json(self, prompt: str) -> dict:
         r = self._go(prompt, response_mime_type="application/json")
@@ -184,12 +210,21 @@ class Judge:
                 continue
             s, e = numbers.sentence_around(page.text, span.start, span.end)
             sentence = page.text[s:e]
+            # Subject left open: a second source may name the organization differently.
             other = Fact(**{**fact.model_dump(), "value": span.value, "value_raw": span.raw,
-                            "qualifier": span.qualifier, "quote": sentence, "source_url": url})
+                            "qualifier": span.qualifier, "quote": sentence, "source_url": url, "subject": ""})
             fixed = verify.check_fact(other, page, target, self.today)
             if verify.fixed_verdict(fixed) is not None:
                 bad = "; ".join(c.detail for c in fixed if c.ok is False) or "fixed checks did not run"
                 checks.append(Check(layer="corroboration", name="source", ok=None, detail=f"{url}: {bad}"))
+                continue
+            # The picked number counts only if its own passage states the same claim (same metric, place,
+            # time, organization). Harris run: a "250" on a disaster-declaration page verified a 250-person
+            # shelter area because only the values were compared.
+            same = self.entailment(other, page, target)
+            if not same.ok:
+                checks.append(Check(layer="corroboration", name="source", ok=None,
+                                    detail=f"{url}: {span.raw} is not the same claim ({same.detail[:120]})"))
                 continue
             close = abs(span.value - fact.value) <= policy.CORROBORATION_TOLERANCE * abs(fact.value)
             copy = _overlap(sentence, fact.quote) >= SYNDICATED_RATIO

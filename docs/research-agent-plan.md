@@ -74,7 +74,25 @@ Probe scripts are in the session scratchpad, not the repo.
 - [x] `research/publish.py`: reviewer, `--accept verified,single_source`, `--reject ids`, `--also ids` (override, flagged). Writes `pack.json` `facts` + `research` provenance; `--push`.
 - [x] API: `GET /api/research`, `GET /api/research/{hazard}/{fips}/{run_id}` (404 missing, 503 store down).
 - [x] UI: `#/research` (runs) and `#/research/<hazard>/<fips>/<run_id>` (facts sorted conflicting → single → unchecked → verified → unsupported, verdict filters, quote + checks per fact, gaps, run log, partial banner). Landing card links to it. No chat (ADR).
-- [ ] Cloud Run job `storm-research` + SA (write `processed/packs_draft/` only). **Taya runs the IAM commands.**
+- [ ] Cloud Run job `storm-research` + SA (write `processed/packs_draft/` only). **Taya runs the IAM commands** (auto mode blocks IAM changes). Same image as the app; the job overrides the command.
+
+```bash
+P=uc3-storm-impact-intelligence; B=uc3-storm-impact-intelligence-data
+SA=storm-research@$P.iam.gserviceaccount.com
+gcloud iam service-accounts create storm-research --project=$P --display-name="Research job"
+gcloud projects add-iam-policy-binding $P --member=serviceAccount:$SA --role=roles/aiplatform.user
+gcloud projects add-iam-policy-binding $P --member=serviceAccount:$SA --role=roles/logging.logWriter
+# read packs + national data; write drafts only (IAM condition on the object prefix)
+gcloud storage buckets add-iam-policy-binding gs://$B --member=serviceAccount:$SA --role=roles/storage.objectViewer
+gcloud storage buckets add-iam-policy-binding gs://$B --member=serviceAccount:$SA --role=roles/storage.objectCreator \
+  --condition='expression=resource.name.startsWith("projects/_/buckets/'$B'/objects/processed/packs_draft/"),title=drafts-only'
+# job (IMG = the app image already in Artifact Registry)
+gcloud run jobs create storm-research --project=$P --region=us-central1 --image=$IMG --service-account=$SA \
+  --command=python --args=-m,research.run,--fips,48201,--push --memory=2Gi --task-timeout=1800 --max-retries=0 \
+  --set-env-vars=GOOGLE_GENAI_USE_VERTEXAI=TRUE,GOOGLE_CLOUD_PROJECT=$P,GOOGLE_CLOUD_LOCATION=global
+gcloud run jobs execute storm-research --region=us-central1 --args=-m,research.run,--fips,12086,--push
+```
+`objectCreator` can create but not overwrite, and each run writes a new `<run_id>.json`. `--review` re-judging an existing draft writes the same path, so it runs locally (or with objectAdmin on that prefix if needed later).
 - [ ] Fetching from Cloud Run egress (moved from R0).
 - [ ] Headless click-through of the Research pages.
 - [ ] **County agents don't read published research facts yet.** `pack.json` `facts` needs a hurricane tool (e.g. `get_local_facts`) + contract + trust-catalog entries, and the Sources registry (issue #7). Template change → separate step.

@@ -22,6 +22,8 @@ log = logging.getLogger(__name__)
 
 # Several county and FEMA hosts answer 403 to the default Python-urllib agent.
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) storm-readiness-research/0.1"
+# Browser-like: some hosts answer 406 to a narrower Accept list (Harris run 2026-10-05).
+ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8"
 TIMEOUT_S = 20
 MAX_BYTES = 5_000_000
 # Less text = JS-rendered shell or an error page; checking it would fail every quote. A JSON query with
@@ -94,7 +96,7 @@ def _now() -> str:
 
 
 def _get(url: str) -> Page:
-    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "text/html,text/plain,*/*"})
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": ACCEPT})
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
             final, ctype = r.geturl(), (r.headers.get_content_type() or "").lower()

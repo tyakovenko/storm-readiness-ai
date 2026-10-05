@@ -58,6 +58,7 @@ class FactDraft(BaseModel):
     quote: str | None = None      # only for value_ref None; otherwise code takes the sentence around the span
     storm_id: str | None = None
     place: str | None = None      # the county (default) or a city in it, when the figure is the city's
+    subject: str                  # whose figure, as named in the source ("Harris County OHSEM", "CenterPoint Energy")
     as_of: str | None = None      # date the figure refers to, not the publication date
     source: str                   # title
     source_url: str
@@ -78,6 +79,9 @@ class Fact(BaseModel):
     # Whose figure it is: None = the county. A city figure (Houston's shelters) is a fact about the city;
     # stating it as the county's is the scope error the judge rejects.
     place: str | None = None
+    # Whose number: "CenterPoint Energy" workers are not county staff. "" = not named (drafts before
+    # 2026-10-05 didn't record it); the fixed check reports that rather than passing it.
+    subject: str = ""
     as_of: str | None = None
     quote: str = Field(min_length=1)
     source: str

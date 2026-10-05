@@ -33,6 +33,8 @@ Harris County opened 12 shelters ahead of landfall on July 8, 2024.
 County shelters had capacity for 2,000 people; occupancy peaked at 1,314 evacuees on July 9.
 Citywide, the City of Houston deployed 3,000 employees to storm response, according to the Mayor's office.
 For comparison, during Hurricane Ike in 2008, county shelters housed 4,100 evacuees.
+CenterPoint Energy brought in 12,000 restoration workers, including mutual aid crews from other states.
+The City of Houston set up a cooling shelter at a sports complex to hold as many as 250 people.
 Hurricane Harvey in 2017 remains the county's largest sheltering operation.
 Reported by FOX 26 Houston and county staff."""
 
@@ -57,7 +59,12 @@ GALV_TEXT = """Galveston County Office of Emergency Management, Hurricane Beryl,
 Galveston County opened 4 shelters; occupancy peaked at 1,314 evacuees on July 9, 2024, in League City and Texas City.
 The county thanks volunteers from Texas City and League City for their support."""
 
-PAGES = {AAR: AAR_TEXT, FEMA: FEMA_TEXT, NEWS: NEWS_TEXT, COPY: COPY_TEXT, GALV: GALV_TEXT}
+DECL = "https://gov.texas.gov/news/beryl-declaration"
+DECL_TEXT = """Office of the Texas Governor, July 2024. Hurricane Beryl disaster declaration.
+The state deployed more than 250 personnel from the Texas Division of Emergency Management to Harris County.
+Houston and surrounding counties were approved for federal assistance after Hurricane Beryl in 2024."""
+
+PAGES = {DECL: DECL_TEXT, AAR: AAR_TEXT, FEMA: FEMA_TEXT, NEWS: NEWS_TEXT, COPY: COPY_TEXT, GALV: GALV_TEXT}
 
 
 def by_ref(url: str, raw: str, **kw) -> Fact:
@@ -66,7 +73,7 @@ def by_ref(url: str, raw: str, **kw) -> Fact:
     spans = numbers.extract(text)
     sid = next(s.id for s in spans if s.raw == raw and s.usable)
     d = FactDraft(id=kw.pop("id"), value_ref=sid, source=kw.pop("source", "src"), source_url=url,
-                  retrieved="2026-10-05", **kw)
+                  retrieved="2026-10-05", subject=kw.pop("subject", "Harris County"), **kw)
     return numbers.fact_from_ref(d, spans, text)
 
 
@@ -94,7 +101,7 @@ def cases() -> list[Case]:
         Case("control: capacity, independent 2nd source", by_ref(AAR, "2,000", id="c2", metric="shelter_capacity",
              unit="people", as_of="2024"), False, Verdict.VERIFIED, "corroboration", search=(NEWS,)),
         Case("control: city figure with place=Houston", by_ref(AAR, "3,000", id="c4", metric="staff_count",
-             unit="people", as_of="2024", place="Houston"), False, Verdict.SINGLE_SOURCE, "entailment"),
+             unit="people", as_of="2024", place="Houston", subject="City of Houston"), False, Verdict.SINGLE_SOURCE, "entailment"),
         Case("control: shelter count (non-key)", by_ref(AAR, "12", id="c3", metric="shelter_count", unit="shelters",
              storm_id="AL022024"), False, Verdict.SINGLE_SOURCE, "entailment"),
         # ---- planted: layer 1 ----
@@ -105,7 +112,7 @@ def cases() -> list[Case]:
              storm_id="AL022024", quote="occupancy peaked at 1,314 evacuees on July 9", source_url=AAR),
              True, Verdict.UNSUPPORTED, "fixed"),
         Case("wrong county", by_ref(GALV, "1,314", id="p3", metric="evacuee_count", unit="people",
-             storm_id="AL022024"), True, Verdict.UNSUPPORTED, "fixed"),
+             storm_id="AL022024", subject="Galveston County"), True, Verdict.UNSUPPORTED, "fixed"),
         Case("quote not in page", raw_fact(id="p4", metric="evacuee_count", value=1314, value_raw="1,314",
              unit="people", storm_id="AL022024", quote="shelters housed 1,314 people at the peak of Beryl",
              source_url=AAR), True, Verdict.UNSUPPORTED, "fixed"),
@@ -113,15 +120,20 @@ def cases() -> list[Case]:
              unit="people", as_of="2024", quote="Reported by FOX 26 Houston and county staff.", source_url=AAR),
              True, Verdict.UNSUPPORTED, "fixed"),
         # ---- planted: layer 2 ----
-        Case("applicant county (FEMA PA)", by_ref(FEMA, "$4.2 million", id="p6", metric="fema_pa_total", unit="usd",
+        Case("applicant county (FEMA PA)", by_ref(FEMA, "$4.2 million", id="p6", metric="fema_pa_total", unit="usd", subject="Memorial Hermann",
              storm_id="AL092008"), True, Verdict.UNSUPPORTED, "entailment"),
         Case("city figure as county", by_ref(AAR, "3,000", id="p7", metric="staff_count", unit="people",
-             as_of="2024"), True, Verdict.UNSUPPORTED, "entailment"),
+             as_of="2024", subject="Harris County"), True, Verdict.UNSUPPORTED, "entailment"),
         Case("wrong storm (Ike figure as Harvey)", by_ref(AAR, "4,100", id="p8", metric="evacuee_count", unit="people",
              storm_id="AL092017"), True, Verdict.UNSUPPORTED, "entailment"),
         Case("occupancy as capacity", by_ref(AAR, "1,314", id="p9", metric="shelter_capacity", unit="people",
              as_of="2024"), True, Verdict.UNSUPPORTED, "entailment"),
+        Case("utility workers as county staff", by_ref(AAR, "12,000", id="p11", metric="staff_count", unit="people",
+             as_of="2024", subject="CenterPoint Energy"), True, Verdict.UNSUPPORTED, "entailment"),
         # ---- planted: layer 3 ----
+        Case("same number, other meaning, as 2nd source", by_ref(AAR, "250", id="p12", metric="shelter_capacity",
+             unit="people", as_of="2024", place="Houston", subject="City of Houston"), True, Verdict.SINGLE_SOURCE,
+             "corroboration", search=(DECL,)),
         Case("syndicated copy as 2nd source", by_ref(AAR, "1,314", id="p10", metric="evacuee_count", unit="people",
              storm_id="AL022024"), True, Verdict.SINGLE_SOURCE, "corroboration", search=(COPY,)),
     ]

@@ -14,21 +14,27 @@ class Metric:
     unit: str
     key: bool    # key = needs 2 independent sources for VERIFIED
     ages: bool   # standing capacity/staffing facts go stale; past-storm facts don't
+    definition: str = ""  # shown to researcher and judge: a metric name alone left "whose staff?" open
 
 
 # Controlled vocabulary for Fact.metric, from the hurricane packs' `gaps` list. A metric outside it is
 # kept (non-key, ages) so new findings aren't dropped, and the reviewer sees it isn't in the vocabulary.
+# Harris run 2026-10-05: utility workers were filed as staff_count -> utility metrics split out.
 METRICS = {
-    "shelter_capacity": Metric("people", key=True, ages=True),
-    "shelter_count": Metric("shelters", key=False, ages=True),
-    "staff_count": Metric("people", key=True, ages=True),
-    "crew_count": Metric("crews", key=True, ages=True),
-    "vehicle_count": Metric("vehicles", key=True, ages=True),
-    "staging_sites": Metric("sites", key=False, ages=True),
-    "peak_customers_out": Metric("customers", key=True, ages=False),
-    "evacuee_count": Metric("people", key=True, ages=False),
-    "fema_pa_total": Metric("usd", key=True, ages=False),
-    "service_requests": Metric("requests", key=False, ages=False),
+    "shelter_capacity": Metric("people", True, True, "people the shelters can hold (not how many came)"),
+    "shelter_count": Metric("shelters", False, True, "shelters opened or designated"),
+    "staff_count": Metric("people", True, True,
+                          "county or city government staff deployed for storm response or in emergency roles "
+                          "(not utility workers, not volunteers)"),
+    "crew_count": Metric("crews", True, True, "county or city work crews (debris, roads, public works)"),
+    "vehicle_count": Metric("vehicles", True, True, "county or city trucks/vehicles used in storm response"),
+    "staging_sites": Metric("sites", False, True, "county or city staging / distribution sites"),
+    "utility_workers": Metric("people", False, False, "utility restoration workers incl. mutual aid, per storm"),
+    "utility_staging_sites": Metric("sites", False, False, "utility restoration staging sites, per storm"),
+    "peak_customers_out": Metric("customers", True, False, "peak electricity customers without power, per storm"),
+    "evacuee_count": Metric("people", True, False, "people sheltered or evacuated, per storm (say which)"),
+    "fema_pa_total": Metric("usd", True, False, "FEMA Public Assistance dollars for damage in this county, per storm"),
+    "service_requests": Metric("requests", False, False, "311 or equivalent storm-related service requests, per storm"),
 }
 UNKNOWN_METRIC = Metric("", key=False, ages=True)
 

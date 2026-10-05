@@ -49,7 +49,7 @@ def judge(**kw):
 def fact(metric="shelter_capacity", unit="people", raw="2,000", **kw) -> Fact:
     spans = numbers.extract(PAGES[AAR])
     sid = next(s.id for s in spans if s.raw == raw)
-    d = FactDraft(id="f1", metric=metric, unit=unit, value_ref=sid, source="AAR", source_url=AAR,
+    d = FactDraft(id="f1", metric=metric, unit=unit, value_ref=sid, source="AAR", source_url=AAR, subject="Harris County",
                   retrieved="2026-10-05", as_of="2024", **kw)
     return numbers.fact_from_ref(d, spans, PAGES[AAR])
 
@@ -108,6 +108,19 @@ def test_different_value_is_conflicting_even_with_support():
     assert r.verdict is Verdict.CONFLICTING and "2,500" in next(c.detail for c in r.checks if c.name == "conflict")
 
 
+def test_candidate_number_with_another_meaning_not_counted():
+    class SecondPassageDisagrees(FakeLLM):
+        def json(self, prompt):
+            out = super().json(prompt)
+            if prompt.startswith("You check one claim") and "news.example.com" in prompt:
+                return {"label": "wrong_metric", "reason": "a different 2,000"}
+            return out
+    j, _ = judge(search=("https://news.example.com/a",))
+    j.llm = SecondPassageDisagrees(search=("https://news.example.com/a",))
+    r = j.review_fact(fact(), TARGET)
+    assert r.verdict is Verdict.SINGLE_SOURCE and any("not the same claim" in c.detail for c in r.checks)
+
+
 def test_unreadable_candidate_is_reported_not_counted():
     j, _ = judge(search=("https://gone.example.com/x",))
     r = j.review_fact(fact(), TARGET)
@@ -127,3 +140,26 @@ def test_overlap_catches_rewritten_lead_in():
     b = "At Hurricane Beryl's peak, county shelters had capacity for 2,000 people; occupancy peaked at 1,314 evacuees on July 9."
     assert _overlap(a, b) >= 0.9
     assert _overlap(a, "Harris County said shelters could hold 2,000 people during Beryl in 2024.") < 0.9
+
+
+def test_rate_limit_retried_then_surfaced(monkeypatch):
+    from research import judge as J
+    calls = []
+
+    class Models:
+        def generate_content(self, **kw):
+            calls.append(1)
+            if len(calls) < 3:
+                raise RuntimeError("429 RESOURCE_EXHAUSTED")
+            return type("R", (), {"text": '{"label": "supports"}'})()
+
+    g = J.GeminiCalls.__new__(J.GeminiCalls)
+    g.model, g.cap, g.count, g._sleep = "m", 10, 0, lambda s: None
+    g.client = type("C", (), {"models": Models()})()
+    assert g.json("x") == {"label": "supports"} and len(calls) == 3
+
+    calls.clear()
+    Models.generate_content = lambda self, **kw: (_ for _ in ()).throw(RuntimeError("400 INVALID_ARGUMENT"))
+    import pytest
+    with pytest.raises(RuntimeError, match="400"):
+        g.json("x")

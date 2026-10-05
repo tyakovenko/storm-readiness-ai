@@ -113,6 +113,20 @@ def _jurisdiction(fact: Fact, target: Target, page: str) -> Check:
             else _check("jurisdiction", False, f"page never mentions {fact.place or target.county + ' or its cities'}"))
 
 
+_ORG_WORDS = {"the", "of", "and", "inc", "llc", "co", "corp", "department", "dept", "office"}
+
+
+def _subject(fact: Fact, page: str) -> Check:
+    """The organization the figure belongs to must be named on the page. Matching is on its distinctive
+    words (all of them), so "Harris County Sheriff's Office" matches "HCSO ... Harris County Sheriff"."""
+    if not fact.subject.strip():
+        return _check("subject", None, "no subject named for this figure")
+    words = [w for w in re.findall(r"[a-z0-9]+", _norm(fact.subject)) if w not in _ORG_WORDS and len(w) > 1]
+    missing = [w for w in words if not re.search(rf"(?<![a-z0-9]){re.escape(w)}", page)]
+    return (_check("subject", True, f"page names {fact.subject}") if not missing
+            else _check("subject", False, f"page never names {fact.subject} (missing: {', '.join(missing)})"))
+
+
 def _storm(fact: Fact, target: Target, page: str) -> Check:
     if fact.storm_id is None:
         return _check("storm", None, "fact is not about a storm")
@@ -148,7 +162,8 @@ def check_fact(fact: Fact, page: Page, target: Target, today: date | None = None
     norm_page = _norm(page.text)
     return [_check("fetch", True, page.final_url or page.url), quote_check,
             _value_at_source(fact, numbers.extract(page.text), where), _unit(fact, sentence),
-            _jurisdiction(fact, target, norm_page), _storm(fact, target, norm_page), _stale(fact, today or date.today())]
+            _jurisdiction(fact, target, norm_page), _subject(fact, norm_page), _storm(fact, target, norm_page),
+            _stale(fact, today or date.today())]
 
 
 def fixed_verdict(checks: list[Check]) -> Verdict | None:

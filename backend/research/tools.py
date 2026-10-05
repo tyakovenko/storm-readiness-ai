@@ -90,7 +90,7 @@ class ResearchSession:
         lines = [ln for ln in numbers.tag(page.text, spans).split("\n") if rx.search(ln)]
         return {"url": url, "lines": lines[:MAX_FIND_LINES], "more": max(0, len(lines) - MAX_FIND_LINES)}
 
-    def submit_fact(self, metric: str, unit: str, source_url: str, source_title: str, value_ref: str = "",
+    def submit_fact(self, metric: str, unit: str, source_url: str, source_title: str, subject: str, value_ref: str = "",
                     quote: str = "", storm_id: str = "", place: str = "", as_of: str = "",
                     publisher: str = "", published: str = "") -> dict:
         """Record one fact from a source you have read. For a number, give its tag as value_ref (e.g. "N17");
@@ -101,6 +101,8 @@ class ResearchSession:
             unit: the metric's unit from your instructions.
             source_url: the url you passed to read_source.
             source_title: the document's title.
+            subject: whose figure it is, as the source names it (e.g. "Harris County Office of Homeland
+                Security", "City of Houston", "CenterPoint Energy", "American Red Cross").
             value_ref: the number's tag on that page, e.g. "N17".
             quote: only for facts without a number: exact text from the page.
             storm_id: the storm id from your instructions if the fact is about one storm, else empty.
@@ -110,14 +112,14 @@ class ResearchSession:
             published: publication date (YYYY or YYYY-MM-DD), if shown.
         """
         self.calls["submit_fact"] += 1
-        args = {"metric": metric, "unit": unit, "source_url": source_url, "value_ref": value_ref}
+        args = {"metric": metric, "unit": unit, "source_url": source_url, "value_ref": value_ref, "subject": subject}
         got = self._page(source_url)
         if got is None:
             return self._reject(args, "call read_source on this url first, then cite its number tags")
         page, spans = got
         draft = FactDraft(id=f"f{len(self.facts) + 1}", metric=metric, unit=unit, value_ref=value_ref or None,
                           quote=quote or None, storm_id=storm_id or None, place=place or None,
-                          as_of=as_of or None, source=source_title,
+                          subject=subject, as_of=as_of or None, source=source_title,
                           source_url=page.final_url or source_url, publisher=publisher or None,
                           published=published or None, retrieved=page.retrieved or "")
         try:

@@ -43,14 +43,17 @@ News is second choice.
 add, subtract, round or convert. If no tag sits on the number you need, that number can't be cited.
 4. One fact per number. Capacity is not occupancy; a figure for another storm or year is a different fact. \
 A city's own figure (e.g. city-run shelters) is submitted with place set to that city; leave place empty \
-only for county-wide figures. If submit_fact refuses, read the reason and fix the citation, \
+only for county-wide figures. Always name the subject: the organization the number belongs to, as the \
+source names it. Pick the metric whose definition fits that subject (utility workers are utility_workers, \
+never staff_count). Skip figures that aren't about storm readiness or response. If submit_fact refuses, read the reason and fix the citation, \
 or move on.
 5. For each item above you could not source, report_gap with where you looked.
 Stop when every item is either submitted or reported as a gap. End with a one-line summary."""
 
 
 def _instruction(target: Target, gaps: list[Gap], portals: dict) -> str:
-    metrics = "\n".join(f"- {name}: {m.unit}{' (key)' if m.key else ''}" for name, m in policy.METRICS.items())
+    metrics = "\n".join(f"- {name}: {m.unit}{' (key)' if m.key else ''} - {m.definition}"
+                        for name, m in policy.METRICS.items())
     storms = "\n".join(f"- {s.id}: {s.name} {s.year}" for s in target.storms) or "- none"
     wanted = "\n".join(f"- {g.metric}" for g in gaps) or "- shelters and capacities, staffing, staging, after-action figures"
     juris = ", ".join(target.jurisdiction_names())

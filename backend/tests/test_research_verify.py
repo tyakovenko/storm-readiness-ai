@@ -130,6 +130,12 @@ def test_city_figure_with_place():
     assert c.ok is False and "not Harris County" in c.detail
 
 
+@pytest.mark.parametrize("subject,ok", [("Harris County Office of Homeland Security", True),
+                                        ("Harris County Sheriff's Office", False), ("", None)])
+def test_subject_named_on_page(subject, ok):
+    assert by_name(check_fact(fact(subject=subject), PAGE, TARGET, TODAY))["subject"].ok is ok
+
+
 def test_hyphenated_alias_matches():
     t = Target(fips="12086", county="Miami-Dade County", state="FL", hazard="hurricane")
     page = Page(url="u", text="Miami Dade shelters opened ahead of Irma 2017.")

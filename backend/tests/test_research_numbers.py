@@ -80,7 +80,8 @@ TEXT = "Harris County opened 12 shelters. At the peak, shelters housed more than
 
 
 def draft(**kw):
-    base = dict(id="f1", metric="evacuee_count", unit="people", source="AAR", source_url="u", retrieved="2026-10-05")
+    base = dict(id="f1", metric="evacuee_count", unit="people", source="AAR", source_url="u", retrieved="2026-10-05",
+                subject="Harris County")
     return FactDraft(**{**base, **kw})
 
 

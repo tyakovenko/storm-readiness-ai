@@ -117,7 +117,7 @@ def test_read_source_error_passed_to_model():
 def test_submit_fact_by_reference():
     s = session()
     s.read_source(URL)
-    out = s.submit_fact("evacuee_count", "people", URL, "Beryl AAR", value_ref=ref(s, URL, "1,314"),
+    out = s.submit_fact("evacuee_count", "people", URL, "Beryl AAR", "Harris County", value_ref=ref(s, URL, "1,314"),
                         storm_id="AL022024")
     assert out["accepted"] and out["value"] == 1314 and out["qualifier"] == "over"
     assert s.facts[0].quote == "At the peak, shelters housed more than 1,314 evacuees."
@@ -135,18 +135,27 @@ def test_submit_fact_rejections_are_logged(kw, reason):
     swap = {"LABEL": ref(s, URL, "26"), "EVAC": ref(s, URL, "1,314")}
     kw = {k: swap.get(v, v) for k, v in kw.items()}
     out = s.submit_fact(**{"metric": "evacuee_count", "unit": "people", "source_url": URL, "source_title": "AAR",
+                           "subject": "Harris County",
                            "storm_id": "AL022024", **kw})
     assert out["accepted"] is False and reason in out["reason"]
     assert s.rejected[-1]["reason"] == out["reason"] and not s.facts
 
 
+def test_submit_fact_rejects_subject_not_on_page():
+    s = session()
+    s.read_source(URL)
+    out = s.submit_fact("staff_count", "people", URL, "AAR", "CenterPoint Energy", value_ref=ref(s, URL, "300"),
+                        as_of="2024")
+    assert out["accepted"] is False and "never names CenterPoint Energy" in out["reason"]
+
+
 def test_submit_fact_needs_read_and_rejects_duplicates():
     s = session()
-    assert "read_source" in s.submit_fact("evacuee_count", "people", URL, "AAR", value_ref="N1")["reason"]
+    assert "read_source" in s.submit_fact("evacuee_count", "people", URL, "AAR", "Harris County", value_ref="N1")["reason"]
     s.read_source(URL)
     r = ref(s, URL, "1,314")
-    assert s.submit_fact("evacuee_count", "people", URL, "AAR", value_ref=r, storm_id="AL022024")["accepted"]
-    assert "duplicate" in s.submit_fact("evacuee_count", "people", URL, "AAR", value_ref=r,
+    assert s.submit_fact("evacuee_count", "people", URL, "AAR", "Harris County", value_ref=r, storm_id="AL022024")["accepted"]
+    assert "duplicate" in s.submit_fact("evacuee_count", "people", URL, "AAR", "Harris County", value_ref=r,
                                         storm_id="AL022024")["reason"]
 
 
