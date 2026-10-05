@@ -7,11 +7,56 @@ rerun from the source, not from the researcher's memory of it.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import re
+from datetime import date, datetime, timezone
 from enum import Enum
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import AfterValidator, BaseModel, Field, model_validator
+
+from research import policy
+
+_PARTIAL_DATE = re.compile(r"^(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?$")
+
+
+def _partial_date(v: str | None) -> str | None:
+    """YYYY, YYYY-MM or YYYY-MM-DD, and a real date. Sources often give only a year or month."""
+    if v is None:
+        return None
+    m = _PARTIAL_DATE.match(v.strip())
+    if not m:
+        raise ValueError(f"date {v!r} must be YYYY, YYYY-MM or YYYY-MM-DD")
+    y, mo, d = int(m.group(1)), int(m.group(2) or 1), int(m.group(3) or 1)
+    date(y, mo, d)  # raises on 2024-02-30
+    if not 1900 <= y <= 2100:
+        raise ValueError(f"date {v!r} out of range")
+    return v.strip()
+
+
+def _iso_timestamp(v: str) -> str:
+    try:
+        datetime.fromisoformat(v)
+    except ValueError:
+        raise ValueError(f"retrieved {v!r} must be an ISO date or datetime") from None
+    return v
+
+
+def _http_url(v: str) -> str:
+    if not re.match(r"^https?://[^\s/]+", v):
+        raise ValueError(f"source_url {v!r} must be an http(s) URL")
+    return v
+
+
+def _known_metric(v: str) -> str:
+    if v not in policy.METRICS:
+        raise ValueError(f"metric {v!r} is not in the vocabulary: {', '.join(policy.METRICS)}")
+    return v
+
+
+PartialDate = Annotated[str | None, AfterValidator(_partial_date)]
+Timestamp = Annotated[str, AfterValidator(_iso_timestamp)]
+HttpUrl = Annotated[str, AfterValidator(_http_url)]
+MetricName = Annotated[str, AfterValidator(_known_metric)]
 
 
 class Verdict(str, Enum):
@@ -52,25 +97,26 @@ class FactDraft(BaseModel):
     """What the researcher returns. It cites a number by its span id on the tagged page (value_ref) and
     never writes the value: research.numbers.fact_from_ref builds the Fact (ADR numbers-by-reference)."""
     id: str
-    metric: str
+    metric: MetricName
     unit: str
     value_ref: str | None = None  # None = the fact states something exists, with no number
     quote: str | None = None      # only for value_ref None; otherwise code takes the sentence around the span
     storm_id: str | None = None
     place: str | None = None      # the county (default) or a city in it, when the figure is the city's
     subject: str                  # whose figure, as named in the source ("Harris County OHSEM", "CenterPoint Energy")
-    as_of: str | None = None      # date the figure refers to, not the publication date
+    as_of: PartialDate = None     # date the figure refers to, not the publication date
     source: str                   # title
-    source_url: str
+    source_url: HttpUrl
     publisher: str | None = None
-    published: str | None = None
-    retrieved: str
+    published: PartialDate = None
+    retrieved: Timestamp
 
 
 class Fact(BaseModel):
     id: str
-    metric: str
-    value: float | None  # None = the source states the thing exists but gives no number
+    metric: MetricName
+    # int for count metrics, float for money: the metric's dtype (policy), enforced below.
+    value: int | float | None  # None = the source states the thing exists but gives no number
     value_raw: str | None = None  # the number as written on the page ("1.3 million")
     unit: str
     # How the source phrased the number, read by code: "over 200" -> value 200, qualifier "over".
@@ -82,18 +128,32 @@ class Fact(BaseModel):
     # Whose number: "CenterPoint Energy" workers are not county staff. "" = not named (drafts before
     # 2026-10-05 didn't record it); the fixed check reports that rather than passing it.
     subject: str = ""
-    as_of: str | None = None
+    as_of: PartialDate = None
     quote: str = Field(min_length=1)
     source: str
-    source_url: str
+    source_url: HttpUrl
     publisher: str | None = None
-    published: str | None = None
-    retrieved: str
+    published: PartialDate = None
+    retrieved: Timestamp
 
     @model_validator(mode="after")
-    def _value_from_page(self):
-        if self.value is not None and not self.value_raw:
+    def _typed(self):
+        """The contract downstream computation relies on: unit and type fixed by the metric."""
+        m = policy.metric(self.metric)
+        if self.unit != m.unit:
+            raise ValueError(f"{self.id}: metric {self.metric} is counted in {m.unit}, not {self.unit}")
+        if self.value is None:
+            return self
+        if not self.value_raw:
             raise ValueError(f"{self.id}: a value needs value_raw (values come from the page, not the model)")
+        if m.dtype == "int":
+            if float(self.value) != int(self.value):
+                raise ValueError(f"{self.id}: {self.metric} is a whole-number count; got {self.value_raw!r}")
+            self.value = int(self.value)
+        else:
+            self.value = float(self.value)
+        if self.value < m.min or (m.max is not None and self.value > m.max):
+            raise ValueError(f"{self.id}: {self.value} outside {self.metric} range [{m.min}, {m.max}]")
         return self
 
 
@@ -151,4 +211,11 @@ class DraftPack(BaseModel):
         unknown = {r.fact_id for r in self.reviews} - set(ids)
         if unknown:
             raise ValueError(f"reviews for unknown facts: {sorted(unknown)}")
+        storms = {s.id for s in self.target.storms}
+        places = {p.casefold() for p in self.target.jurisdiction_names()}
+        for f in self.facts:
+            if f.storm_id is not None and f.storm_id not in storms:
+                raise ValueError(f"{f.id}: storm_id {f.storm_id} is not one of {self.target.county}'s storms")
+            if f.place is not None and f.place.casefold() not in places:
+                raise ValueError(f"{f.id}: place {f.place} is not {self.target.county} or a listed city")
         return self

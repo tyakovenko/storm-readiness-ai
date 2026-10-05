@@ -77,18 +77,28 @@ def by_ref(url: str, raw: str, **kw) -> Fact:
     return numbers.fact_from_ref(d, spans, text)
 
 
-def raw_fact(**kw) -> Fact:
+class SchemaRejected:
+    """The typed contract refused the fact before any check ran: counts as caught, at layer "schema"."""
+
+    def __init__(self, error: Exception):
+        self.error = str(error).splitlines()[1].strip() if "\n" in str(error) else str(error)
+
+
+def raw_fact(**kw) -> Fact | SchemaRejected:
     """A fact as a careless researcher would write it (bypassing by-reference), to test layer 1."""
     base = dict(source="src", retrieved="2026-10-05")
-    return Fact(**{**base, **kw})
+    try:
+        return Fact(**{**base, **kw})
+    except ValueError as e:
+        return SchemaRejected(e)
 
 
 @dataclass
 class Case:
     name: str
-    fact: Fact
+    fact: Fact | SchemaRejected
     planted: bool
-    expect: Verdict | tuple   # verdict(s) that count as correct
+    expect: Verdict | tuple | str   # verdict(s) that count as correct; "schema_rejected" = refused by the contract
     layer: str                # layer expected to decide: fixed | entailment | corroboration
     search: tuple = ()        # stubbed web-search results for corroboration
 
@@ -110,7 +120,7 @@ def cases() -> list[Case]:
              True, Verdict.UNSUPPORTED, "fixed"),
         Case("wrong unit", raw_fact(id="p2", metric="evacuee_count", value=1314, value_raw="1,314", unit="customers",
              storm_id="AL022024", quote="occupancy peaked at 1,314 evacuees on July 9", source_url=AAR),
-             True, Verdict.UNSUPPORTED, "fixed"),
+             True, "schema_rejected", "schema"),
         Case("wrong county", by_ref(GALV, "1,314", id="p3", metric="evacuee_count", unit="people",
              storm_id="AL022024", subject="Galveston County"), True, Verdict.UNSUPPORTED, "fixed"),
         Case("quote not in page", raw_fact(id="p4", metric="evacuee_count", value=1314, value_raw="1,314",
@@ -165,6 +175,11 @@ def run(model: str) -> dict:
     rows = []
     for c in cases():
         llm.results = c.search
+        if isinstance(c.fact, SchemaRejected):
+            rows.append({"case": c.name, "planted": c.planted, "verdict": "schema_rejected",
+                         "ok": c.expect == "schema_rejected", "false_verified": False, "layer": "schema",
+                         "expected_layer": c.layer, "detail": c.fact.error[:110]})
+            continue
         r = judge.review_fact(c.fact, TARGET)
         expect = c.expect if isinstance(c.expect, tuple) else (c.expect,)
         ok = r.verdict in expect

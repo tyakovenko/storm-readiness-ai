@@ -88,22 +88,28 @@ def _qualifier(text: str, start: int) -> str:
 
 
 # Structured rows ("CAPACITY: 1200; LAT: 25.7"): the field name says what the number is.
-_FIELD_BEFORE = re.compile(r"([A-Za-z][\w .]*?)\s*:\s*$")
+# Bounded and unambiguous: one field name (words joined by single spaces/dots/underscores) right before ":".
+# The earlier r"([A-Za-z][\w .]*?)\s*:\s*$" backtracked catastrophically on long colon-less lines
+# (one per number -> a judge run hung at 100 % CPU, 2026-10-05).
+_FIELD_BEFORE = re.compile(r"([A-Za-z][\w.]*(?: [\w.]+){0,4}):[ \t]*$")
+_FIELD_WINDOW = 60  # chars before a number searched for its field name
 _FIELD_YEAR = re.compile(r"year|yr|date", re.IGNORECASE)
 _FIELD_LABEL = re.compile(r"(^|_|\b)(id|objectid|fid|gid|zip|zipcode|phone|fax|code|no|num|number|lat|lon|"
                           r"latitude|longitude|x|y|shape\w*|district|precinct|zone)$", re.IGNORECASE)
 
 
 def _digit_kind(m: re.Match, text: str) -> str:
-    line_start = text.rfind("\n", 0, m.start()) + 1
-    field = _FIELD_BEFORE.search(re.split(r"[;|]", text[line_start:m.start()])[-1])
+    lo = max(0, m.start() - _FIELD_WINDOW)
+    line_start = text.rfind("\n", lo, m.start()) + 1 or lo  # bounded: a full-text rfind per number is O(n²)
+    seg = text[max(line_start, lo):m.start()]
+    field = _FIELD_BEFORE.search(re.split(r"[;|]", seg)[-1])
     name = field.group(1).strip() if field else ""
     if name and not m.group("dollar") and not m.group("pct"):
         if _FIELD_YEAR.search(name):
             return "year"
         if _FIELD_LABEL.search(name):
             return "label"
-    if m.group("dollar") or re.match(r"\s?dollars?\b", text[m.end():], re.IGNORECASE):
+    if m.group("dollar") or re.match(r"\s?dollars?\b", text[m.end():m.end() + 12], re.IGNORECASE):
         return "money"
     if m.group("pct"):
         return "percent"
@@ -118,16 +124,19 @@ def _digit_kind(m: re.Match, text: str) -> str:
 
 
 def extract(text: str) -> list[NumberSpan]:
-    taken: list[tuple[int, int]] = []
+    taken = bytearray(len(text))  # 1 = char already claimed by a span; per-char mask keeps this O(n)
     found: list[tuple[int, int, str, float, str]] = []  # start, end, kind, value, qualifier
 
     def free(s: int, e: int) -> bool:
-        return all(e <= a or s >= b for a, b in taken)
+        return not any(taken[s:e])
+
+    def claim(s: int, e: int) -> None:
+        taken[s:e] = b"\x01" * (e - s)
 
     for kind, rx in _NON_VALUE:
         for m in rx.finditer(text):
             if free(m.start(), m.end()):
-                taken.append((m.start(), m.end()))
+                claim(m.start(), m.end())
                 found.append((m.start(), m.end(), kind, float(re.search(r"\d+", m.group()).group()), "exact"))
     for m in _NUM.finditer(text):
         if not free(m.start(), m.end()):
@@ -137,7 +146,7 @@ def extract(text: str) -> list[NumberSpan]:
             value *= _SCALES[m.group("scale").lower()]
         kind = _digit_kind(m, text)
         qual = "at_least" if m.group("plus") else _qualifier(text, m.start())
-        taken.append((m.start(), m.end()))
+        claim(m.start(), m.end())
         found.append((m.start(), m.end(), kind, value, qual))
     for m in WORD_NUM_RE.finditer(text):
         if not free(m.start(), m.end()):
@@ -150,7 +159,7 @@ def extract(text: str) -> list[NumberSpan]:
         sm = _WORD_SCALE.match(text, end)
         if sm:
             value, end = value * _SCALES[sm.group(1).lower()], sm.end()
-        taken.append((m.start(), end))
+        claim(m.start(), end)
         found.append((m.start(), end, "quantity", float(value), _qualifier(text, m.start())))
 
     found.sort()

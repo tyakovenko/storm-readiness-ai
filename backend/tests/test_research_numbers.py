@@ -80,7 +80,7 @@ TEXT = "Harris County opened 12 shelters. At the peak, shelters housed more than
 
 
 def draft(**kw):
-    base = dict(id="f1", metric="evacuee_count", unit="people", source="AAR", source_url="u", retrieved="2026-10-05",
+    base = dict(id="f1", metric="evacuee_count", unit="people", source="AAR", source_url="https://x.gov/u", retrieved="2026-10-05",
                 subject="Harris County")
     return FactDraft(**{**base, **kw})
 
@@ -116,3 +116,12 @@ def test_extracted_fact_passes_layer1_on_the_same_page():
     f = fact_from_ref(draft(value_ref=next(s.id for s in spans if s.raw == "1,314")), spans, TEXT)
     t = Target(fips="48201", county="Harris County", state="TX", hazard="hurricane")
     assert fixed_verdict(check_fact(f, Page(url="u", text=TEXT), t)) is None
+
+
+def test_extract_is_linear_on_long_colonless_lines():
+    """Regression: a field-name regex backtracked catastrophically and hung a judge run at 100 % CPU."""
+    import time
+    line = " ".join(f"word {i} more text here" for i in range(5000))
+    t = time.time()
+    assert len(extract(line)) == 5000
+    assert time.time() - t < 3

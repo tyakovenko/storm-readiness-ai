@@ -126,7 +126,9 @@ def test_submit_fact_by_reference():
 @pytest.mark.parametrize("kw,reason", [
     ({"value_ref": "1314"}, "not a number on this page"),               # typed the number instead of a tag
     ({"value_ref": "LABEL"}, "label"),                                    # FOX 26
-    ({"unit": "customers", "value_ref": "EVAC"}, "unit"),                # unit doesn't match metric
+    ({"unit": "customers", "value_ref": "EVAC"}, "counted in people"),   # unit doesn't match metric (schema)
+    ({"metric": "cots", "value_ref": "EVAC"}, "not in the vocabulary"),  # metric outside the vocabulary
+    ({"as_of": "July 2024", "value_ref": "EVAC"}, "YYYY"),               # free-text date
     ({"storm_id": "AL092022", "value_ref": "EVAC"}, "storm"),           # storm not in target
 ])
 def test_submit_fact_rejections_are_logged(kw, reason):

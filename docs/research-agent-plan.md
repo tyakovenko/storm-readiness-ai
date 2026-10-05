@@ -1,7 +1,7 @@
 # Research agent + judge: plan
 
 Branch `research-agent` (from `main` 8b458fc). Replaces Phase 5 of `execution-plan-county-agents.md`.
-ADRs: `decisions/20261005-research-offline-human-gate.md`, `decisions/20261005-layered-judge.md`, `decisions/20261005-gemini-only-research.md`, `decisions/20261005-numbers-by-reference.md`.
+ADRs: `decisions/20261005-research-offline-human-gate.md`, `decisions/20261005-layered-judge.md`, `decisions/20261005-gemini-only-research.md`, `decisions/20261005-numbers-by-reference.md`, `decisions/20261005-typed-research-facts.md`.
 
 Each phase ends with its gate passing, a commit, and a check-in. Work can stop after any phase. Later phases are then future improvements and the earlier ones still stand on their own.
 
@@ -74,7 +74,9 @@ Probe scripts are in the session scratchpad, not the repo.
 - [x] `research/publish.py`: reviewer, `--accept verified,single_source`, `--reject ids`, `--also ids` (override, flagged). Writes `pack.json` `facts` + `research` provenance; `--push`.
 - [x] API: `GET /api/research`, `GET /api/research/{hazard}/{fips}/{run_id}` (404 missing, 503 store down).
 - [x] UI: `#/research` (runs) and `#/research/<hazard>/<fips>/<run_id>` (facts sorted conflicting → single → unchecked → verified → unsupported, verdict filters, quote + checks per fact, gaps, run log, partial banner). Landing card links to it. No chat (ADR).
-- [ ] Cloud Run job `storm-research` + SA (write `processed/packs_draft/` only). **Taya runs the IAM commands** (auto mode blocks IAM changes). Same image as the app; the job overrides the command.
+- [x] Live Harris draft (20 facts, 677 s) + judge: 4 verified / 6 single / 10 unsupported. **2 of 4 verified were wrong** (CenterPoint workers as staff; a coincident "250" on an unrelated page). Fixes: `subject` + metric definitions (utility metrics split out), entailment required on corroborating passages, typed contract (ADR typed-research-facts), 429/503 retries, GET fallback for redirects.
+- [x] Hang fixed: field-name regex backtracked catastrophically and `extract` was O(n²) (full-text rfind / slice per number). Now linear; regression test.
+- [x] Cloud Run job `storm-research` + SA (write `processed/packs_draft/` only). IAM run by Taya 2026-10-05; job created (image `app:research-3b6435d`, to be updated). Same image as the app; the job overrides the command.
 
 ```bash
 P=uc3-storm-impact-intelligence; B=uc3-storm-impact-intelligence-data

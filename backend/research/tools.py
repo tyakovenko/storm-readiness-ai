@@ -107,9 +107,9 @@ class ResearchSession:
             quote: only for facts without a number: exact text from the page.
             storm_id: the storm id from your instructions if the fact is about one storm, else empty.
             place: a city name from your instructions if the figure is that city's, not the county's; else empty.
-            as_of: date the figure refers to (YYYY or YYYY-MM-DD), if the source says.
+            as_of: date the figure refers to, YYYY, YYYY-MM or YYYY-MM-DD, if the source says.
             publisher: organization that published the source.
-            published: publication date (YYYY or YYYY-MM-DD), if shown.
+            published: publication date, YYYY, YYYY-MM or YYYY-MM-DD, if shown.
         """
         self.calls["submit_fact"] += 1
         args = {"metric": metric, "unit": unit, "source_url": source_url, "value_ref": value_ref, "subject": subject}
@@ -117,12 +117,14 @@ class ResearchSession:
         if got is None:
             return self._reject(args, "call read_source on this url first, then cite its number tags")
         page, spans = got
-        draft = FactDraft(id=f"f{len(self.facts) + 1}", metric=metric, unit=unit, value_ref=value_ref or None,
-                          quote=quote or None, storm_id=storm_id or None, place=place or None,
-                          subject=subject, as_of=as_of or None, source=source_title,
-                          source_url=page.final_url or source_url, publisher=publisher or None,
-                          published=published or None, retrieved=page.retrieved or "")
+        # Typed contract (schema): metric in the vocabulary, its unit, dates as YYYY[-MM[-DD]], http(s) URL.
+        # A bad field is refused with the validation message, so the model can resubmit it correctly.
         try:
+            draft = FactDraft(id=f"f{len(self.facts) + 1}", metric=metric, unit=unit, value_ref=value_ref or None,
+                              quote=quote or None, storm_id=storm_id or None, place=place or None,
+                              subject=subject, as_of=as_of or None, source=source_title,
+                              source_url=page.final_url or source_url, publisher=publisher or None,
+                              published=published or None, retrieved=page.retrieved or "")
             fact = numbers.fact_from_ref(draft, spans, page.text)
         except (numbers.BadReference, ValueError) as e:
             return self._reject(args, str(e))
@@ -134,9 +136,7 @@ class ResearchSession:
         if failed:
             return self._reject(args, "; ".join(failed))
         self.facts.append(fact)
-        note = "" if metric in policy.METRICS else " (metric not in the vocabulary: kept, marked non-key)"
-        return {"accepted": True, "id": fact.id, "value": fact.value, "qualifier": fact.qualifier,
-                "quote": fact.quote, "note": note.strip()}
+        return {"accepted": True, "id": fact.id, "value": fact.value, "qualifier": fact.qualifier, "quote": fact.quote}
 
     def report_gap(self, metric: str, reason: str) -> dict:
         """Record a metric you looked for and could not source. Say where you looked.

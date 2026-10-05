@@ -101,9 +101,35 @@ def test_number_only_in_citation_not_evidence():
     assert fixed_verdict(checks) is Verdict.UNSUPPORTED
 
 
-def test_unit_not_matching_metric():
-    c = by_name(check_fact(fact(unit="customers"), PAGE, TARGET, TODAY))["unit"]
-    assert c.ok is False and "people" in c.detail
+def test_unit_not_matching_metric_refused_by_schema():
+    with pytest.raises(ValueError, match="counted in people, not customers"):
+        fact(unit="customers")
+
+
+@pytest.mark.parametrize("kw,msg", [
+    ({"metric": "shelter_count", "unit": "shelters", "value": 2.5, "value_raw": "2.5"}, "whole-number count"),
+    ({"value": -3, "value_raw": "-3"}, "outside"),
+    ({"as_of": "2024-02-30"}, "day is out of range"),
+    ({"published": "last July"}, "YYYY"),
+    ({"source_url": "readyharris.org/x"}, "http"),
+    ({"retrieved": "yesterday"}, "ISO"),
+])
+def test_typed_contract(kw, msg):
+    with pytest.raises(ValueError, match=msg):
+        fact(**kw)
+
+
+def test_counts_stored_as_int_money_as_float():
+    assert type(fact(value=1314.0).value) is int
+    f = fact(metric="fema_pa_total", unit="usd", value=4200000, value_raw="$4.2 million", storm_id=None)
+    assert type(f.value) is float
+
+
+def test_draft_rejects_storm_or_place_outside_target():
+    with pytest.raises(ValueError, match="not one of Harris County's storms"):
+        DraftPack(target=TARGET, run_id="r", researcher_model="m", facts=[fact(storm_id="AL092008")])
+    with pytest.raises(ValueError, match="not Harris County or a listed city"):
+        DraftPack(target=TARGET, run_id="r", researcher_model="m", facts=[fact(place="Galveston")])
 
 
 def test_unit_word_start_only():

@@ -15,10 +15,14 @@ class Metric:
     key: bool    # key = needs 2 independent sources for VERIFIED
     ages: bool   # standing capacity/staffing facts go stale; past-storm facts don't
     definition: str = ""  # shown to researcher and judge: a metric name alone left "whose staff?" open
+    # Stored type for computation downstream (sums, demand vs beds). Counts are whole numbers.
+    dtype: str = "int"
+    min: float = 0
+    max: float | None = None
 
 
-# Controlled vocabulary for Fact.metric, from the hurricane packs' `gaps` list. A metric outside it is
-# kept (non-key, ages) so new findings aren't dropped, and the reviewer sees it isn't in the vocabulary.
+# Controlled vocabulary for Fact.metric, from the hurricane packs' `gaps` list. Closed: a fact must use one
+# of these so its unit and type are known to everything that computes with it (schema enforces).
 # Harris run 2026-10-05: utility workers were filed as staff_count -> utility metrics split out.
 METRICS = {
     "shelter_capacity": Metric("people", True, True, "people the shelters can hold (not how many came)"),
@@ -33,10 +37,10 @@ METRICS = {
     "utility_staging_sites": Metric("sites", False, False, "utility restoration staging sites, per storm"),
     "peak_customers_out": Metric("customers", True, False, "peak electricity customers without power, per storm"),
     "evacuee_count": Metric("people", True, False, "people sheltered or evacuated, per storm (say which)"),
-    "fema_pa_total": Metric("usd", True, False, "FEMA Public Assistance dollars for damage in this county, per storm"),
+    "fema_pa_total": Metric("usd", True, False, "FEMA Public Assistance dollars for damage in this county, per storm",
+                            dtype="float"),
     "service_requests": Metric("requests", False, False, "311 or equivalent storm-related service requests, per storm"),
 }
-UNKNOWN_METRIC = Metric("", key=False, ages=True)
 
 # Words that count as the unit being stated near the quote. A unit not listed here -> check not run (None).
 UNIT_SYNONYMS = {
@@ -68,7 +72,8 @@ OFFICIAL_DOMAINS = {"leegov.com", "hctx.net", "readyharris.org"}
 
 
 def metric(name: str) -> Metric:
-    return METRICS.get(name, UNKNOWN_METRIC)
+    """Raises KeyError for a metric outside the vocabulary (Fact validation refuses those first)."""
+    return METRICS[name]
 
 
 def is_official(url: str) -> bool:
