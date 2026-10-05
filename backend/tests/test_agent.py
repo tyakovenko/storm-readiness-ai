@@ -162,10 +162,13 @@ def test_retry_can_fix_wrong_tool_order():
     assert r["status"] == "regenerated", _json.dumps(r["attempts"], indent=1)
 
 
-def test_overview_endpoint_returns_contract_data_and_applies_what_if():
+def test_overview_endpoint_returns_contract_data_and_applies_what_if(monkeypatch):
     from fastapi.testclient import TestClient
 
+    import app as app_mod
     from app import app
+
+    monkeypatch.setattr(app_mod, "DOMAIN", "hurricane")  # Dallas is the default domain since c/dallas
 
     client = TestClient(app)  # no `with`: lifespan (LLM startup) isn't needed for this read-only route
     base = client.get("/api/overview").json()

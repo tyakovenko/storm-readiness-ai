@@ -139,3 +139,16 @@ def test_past_storm_figure_equal_to_a_median_is_history_not_the_estimate():
     est = "Plan for about 204 storm-driven street requests."
     res = trust.run_checks(est, calls, outs, "How bad?", T.entity_catalog(), profile=trust.DALLAS)
     assert next(c for c in res if c.name == "confidence_fits_lead_time").passed is False
+
+
+def test_dallas_overview_endpoint_applies_what_if():
+    from fastapi.testclient import TestClient
+    import app as app_mod
+    c = TestClient(app_mod.app)  # read-only route, no lifespan needed
+    base = c.get("/api/overview").json()
+    assert base["domain"] == "dallas" and base["diff"] is None
+    assert set(base) == {"domain", "alert", "similar", "demand", "plan", "diff", "assets", "enso", "districts"}
+    w = c.get("/api/overview", params={"max_trucks": 30, "closed": ["Fair Park"]}).json()
+    assert w["plan"]["trucks_available"] == 30 and w["plan"]["shelter_shortfall_at_median"] == 760
+    assert sum(ch["change"] for ch in w["diff"]["district_changes"]) == -20
+    assert c.get("/api/overview", params={"closed": ["Nope"]}).status_code == 422

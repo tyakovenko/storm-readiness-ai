@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Literal
 
 from dotenv import find_dotenv, load_dotenv
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 # Ensure backend directory is in sys.path
@@ -90,6 +90,8 @@ def overview(max_trucks: int | None = Query(None, ge=0),
     exactly the shapes the data team builds to. max_trucks/closed are the
     Resource Planner's what-if inputs, passed straight to solve_staging.
     """
+    if DOMAIN == "dallas":
+        return dallas_overview(max_trucks, closed)
     staging_args = {}
     if max_trucks is not None:  # 0 trucks is a valid what-if
         staging_args["max_trucks"] = max_trucks
@@ -102,6 +104,28 @@ def overview(max_trucks: int | None = Query(None, ge=0),
         "impact": run_tool("predict_impact", {}),
         "staging": run_tool("solve_staging", staging_args),
         "assets": run_tool("query_assets", {}),
+    }
+
+
+def dallas_overview(trucks: int | None, closed: list[str]) -> dict:
+    """Dashboard data for Dallas: the same tools the agent calls (contract-validated), no LLM.
+    trucks/closed are the planner's what-if; diff is versus the default plan."""
+    from agent.dallas_tools import run_tool as dallas_tool
+    from dallas import store
+    what_if = {k: v for k, v in (("trucks", trucks), ("unavailable_shelters", closed or None)) if v is not None}
+    plan = dallas_tool("plan_response", what_if)
+    if "error" in plan:  # e.g. an unknown shelter name in the query string
+        raise HTTPException(status_code=422, detail=plan["error"])
+    return {
+        "domain": "dallas",
+        "alert": dallas_tool("get_storm_alert", {}),
+        "similar": dallas_tool("find_similar_storms", {}),
+        "demand": dallas_tool("estimate_demand", {}),
+        "plan": plan,
+        "diff": dallas_tool("diff_plans", what_if) if what_if else None,
+        "assets": dallas_tool("query_assets", {}),
+        "enso": dallas_tool("get_enso_context", {}),
+        "districts": store.districts(),
     }
 
 

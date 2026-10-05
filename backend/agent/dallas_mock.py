@@ -158,6 +158,7 @@ class MockDallasLlm(BaseLlm):
             parts = [types.Part(function_call=types.FunctionCall(name=n, args=a)) for n, a in plan_calls(question)]
         else:
             # First real answer is "bad" in bad_first mode; the retry after feedback is clean.
-            text = compose(responses, bad=self.bad_first and not feedback)
+            demo = "trust demo" in question.lower()  # UI demo button: misbehave once, then fix
+            text = compose(responses, bad=(self.bad_first or demo) and not feedback)
             parts = [types.Part(text=text)]
         yield LlmResponse(content=types.Content(role="model", parts=parts))

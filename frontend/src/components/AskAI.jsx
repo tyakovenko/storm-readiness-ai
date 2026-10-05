@@ -12,8 +12,17 @@ const EXAMPLES = [
   "What should residents do now?",
   "How does El Niño affect this season?",
 ];
+const DALLAS_EXAMPLES = [
+  "How should we prepare for this storm?",
+  "What if we only have 30 trucks and Fair Park is closed?",
+  "Has Dallas had a storm like this before?",
+  "What happened during Winter Storm Uri?",
+  "Does El Niño matter this winter?",
+  "What should residents do if the power goes out?",
+];
 // Mock-only: the scripted client misbehaves once so the trust layer has something to block.
 const TRUST_DEMOS = ["Trust demo: hallucinate a number", "Trust demo: overconfident outage risk"];
+const DALLAS_TRUST_DEMOS = ["Trust demo: shelter demand without its range"];
 
 const BADGE = "inline-block rounded-full px-2.5 py-[3px] text-xs font-semibold";
 const BADGE_OK = `${BADGE} bg-ok-bg text-ok-text`;
@@ -159,7 +168,9 @@ export default function AskAI({ open, onClose }) {
     }
   }
 
-  const examples = health?.mock ? [...EXAMPLES, ...TRUST_DEMOS] : EXAMPLES;
+  const dallas = health?.domain === "dallas";
+  const base = dallas ? DALLAS_EXAMPLES : EXAMPLES;
+  const examples = health?.mock ? [...base, ...(dallas ? DALLAS_TRUST_DEMOS : TRUST_DEMOS)] : base;
 
   return (
     <>

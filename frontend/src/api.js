@@ -8,8 +8,13 @@ async function readJSON(r) {
 
 // The same tool outputs the agent sees (advisory, impact, staging, assets...),
 // validated against backend/agent/contracts.py. No LLM involved.
-export function fetchOverview() {
-  return fetch("/api/overview").then(readJSON);
+// params: { max_trucks, closed: [...] } for the planner's what-if; omitted = default plan.
+export function fetchOverview(params = {}) {
+  const q = new URLSearchParams();
+  if (params.max_trucks != null) q.set("max_trucks", params.max_trucks);
+  for (const c of params.closed ?? []) q.append("closed", c);
+  const qs = q.toString();
+  return fetch(qs ? `/api/overview?${qs}` : "/api/overview").then(readJSON);
 }
 
 export function useOverview() {
