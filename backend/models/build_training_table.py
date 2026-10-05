@@ -166,9 +166,26 @@ def load_counties() -> pd.DataFrame:
 
 
 def load_customers() -> dict[str, int]:
-    # MCC.csv has a BOM and integer FIPS (lost leading zero).
-    m = pd.read_csv(io.BytesIO(read_bytes("national/reference/eaglei_mcc.csv")), encoding="utf-8-sig")
-    return {str(int(f)).zfill(5): int(c) for f, c in zip(m["County_FIPS"], m["Customers"]) if pd.notnull(c) and c > 0}
+    """Customers per county: EAGLE-I fall-2025 county file (same denominator as the team's
+    multi_storm_2018_2024 table, so labels are comparable), MCC.csv only where it's missing.
+    The two differ a lot (Dallas: 1,178,610 vs 948,355)."""
+    fall = pd.read_csv(io.BytesIO(read_bytes("census/EAGLE I/eaglei_county_customers_fall_2025.csv")), dtype=str)
+    out = {str(f).strip().zfill(5): int(float(c)) for f, c in zip(fall["county_fips"], fall["customers"])
+           if str(f).strip().isdigit() and str(c).replace(".", "", 1).isdigit() and float(c) > 0}
+    for f, c in load_mcc().items():
+        out.setdefault(f, c)
+    return out
+
+
+def load_mcc() -> dict[str, int]:
+    # MCC.csv has a BOM, integer FIPS (lost leading zero) and a trailing "Grand Total" row.
+    m = pd.read_csv(io.BytesIO(read_bytes("national/reference/eaglei_mcc.csv")), encoding="utf-8-sig", dtype=str)
+    out = {}
+    for f, c in zip(m["County_FIPS"], m["Customers"]):
+        f, c = str(f).strip(), str(c).strip()
+        if f.isdigit() and c.replace(".", "", 1).isdigit() and float(c) > 0:
+            out[f.zfill(5)] = int(float(c))
+    return out
 
 
 def load_canopy() -> dict[str, float]:
