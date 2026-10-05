@@ -126,6 +126,11 @@ def _index_numbers(value, catalog: list[dict], bound: dict, free: set) -> None:
             nums = _numbers_in_output(value)
             for k in owners:
                 bound.setdefault(k, set()).update(nums)
+            # Nested records can belong to their own entity too: a storm's
+            # top_districts list binds each count to its district as well.
+            for k, v in value.items():
+                if k not in CITATION_KEYS and isinstance(v, (dict, list)):
+                    _index_numbers(v, catalog, bound, set())
         else:
             for k, v in value.items():
                 if k not in CITATION_KEYS:
@@ -134,13 +139,26 @@ def _index_numbers(value, catalog: list[dict], bound: dict, free: set) -> None:
         free.update(_numbers_in_output(value))
 
 
+NAME_WITH_DIGITS_RE = re.compile(r"\b(?:Council )?District \d+\b|\bShelter \d+\b")
+
+
+def _mask_names(text: str, catalog: list[dict]) -> str:
+    """Hide entity names so their digits ("District 14", "2023 ice storm") aren't read as quantities.
+    Longest names first, so "Council District 1" goes before "District 1"."""
+    names = sorted({n for e in catalog for n in e["names"] if any(ch.isdigit() for ch in n)}, key=len, reverse=True)
+    for n in names:
+        text = re.sub(rf"(?<![\w]){re.escape(n)}(?![\w])", "<name>", text)
+    return NAME_WITH_DIGITS_RE.sub("<name>", text)
+
+
 def check_numbers(answer: str, tool_outputs: list[dict], question: str,
                   catalog: list[dict] | None = None) -> Check:
     name = "numbers_match_tools"
     catalog = catalog or []
     everywhere = _numbers_in_output(tool_outputs)
-    asked = _numbers_in_text(question)
-    unmatched = sorted(n for n in _numbers_in_text(answer) if n not in everywhere | asked)
+    asked = _numbers_in_text(_mask_names(question, catalog))
+    masked = _mask_names(answer, catalog)
+    unmatched = sorted(n for n in _numbers_in_text(masked) if n not in everywhere | asked)
     if unmatched:
         shown = ", ".join(f"{n:g}" for n in unmatched)
         return Check(name, False, True, f"Numbers not found in any tool output: {shown}")
@@ -153,7 +171,7 @@ def check_numbers(answer: str, tool_outputs: list[dict], question: str,
         if not named:
             continue  # nothing to bind to; the anywhere-check above already ran
         allowed = free | asked | set().union(*(bound.get(e["key"], set()) for e in named))
-        for n in sorted(_numbers_in_text(clause) - allowed):
+        for n in sorted(_numbers_in_text(_mask_names(clause, catalog)) - allowed):
             owner = next((e["label"] for e in catalog if n in bound.get(e["key"], set())), "another entity")
             misattributed.append(f"{n:g} next to {', '.join(e['label'] for e in named)} belongs to {owner}")
     if misattributed:

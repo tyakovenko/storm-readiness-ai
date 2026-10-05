@@ -5,10 +5,15 @@
   POST /api/chat     -> run the agent + trust layer on one question
   GET  /api/impact, /api/storm, /api/staging -> single-tool reads (no LLM)
 
+AGENT_DOMAIN picks what /api/chat runs:
+  dallas (default)  -> ADK agent on the Dallas tools, trust layer around it (agent/dallas_adk.py)
+  hurricane         -> the original plain loop on the stub hurricane tools (agent/loop.py)
+
 Run from backend/:  uvicorn app:app --reload --port 8001
 """
 
 import logging
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -33,10 +38,25 @@ from agent.tools import run_tool  # noqa: E402
 logging.basicConfig(level=logging.INFO)
 
 
+DOMAIN = os.getenv("AGENT_DOMAIN", "dallas").strip().lower()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Fail loudly: a bad model config or missing key stops the server here.
-    app.state.llm = build_llm()
+    # Fail loudly: a bad model config, missing key or missing data stops the server here.
+    if DOMAIN == "dallas":
+        from agent.dallas_adk import build_agent, build_model, check_model, model_label
+        from dallas import store
+        store.load_all()
+        model = build_model()
+        check_model(model)
+        app.state.agent = build_agent(model)
+        app.state.model_label = model_label(model)
+    elif DOMAIN == "hurricane":
+        app.state.llm = build_llm()
+        app.state.model_label = app.state.llm.model
+    else:
+        raise RuntimeError(f"AGENT_DOMAIN must be 'dallas' or 'hurricane', got {DOMAIN!r}")
     app.state.judge = build_judge()
     yield
 
@@ -56,9 +76,9 @@ class ChatRequest(BaseModel):
 
 @app.get("/api/health")
 def health(request: Request):
-    model = request.app.state.llm.model
+    model = request.app.state.model_label
     judge = request.app.state.judge
-    return {"model": model, "mock": model == "mock", "judge": judge.model if judge else None}
+    return {"model": model, "mock": model == "mock", "judge": judge.model if judge else None, "domain": DOMAIN}
 
 
 @app.get("/api/overview")
@@ -88,6 +108,9 @@ def overview(max_trucks: int | None = Query(None, ge=0),
 @app.post("/api/chat")
 def chat(body: ChatRequest, request: Request):
     history = [h.model_dump() for h in body.history]
+    if DOMAIN == "dallas":
+        from agent.dallas_adk import run_dallas_agent
+        return run_dallas_agent(body.message, history, request.app.state.agent, request.app.state.judge)
     return run_agent(body.message, history, request.app.state.llm, request.app.state.judge)
 
 
