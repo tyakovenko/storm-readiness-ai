@@ -8,8 +8,8 @@ so training uses exactly the transforms the model sees at inference.
     python -m models.build_training_table --out /tmp/t.csv --years 2023 --max-storms 1   # quick check
 
 Inputs (GCS raw/, or data/raw/ locally): hurdat2/*, nri, svi, oni, national/reference/{2024_Gaz_counties_national.txt,
-eaglei_mcc.csv}, national/tree_canopy/tree_canopy_by_county.csv. EAGLE-I per-year CSVs are streamed from figshare
-(item 24237376) and filtered on the fly; nothing large is stored.
+eaglei_mcc.csv}, national/tree_canopy/tree_canopy_by_county.csv, census/EAGLE I/24237376.zip (per-year CSVs
+streamed out of the archive with range reads and filtered on the fly; nothing large is stored).
 
 Approximations (documented, not hidden): wind at a county uses a Rankine-type decay outside the radius of maximum
 wind, v = vmax * (rmw / d) ** 0.5, from the HURDAT2 best-track vmax (already reflects weakening over land). rmw is
@@ -25,7 +25,6 @@ import json
 import logging
 import math
 import os
-import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
@@ -44,9 +43,7 @@ DEFAULT_RMW_NM = 20.0
 WINDOW_BEFORE_H, WINDOW_AFTER_H = 12, 72   # label window around the hours the county was within MAX_DIST_NM
 MIN_ROWS = 300               # fail loudly rather than train on a near-empty table
 
-# EAGLE-I per-year CSVs on figshare (item 24237376). 2014 coverage starts Nov 1.
-EAGLEI_FILES = {2014: 42547717, 2015: 42547822, 2016: 42547825, 2017: 42547828, 2018: 42547879, 2019: 42547885,
-                2020: 42547894, 2021: 42547891, 2022: 42547897, 2023: 44574907, 2024: 53581661, 2025: 62164877}
+# EAGLE-I 2014 coverage starts Nov 1, so 2014 storms mostly drop for lack of labels.
 CONUS_EXCLUDE = {"02", "15", "60", "66", "69", "72", "78"}
 
 
@@ -208,13 +205,25 @@ SEASONS = ["DJF", "JFM", "FMA", "MAM", "AMJ", "MJJ", "JJA", "JAS", "ASO", "SON",
 
 # ---------- labels ----------
 
+EAGLEI_ZIP = "raw/census/EAGLE I/24237376.zip"   # figshare item 24237376, all years, stored uncompressed
+
+
+def open_eaglei_year(year: int):
+    """Stream one year's CSV out of the EAGLE-I archive in our bucket via range reads.
+    Not figshare: it started returning 403 to the Vertex job after one full-year download."""
+    import zipfile
+    from google.cloud import storage
+    from .dataset import DEFAULT_GCS_BUCKET
+    fh = storage.Client().bucket(DEFAULT_GCS_BUCKET).blob(EAGLEI_ZIP).open("rb")
+    z = zipfile.ZipFile(fh)
+    return z.open(f"eaglei_outages_{year}.csv")
+
+
 def eaglei_peaks(year: int, windows: pd.DataFrame) -> pd.DataFrame:
     """Stream one EAGLE-I year and return max customers_out per (storm_id, fips) inside each window."""
-    url = f"https://ndownloader.figshare.com/files/{EAGLEI_FILES[year]}"
     want = set(windows["fips"])
     best: dict[tuple[str, str], tuple[float, int]] = {}
-    req = urllib.request.Request(url, headers={"User-Agent": "storm-readiness-ai/1.0"})
-    with urllib.request.urlopen(req, timeout=600) as resp:
+    with open_eaglei_year(year) as resp:
         reader = pd.read_csv(resp, chunksize=2_000_000, dtype={"fips_code": str}, low_memory=False)
         for chunk in reader:
             out_col = "customers_out" if "customers_out" in chunk.columns else "sum"   # 2023 file uses "sum"
