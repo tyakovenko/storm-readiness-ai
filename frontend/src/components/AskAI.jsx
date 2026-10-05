@@ -201,7 +201,9 @@ export default function AskAI({ open, onClose }) {
         </div>
 
         <p className="rounded bg-warn-bg px-3 py-2 text-[0.85rem] text-warn-text" role="note">
-          Demo data only. Every number comes from stub tools, not a real forecast.
+          {dallas
+            ? "Past-storm numbers are real (NOAA, Dallas 311, EAGLE-I, FEMA, city records). The storm is a planning scenario, not a forecast; estimates are ranges from past storms."
+            : "Demo data only. Every number comes from stub tools, not a real forecast."}
         </p>
 
         <div className="flex min-h-[120px] flex-1 flex-col gap-3 overflow-y-auto" aria-live="polite">
