@@ -76,6 +76,7 @@ class HurricaneToolset:
             "estimate_impact": self.estimate_impact, "get_storm_impacts": self.get_storm_impacts,
             "query_assets": self.query_assets, "plan_shelters": self.plan_shelters, "diff_plans": self.diff_plans,
             "get_enso_context": self.get_enso_context, "retrieve_guidance": self.retrieve_guidance,
+            "get_local_facts": self.get_local_facts,
         }
 
     # ---- helpers ----
@@ -271,6 +272,27 @@ class HurricaneToolset:
                 "what_if": {"exclude_surge_and_floodplain": exclude_surge_and_floodplain, "shelters_closed": after["closed"]},
                 "beds_before": base["beds"], "beds_after": after["beds"], "shelters_removed": after["closed"],
                 "source": "FEMA National Shelter System"}
+
+    def get_local_facts(self, metric: str | None = None, storm_id: str | None = None) -> dict:
+        """Reviewer-published research facts (pack.json `facts`, written by research.publish). Quote and URL sit
+        under `source`, which the trust layer treats as citation: numbers inside a quote can't vouch for a claim."""
+        facts = self.pack.get("facts") or []
+        storms = {s["storm_id"]: s["name"] for s in self._storms()}
+        if storm_id and storm_id not in storms:
+            return {"error": f"Unknown storm_id {storm_id}. Use ids from find_similar_storms."}
+        rows = [{"metric": f["metric"], "value": f["value"], "unit": f["unit"], "qualifier": f["qualifier"],
+                 "place": f.get("place") or self.county, "subject": f.get("subject") or None,
+                 "storm": storms.get(f["storm_id"]) if f.get("storm_id") else None, "as_of": f.get("as_of"),
+                 "verdict": f["verdict"],
+                 "source": {"title": f["source"], "url": f["source_url"], "publisher": f.get("publisher"),
+                            "quote": f["quote"], "corroborating_urls": f.get("corroborating_urls", [])}}
+                for f in facts
+                if (metric is None or f["metric"] == metric) and (storm_id is None or f.get("storm_id") == storm_id)]
+        research = self.pack.get("research") or {}
+        return {"county": self.county, "facts": rows, "metrics_available": sorted({f["metric"] for f in facts}),
+                "reviewed_by": research.get("reviewer"), "approved_utc": research.get("approved_utc"),
+                "note": None if facts else "No researched local facts are published for this county yet.",
+                "gaps": research.get("gaps_reported") or self.pack.get("gaps") or []}
 
     def get_enso_context(self) -> dict:
         return latest_oni()

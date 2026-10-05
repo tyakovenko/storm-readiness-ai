@@ -159,6 +159,37 @@ class PlanDiff(_Strict):
     source: str
 
 
+class LocalFactSource(_Strict):
+    title: str
+    url: str
+    publisher: str | None
+    quote: str
+    corroborating_urls: list[str]
+
+
+class LocalFact(_Strict):
+    metric: str
+    value: int | float | None
+    unit: str
+    qualifier: str
+    place: str
+    subject: str | None
+    storm: str | None
+    as_of: str | None
+    verdict: Literal["verified", "single_source", "conflicting", "unsupported", "unchecked"]
+    source: LocalFactSource
+
+
+class LocalFacts(_Strict):
+    county: str
+    facts: list[LocalFact]
+    metrics_available: list[str]
+    reviewed_by: str | None
+    approved_utc: str | None
+    note: str | None
+    gaps: list[dict]
+
+
 CONTRACTS = {
     "get_storm_alert": StormAlert,
     "find_similar_storms": SimilarStorms,
@@ -169,4 +200,5 @@ CONTRACTS = {
     "diff_plans": PlanDiff,
     "get_enso_context": EnsoContext,
     "retrieve_guidance": Guidance,
+    "get_local_facts": LocalFacts,
 }

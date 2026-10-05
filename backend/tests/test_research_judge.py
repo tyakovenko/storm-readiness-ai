@@ -163,3 +163,31 @@ def test_rate_limit_retried_then_surfaced(monkeypatch):
     import pytest
     with pytest.raises(RuntimeError, match="400"):
         g.json("x")
+
+
+def test_key_metric_needs_unanimous_support():
+    class Flaky(FakeLLM):
+        def json(self, prompt):
+            if prompt.startswith("You check one claim"):
+                self.count += 1
+                return {"label": "supports" if self.count < 3 else "wrong_scope", "reason": "r"}
+            return super().json(prompt)
+    j, _ = judge()
+    j.llm = Flaky()
+    r = j.review_fact(fact(), TARGET)  # shelter_capacity is key
+    assert r.verdict is Verdict.UNSUPPORTED and "after 2 supporting votes" in r.checks[-1].detail
+
+
+def test_non_key_metric_one_vote():
+    j, llm = judge()
+    j.review_fact(fact(metric="shelter_count", unit="shelters", raw="12"), TARGET)
+    assert llm.count == 1
+
+
+def test_json_list_response_unwrapped():
+    from research import judge as J
+    g = J.GeminiCalls.__new__(J.GeminiCalls)
+    g.model, g.cap, g.count, g._sleep = "m", 10, 0, lambda s: None
+    g.client = type("C", (), {"models": type("M", (), {"generate_content": lambda self, **kw:
+                                                         type("R", (), {"text": '[{"value_ref": "N3"}]'})()})()})()
+    assert g.json("x") == {"value_ref": "N3"}

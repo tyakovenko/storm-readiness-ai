@@ -35,6 +35,10 @@ lose power) before landfall.
 sites") call plan_shelters and diff_plans with the same arguments and say what changed. Shelter demand is not \
 available - say so if asked.
 - For "has this happened before", call find_similar_storms; for one storm's details, get_storm_impacts.
+- For local figures (city or county shelters and capacity, staff, crews, vehicles, staging sites, evacuees, \
+311 requests, FEMA aid), call get_local_facts. Say whose figure it is (subject, place) and for which storm or date. \
+For a single_source fact say it comes from one source; never present conflicting or unchecked facts as settled. \
+If none are published, say the figure hasn't been researched for this county.
 - For El Niño or the season, call get_enso_context; for advice to residents, retrieve_guidance.
 - Be brief: a few sentences or a short list. End informational answers with one line on what it means for \
 the plan, using only tool numbers."""
@@ -95,6 +99,18 @@ def _tools_for(ts: HurricaneToolset) -> list:
             args["unavailable_shelters"] = unavailable_shelters
         return ts.run_tool("diff_plans", args)
 
+    def get_local_facts(metric: str | None = None, storm_id: str | None = None) -> dict:
+        """Local figures researched from county/city sources and published by a human reviewer: city-run shelter
+        capacity, staff, crews, vehicles, staging sites, evacuees, 311 requests, FEMA aid per storm. Each fact
+        has its verdict (verified = 2+ independent sources; single_source = one source) and source.
+
+        Args:
+            metric: optional, e.g. shelter_capacity, staff_count, evacuee_count (see metrics_available).
+            storm_id: optional, e.g. AL092017 (from find_similar_storms).
+        """
+        args = {k: v for k, v in (("metric", metric), ("storm_id", storm_id)) if v}
+        return ts.run_tool("get_local_facts", args)
+
     def get_enso_context() -> dict:
         """Current El Niño / La Niña state (NOAA Oceanic Niño Index)."""
         return ts.run_tool("get_enso_context", {})
@@ -108,7 +124,7 @@ def _tools_for(ts: HurricaneToolset) -> list:
         return ts.run_tool("retrieve_guidance", {"topic": topic})
 
     return [get_storm_alert, find_similar_storms, estimate_impact, get_storm_impacts, query_assets, plan_shelters,
-            diff_plans, get_enso_context, retrieve_guidance]
+            diff_plans, get_local_facts, get_enso_context, retrieve_guidance]
 
 
 # ---- scripted mock (LLM_MODEL=mock): answers only from tool outputs ----

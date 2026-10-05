@@ -97,7 +97,8 @@ gcloud run jobs execute storm-research --region=us-central1 --args=-m,research.r
 `objectCreator` can create but not overwrite, and each run writes a new `<run_id>.json`. `--review` re-judging an existing draft writes the same path, so it runs locally (or with objectAdmin on that prefix if needed later).
 - [ ] Fetching from Cloud Run egress (moved from R0).
 - [ ] Headless click-through of the Research pages.
-- [ ] **County agents don't read published research facts yet.** `pack.json` `facts` needs a hurricane tool (e.g. `get_local_facts`) + contract + trust-catalog entries, and the Sources registry (issue #7). Template change → separate step.
+- [x] County agents read published facts: hurricane tool `get_local_facts(metric?, storm_id?)` + `LocalFacts` contract + instruction line (say whose figure, which storm/date; single-source said as such; conflicting/unchecked never stated as settled). Quote + URL under `source` (trust citation key), so numbers inside a quote can't vouch for a claim. Sources registry on pages = issue #7.
+- [x] Judge: key-metric entailment must be unanimous over 3 calls (Harris f3 flipped between runs); JSON list responses unwrapped. Re-judge after typed contract: f8 (utility workers) now unsupported; f7 re-checked by hand: the governor's "250 bed medical shelter" and PBS's "as many as 250 people" area are very likely the same facility → legitimate corroboration, not a false verification.
 
 ### R5: gold-set eval
 - Hand-label the Harris, Miami-Dade and Lee local facts (the `gaps` metrics). Today's packs have **only national data**, so the gold set has to be built first (Taya + Claude, about 1–2 h per county).
@@ -181,5 +182,6 @@ Defaults in brackets accepted by Taya 2026-10-05, encoded in `research/policy.py
 | Phase | Result |
 |---|---|
 | R0 | Judge `gemini-3.1-pro-preview` (alt `gemini-2.5-pro`); search + function tools mix in one ADK agent; grounding redirects resolve via HEAD |
+| R3 (after fixes) | 12/12 caught, 0 false verifications, 0/4 false alarms (gemini-3.1-pro-preview) |
 | R3 | 10/10 caught, 0 false verifications, 0/4 false alarms on all 3 models (at ceiling) |
 | R1 | 58 tests (number kinds/qualifiers/ranges, every layer-1 check pass + fail, by-reference round trip). Known limits: "US 59" reads as a quantity; PDF table cells lose headers (ADR numbers-by-reference) |

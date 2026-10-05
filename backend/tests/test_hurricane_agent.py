@@ -33,7 +33,8 @@ def test_every_tool_matches_its_contract(county):
     _, _, ts = county
     for name, args in [("get_storm_alert", {}), ("find_similar_storms", {}), ("query_assets", {}),
                        ("plan_shelters", {}), ("diff_plans", {"exclude_surge_and_floodplain": False}),
-                       ("get_enso_context", {}), ("retrieve_guidance", {"topic": "evacuation"})]:
+                       ("get_enso_context", {}), ("retrieve_guidance", {"topic": "evacuation"}),
+                       ("get_local_facts", {})]:
         out = ts.run_tool(name, args)
         assert "error" not in out, (name, out)
     storm = ts._storms()[0]["storm_id"]
@@ -92,3 +93,32 @@ def test_storm_name_lee_does_not_collide_with_lee_county():
     names = {n for e in HurricaneToolset("12071").entity_catalog() if e["kind"] == "storm" for n in e["names"]}
     assert "Lee" not in names and "Lee County" not in names
     assert trust.HURRICANE_COUNTY.uncertain_lead_h == 48
+
+
+PUBLISHED = {"metric": "shelter_capacity", "value": 2000, "value_raw": "2,000", "unit": "people", "qualifier": "over",
+             "storm_id": None, "place": "Houston", "subject": "City of Houston", "as_of": "2024",
+             "quote": "City shelters could hold more than 2,000 people; Fair Park opened in 1998.",
+             "source": "AAR", "source_url": "https://x.gov/aar", "publisher": "City of Houston",
+             "verdict": "single_source", "corroborating_urls": []}
+
+
+def test_local_facts_empty_until_published():
+    from agent.hurricane_tools import HurricaneToolset
+    out = HurricaneToolset(FIPS[0]).run_tool("get_local_facts", {})
+    assert out["facts"] == [] and "No researched local facts" in out["note"]
+
+
+def test_local_facts_published_filtered_and_cited():
+    from agent.hurricane_tools import HurricaneToolset
+    ts = HurricaneToolset(FIPS[0])
+    storm = ts._storms()[0]
+    ts.pack = {**ts.pack, "facts": [PUBLISHED, {**PUBLISHED, "metric": "evacuee_count", "value": 1314, "qualifier": "exact",
+                                                "storm_id": storm["storm_id"]}],
+               "research": {"reviewer": "Taya", "approved_utc": "2026-10-05T00:00:00+00:00", "gaps_reported": []}}
+    out = ts.run_tool("get_local_facts", {"metric": "evacuee_count"})
+    assert [f["value"] for f in out["facts"]] == [1314] and out["facts"][0]["storm"] == storm["name"]
+    assert out["reviewed_by"] == "Taya" and out["metrics_available"] == ["evacuee_count", "shelter_capacity"]
+    assert "error" in ts.run_tool("get_local_facts", {"storm_id": "AL999999"})
+    # numbers inside the quote (1998) are citation, not evidence the answer may use
+    nums = trust._numbers_in_output(ts.run_tool("get_local_facts", {}))
+    assert 2000 in nums and 1998 not in nums

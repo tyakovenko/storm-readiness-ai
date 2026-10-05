@@ -139,7 +139,10 @@ class GeminiCalls:
 
     def json(self, prompt: str) -> dict:
         r = self._go(prompt, response_mime_type="application/json")
-        return json.loads(r.text or "{}")
+        out = json.loads(r.text or "{}")
+        if isinstance(out, list):  # the model sometimes wraps the object in a list (Harris run)
+            out = next((x for x in out if isinstance(x, dict)), {})
+        return out if isinstance(out, dict) else {}
 
     def search(self, prompt: str) -> list[str]:
         from google.genai import types
@@ -159,19 +162,29 @@ class Judge:
 
     # ---- layer 2 -------------------------------------------------------------------------------
     def entailment(self, fact: Fact, page: Page, target: Target) -> Check:
+        """Key metrics: "supports" must be unanimous over ENTAILMENT_VOTES_KEY calls; the first other
+        label decides. Non-key metrics: one call."""
         _, where = verify._locate_quote(fact.quote, page.text)
         s, e = where or (0, 0)
         passage = page.text[max(0, s - CONTEXT_CHARS): e + CONTEXT_CHARS]
-        try:
-            out = self.llm.json(ENTAIL_PROMPT.format(claim=_claim(fact, target), url=page.final_url or page.url,
-                                                     passage=passage, labels=" | ".join(ENTAIL_LABELS)))
-            label, reason = out.get("label"), out.get("reason", "")
-        except Exception as e:
-            log.error("entailment call failed for %s: %s", fact.id, e)
-            return Check(layer="entailment", name="entailment", ok=None, detail=f"not graded: {e}")
-        if label not in ENTAIL_LABELS:
-            return Check(layer="entailment", name="entailment", ok=None, detail=f"unparseable label {label!r}")
-        return Check(layer="entailment", name="entailment", ok=label == "supports", detail=f"{label}: {reason}")
+        prompt = ENTAIL_PROMPT.format(claim=_claim(fact, target), url=page.final_url or page.url,
+                                      passage=passage, labels=" | ".join(ENTAIL_LABELS))
+        votes = policy.ENTAILMENT_VOTES_KEY if fact.value is not None and policy.metric(fact.metric).key else 1
+        reason = ""
+        for i in range(votes):
+            try:
+                out = self.llm.json(prompt)
+                label, reason = out.get("label"), out.get("reason", "")
+            except Exception as e:
+                log.error("entailment call failed for %s: %s", fact.id, e)
+                return Check(layer="entailment", name="entailment", ok=None, detail=f"not graded: {e}")
+            if label not in ENTAIL_LABELS:
+                return Check(layer="entailment", name="entailment", ok=None, detail=f"unparseable label {label!r}")
+            if label != "supports":
+                split = f" (after {i} supporting vote{'s' if i != 1 else ''})" if i else ""
+                return Check(layer="entailment", name="entailment", ok=False, detail=f"{label}{split}: {reason}")
+        return Check(layer="entailment", name="entailment", ok=True,
+                     detail=f"supports{f' ({votes}/{votes})' if votes > 1 else ''}: {reason}")
 
     # ---- layer 3 -------------------------------------------------------------------------------
     def _pick(self, fact: Fact, target: Target, page: Page) -> numbers.NumberSpan | None:

@@ -63,6 +63,10 @@ STALE_YEARS = 5
 OFFICIAL_SINGLE_IS_VERIFIED = False  # one official doc -> SINGLE_SOURCE marked official, not VERIFIED
 CONFLICTS_AUTO_RESOLVE = False       # conflicts always go to the reviewer
 MIN_QUOTE_CHARS = 20             # shorter quotes match too easily to tie a value to its claim
+# Layer-2 "supports" on a key metric must hold this many times in a row (one dissent = not supported).
+# The same claim got wrong_scope on one run and supports on the next (Harris f3); false verification is
+# the costly error, so the extra calls are spent only on the path to a pass.
+ENTAILMENT_VOTES_KEY = 3
 MAX_GEMINI_CALLS = 150           # per county run; hitting a cap ends the run with a partial draft, cap shown
 MAX_FETCHES = 40
 MAX_RUN_SECONDS = 900            # wall clock; at the cap the run stops and still writes its partial draft
