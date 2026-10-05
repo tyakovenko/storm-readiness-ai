@@ -78,8 +78,35 @@ class Check:
     detail: str
 
 
+_SMALL = {w: i for i, w in enumerate(
+    "zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen "
+    "sixteen seventeen eighteen nineteen".split())}
+_TENS = {w: 10 * i for i, w in enumerate("_ _ twenty thirty forty fifty sixty seventy eighty ninety".split()) if w != "_"}
+WORD_NUM_RE = re.compile(r"\b(" + "|".join(sorted(_TENS, key=len, reverse=True)) + r")(?:[- ](" +
+                         "|".join(w for w in _SMALL if _SMALL[w] < 10) + r"))?\b|\b(" +
+                         "|".join(sorted(_SMALL, key=len, reverse=True)) + r"|a dozen|dozen)\b", re.IGNORECASE)
+SCALE_RE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*(k|K|thousand|M|million)\b")
+_SCALE = {"k": 1e3, "thousand": 1e3, "m": 1e6, "million": 1e6}
+
+
+def _normalize_numbers(text: str) -> str:
+    """Rewrite "fourteen", "a dozen", "8.8k", "1.2 million" as digits, so a number can't
+    hide from the checks by how it's written. A rounded rendering ("8.8k" for 8,777)
+    then fails like any other number the tools never gave (answers quote exact values)."""
+    def scale(m):
+        v = float(m.group(1).replace(",", "")) * _SCALE[m.group(2).lower()]
+        return f"{v:.0f}" if v.is_integer() else f"{v:g}"
+
+    def words(m):
+        if m.group(1):
+            return str(_TENS[m.group(1).lower()] + (_SMALL[m.group(2).lower()] if m.group(2) else 0))
+        w = m.group(3).lower()
+        return "12" if "dozen" in w else str(_SMALL[w])
+    return WORD_NUM_RE.sub(words, SCALE_RE.sub(scale, text))
+
+
 def _numbers_in_text(text: str) -> set[float]:
-    text = LIST_MARKER_RE.sub("", text)
+    text = LIST_MARKER_RE.sub("", _normalize_numbers(text))
     return {float(m.replace(",", "")) for m in NUMBER_RE.findall(text) if m.replace(",", "")}
 
 
@@ -139,6 +166,53 @@ def _index_numbers(value, catalog: list[dict], bound: dict, free: set) -> None:
         free.update(_numbers_in_output(value))
 
 
+# Unit words an answer attaches to a number -> stems a tool field (its key, a key on
+# its path, a sibling key, or a range's "unit") must contain for the number to count
+# as that kind of quantity. Catches "14 trucks" when 14 is only a district id, and
+# "204 trucks" when 204 is a request count. Number + up to 2 words + unit.
+UNITS = {
+    "truck": (r"trucks?", ("truck", "change")),
+    "bed": (r"beds?", ("bed", "shortfall", "capacity")),
+    "person": (r"people|persons?|guests?", ("guest", "people", "person", "demand", "capacity", "shortfall", "population")),
+    "customer": (r"customers?", ("customer",)),
+    "request": (r"requests?", ("request", "count", "excess", "expected")),
+    "hour": (r"hours?", ("hour", "lead_time")),
+    "inch": (r"inch(?:es)?", ("_in",)),
+    "degF": (r"°F|degrees", ("temp",)),
+    "percent": (r"%|percent", ("pct", "percent")),
+}
+UNIT_QTY_RE = re.compile(r"(?<![\w.])(\d[\d,]*(?:\.\d+)?)\s*(?:[A-Za-z-]+\s+){0,2}?("
+                         + "|".join(p for p, _ in UNITS.values()) + r")(?![\w])", re.IGNORECASE)
+
+
+def _numbers_by_unit(outputs) -> dict[str, set[float]]:
+    """Numeric leaves of the tool outputs, grouped by the units their context allows."""
+    found = {u: set() for u in UNITS}
+
+    def walk(value, path: tuple, siblings: tuple, unit_tag: str):
+        if isinstance(value, dict):
+            keys = tuple(k for k in value if k not in CITATION_KEYS)
+            tag = value.get("unit", unit_tag) if isinstance(value.get("unit"), str) else unit_tag
+            for k in keys:
+                walk(value[k], path + (k,), keys, tag)
+        elif isinstance(value, list):
+            for v in value:
+                walk(v, path, siblings, unit_tag)
+        elif isinstance(value, (int, float)) and not isinstance(value, bool):
+            context = " ".join(path + siblings + (unit_tag,)).lower()
+            for u, (_, stems) in UNITS.items():
+                if any(st in context for st in stems):
+                    found[u].update({float(value), abs(float(value))})
+        elif isinstance(value, str):
+            # Text fields carry their own units ("5% of the vulnerable population",
+            # "175 TPW field staff on two 12-hour shifts").
+            for m in UNIT_QTY_RE.finditer(_normalize_numbers(value)):
+                unit = next(u for u, (pat, _) in UNITS.items() if re.fullmatch(pat, m.group(2), re.IGNORECASE))
+                found[unit].add(float(m.group(1).replace(",", "")))
+    walk(outputs, (), (), "")
+    return found
+
+
 NAME_WITH_DIGITS_RE = re.compile(r"\b(?:Council )?District \d+\b|\bShelter \d+\b")
 
 
@@ -176,7 +250,17 @@ def check_numbers(answer: str, tool_outputs: list[dict], question: str,
             misattributed.append(f"{n:g} next to {', '.join(e['label'] for e in named)} belongs to {owner}")
     if misattributed:
         return Check(name, False, True, "Number attributed to the wrong place: " + "; ".join(misattributed))
-    return Check(name, True, True, "Every number traces back to a tool output for the place it is next to")
+
+    wrong_unit = []
+    by_unit = _numbers_by_unit(tool_outputs)
+    for m in UNIT_QTY_RE.finditer(_normalize_numbers(masked)):
+        n = float(m.group(1).replace(",", ""))
+        unit = next(u for u, (pat, _) in UNITS.items() if re.fullmatch(pat, m.group(2), re.IGNORECASE))
+        if n not in by_unit[unit] | asked:
+            wrong_unit.append(f"{n:g} {m.group(2)} (no tool gives {n:g} as a {unit} value)")
+    if wrong_unit:
+        return Check(name, False, True, "Number used with the wrong unit, or computed: " + "; ".join(wrong_unit))
+    return Check(name, True, True, "Every number traces back to a tool output for the place and unit it is used with")
 
 
 def _strings_in_output(value) -> set[str]:
@@ -292,7 +376,7 @@ def _ranges(value) -> list[dict]:
     return []
 
 
-def check_confidence_dallas(answer: str, tool_outputs: list[dict]) -> Check:
+def check_confidence_dallas(answer: str, tool_outputs: list[dict], catalog: list[dict] | None = None) -> Check:
     name = "confidence_fits_lead_time"
     alert = next((o for o in reversed(tool_outputs) if "lead_time_h" in o and "headline" in o), None)
     if alert is None:
@@ -304,8 +388,19 @@ def check_confidence_dallas(answer: str, tool_outputs: list[dict]) -> Check:
     # A history-based estimate quoted by its median alone hides how thin it is.
     # Only a clause that uses the range's unit counts as quoting it: "30 trucks"
     # is not District 2's median of 30 transport requests.
-    answer_nums = _numbers_in_text(answer)
-    clauses = [(c, _numbers_in_text(c)) for c in CLAUSE_SPLIT_RE.split(answer)]
+    # A past storm's own figure on that storm's line is history, not the estimate,
+    # even when it equals the median ("Feb 2023: 204 excess requests"; live run 2026-10-04).
+    # Only storms: district numbers are the estimates themselves.
+    catalog = catalog or []
+    bound, _ = {}, set()
+    _index_numbers(tool_outputs, catalog, bound, set())
+    storms = [e for e in catalog if e["kind"] == "storm"]
+    answer_nums = _numbers_in_text(_mask_names(answer, catalog))
+    clauses = []
+    for line in answer.split("\n"):
+        history = set().union(set(), *(bound.get(e["key"], set()) for e in _mentions(line, storms)))
+        for c in CLAUSE_SPLIT_RE.split(line):
+            clauses.append((c, _numbers_in_text(_mask_names(c, catalog)) - history))
     for r in _ranges(tool_outputs):
         if r["low"] == r["high"]:
             continue
@@ -326,7 +421,7 @@ def run_checks(answer: str, calls: list[str], tool_outputs: list[dict], question
                profile: Profile = HURRICANE) -> list[Check]:
     """Deterministic checks. The actionable judge runs separately, on the final answer only."""
     confidence = (check_confidence(answer, tool_outputs, catalog) if profile is HURRICANE
-                  else check_confidence_dallas(answer, tool_outputs))
+                  else check_confidence_dallas(answer, tool_outputs, catalog))
     return [
         check_numbers(answer, tool_outputs, question, catalog),
         check_entities(answer, tool_outputs, catalog, profile),

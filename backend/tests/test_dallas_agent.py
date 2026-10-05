@@ -90,9 +90,52 @@ def test_district_names_are_not_read_as_numbers():
     assert all(c.passed is not False for c in res), [c.detail for c in res if c.passed is False]
 
 
-def test_number_from_a_field_name_is_still_caught():
+def test_outage_threshold_is_a_citable_value_and_other_thresholds_are_not():
+    # Live run: Gemini read "10,000" out of the old key name hours_over_10k_out. The threshold is
+    # now a value (threshold_customers_out), so 10,000 is citable; an invented threshold is not.
     alert, impacts = T.run_tool("get_storm_alert", {}), T.run_tool("get_storm_impacts", {"storm_id": "uri_2021"})
-    res = trust.run_checks("Uri kept more than 10,000 customers out for 109.5 hours.", ["get_storm_alert", "get_storm_impacts"],
-                           [alert, impacts], "What happened during Uri?", T.entity_catalog(), profile=trust.DALLAS)
+    calls, q = ["get_storm_alert", "get_storm_impacts"], "What happened during Uri?"
+    ok = trust.run_checks("Winter Storm Uri kept more than 10,000 customers out for 109.5 hours.", calls,
+                          [alert, impacts], q, T.entity_catalog(), profile=trust.DALLAS)
+    assert next(c for c in ok if c.name == "numbers_match_tools").passed is True
+    bad = trust.run_checks("Winter Storm Uri kept more than 20,000 customers out for 109.5 hours.", calls,
+                           [alert, impacts], q, T.entity_catalog(), profile=trust.DALLAS)
+    nums = next(c for c in bad if c.name == "numbers_match_tools")
+    assert nums.passed is False and "20000" in nums.detail
+
+
+def test_computed_total_matching_an_id_is_caught():
+    # Live Gemini 2026-10-04: "14 total sanding trucks" = 7 + 7; 14 existed only as a district id.
+    outs = [T.run_tool(n, {}) for n in ("get_storm_alert", "plan_response")]
+    answer = ("For the plan, this means staging the heaviest response of 14 total sanding trucks "
+              "in District 2 and District 14 while maintaining 1,640 known shelter beds.")
+    res = trust.run_checks(answer, ["get_storm_alert", "plan_response"], outs, "How should we prepare?",
+                           T.entity_catalog(), profile=trust.DALLAS)
     nums = next(c for c in res if c.name == "numbers_match_tools")
-    assert nums.passed is False and "10000" in nums.detail
+    assert nums.passed is False and "14 trucks" in nums.detail.replace("total sanding ", "")
+
+
+@pytest.mark.parametrize("text, value", [("fourteen trucks", 14.0), ("twenty-one people", 21.0),
+                                         ("8.8k customers", 8800.0), ("1.2 million", 1200000.0), ("a dozen", 12.0)])
+def test_numbers_written_as_words_are_read(text, value):
+    assert value in trust._numbers_in_text(text)
+
+
+def test_dallas_planted_errors_all_caught_no_false_alarms():
+    from evals.dallas_planted_errors import run
+    res = run()
+    should = [r for r in res["rows"] if r["expected"] != "expected_miss"]
+    assert all(r["caught"] == r["planted"] > 0 for r in should), should
+    assert res["false_alarms"] == 0
+
+
+def test_past_storm_figure_equal_to_a_median_is_history_not_the_estimate():
+    # Live Gemini 2026-10-04: ice_2023's 204 excess requests == estimate median 204.
+    outs = [T.run_tool(n, {}) for n in ("get_storm_alert", "find_similar_storms", "estimate_demand")]
+    calls = ["get_storm_alert", "find_similar_storms", "estimate_demand"]
+    hist = "* February 2023 ice storm: peak 8,777 customers without power and 204 excess transport 311 requests."
+    res = trust.run_checks(hist, calls, outs, "Has this happened before?", T.entity_catalog(), profile=trust.DALLAS)
+    assert next(c for c in res if c.name == "confidence_fits_lead_time").passed is True
+    est = "Plan for about 204 storm-driven street requests."
+    res = trust.run_checks(est, calls, outs, "How bad?", T.entity_catalog(), profile=trust.DALLAS)
+    assert next(c for c in res if c.name == "confidence_fits_lead_time").passed is False

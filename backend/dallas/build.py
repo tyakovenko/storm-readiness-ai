@@ -159,6 +159,7 @@ def build_outages(storm: dict) -> dict | None:
     ev0 = _d(storm["event"][0])
     ev1 = _d(storm["event"][1]) + timedelta(days=2)  # restoration tail
     peak, peak_t, hours_over = 0, None, 0
+    threshold = 10000  # customers out; named as a value so answers can cite it (not a key name)
     with open(f, newline="") as fh:
         for r in csv.DictReader(fh):
             t = datetime.fromisoformat(r["run_start_time"])
@@ -166,11 +167,12 @@ def build_outages(storm: dict) -> dict | None:
                 n = int(float(r["customers_out"] or 0))
                 if n > peak:
                     peak, peak_t = n, r["run_start_time"]
-                if n >= 10000:
+                if n >= threshold:
                     hours_over += 0.25  # 15-minute snapshots
     return {"peak_customers_out": peak, "peak_time": peak_t,
             "peak_pct_customers": round(100 * peak / CUSTOMERS_TOTAL, 2),
-            "hours_over_10k_out": hours_over, "customers_total": CUSTOMERS_TOTAL,
+            "threshold_customers_out": threshold, "hours_over_threshold": hours_over,
+            "customers_total": CUSTOMERS_TOTAL,
             "source": "EAGLE-I (ORNL), 15-min county snapshots"}
 
 
