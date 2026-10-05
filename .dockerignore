@@ -1,0 +1,14 @@
+# Never ship secrets, local data, or internal notes in the image.
+.env
+**/.env
+.git
+**/.venv
+**/__pycache__
+**/node_modules
+frontend/dist
+data/
+presentation/
+project-log.md
+.claude/
+docs/
+**/*.pdf

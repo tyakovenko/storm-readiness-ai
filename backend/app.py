@@ -138,3 +138,11 @@ def get_staging(max_trucks: int | None = None):
     """Return resource staging allocations and shelter bed demand."""
     from agent.tools import solve_staging
     return solve_staging(max_trucks=max_trucks)
+
+
+# Production: serve the built React app from the same origin as /api (no CORS).
+# Mounted last so /api routes win. Absent in dev, where Vite serves the UI.
+STATIC_DIR = Path(os.getenv("STATIC_DIR", Path(__file__).resolve().parent.parent / "frontend" / "dist"))
+if STATIC_DIR.is_dir():
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="ui")
