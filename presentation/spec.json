@@ -1,0 +1,20 @@
+{
+  "deck_name": "storm-readiness-pitch",
+  "report_path": "docs/proposal.md",
+  "figures": ["figures/mvp_compliance.png"],
+  "tables": [
+    {"path": "proposal.md#2.1", "context_doc": "MVP compliance table, 10 rows, 3 highlighted (NL interface, why, sources)"}
+  ],
+  "theme": "default",
+  "audience": "Hackathon sponsors, mentors, judges (scoring: 30 relevance, 20 impact, 20 technical/agentic, 10 usability, 20 presentation)",
+  "target_slides": 13,
+  "storyline": {
+    "situation": "A hurricane forecast tells you where the storm goes, not what it costs a given county in outages, shelter demand, or staging needs.",
+    "problem": "Large operators run 24/7 ops centers linking forecast to logistics; most counties and community organizations don't. Staging decisions are made under uncertainty with no tested, open tool.",
+    "recommendation": "A pipeline that mirrors the sponsor's own Detection-to-Human-Decision flow: NHC-forecast-error scenarios, an XGBoost impact model backtested on 10 years of EAGLE-I outage data, a published stochastic-programming staging optimizer, and an AI agent whose every output is checked by a trust layer before a human sees it."
+  },
+  "storyline_approved": true,
+  "storyline_approval_note": "User request specified exact slide topics, section references, and phrasing requirements in the task brief itself, constituting approval in a single-pass subagent invocation.",
+  "completed_stages": ["intake", "outline", "render_loop", "slide-auditor", "notes"],
+  "audit_notes": "11 heuristic auditor flags reviewed and cleared: 7 are 2-line header_title wraps against the nominal 0.75in box height (font_headline_size 26 on long assertion headlines) -- verified by geometry that all end ~1.0-1.05in, before CONTENT_TOP (1.3in) or the diagram oval_y (2.2-2.5in), so no actual collision with slide content. 3 are 'bullets on slide' counts on three-col/two-col slides (2, 4, 8, 12) where the flat per-slide sum exceeds 4 but each column/block individually carries <=3-4 short items, matching the layout_three_col/layout_two_col primitives' intended use for parallel short lists. 1 is a verb-detection heuristic miss on slide 12 ('Four workstreams run in parallel toward an Oct 5 build freeze' -- has a verb, 'run')."
+}

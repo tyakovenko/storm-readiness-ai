@@ -1,0 +1,60 @@
+[
+  {"index": 1, "type": "title", "headline": "Storm Readiness AI", "primary_visual": "none",
+   "content_summary": "AI-powered storm preparedness & response intelligence. Team of 4, hackathon submission.",
+   "source_material": "proposal.md header, S1", "notes_context": "Opening framing: this is a decision-support system, not a forecast model."},
+
+  {"index": 2, "type": "content", "headline": "Forecasts say where the storm goes -- not what it costs your county", "primary_visual": "shapes",
+   "content_summary": "Three user types, one plan: emergency managers (own staging decisions), organizations (resource needs + facilities at risk), residents (plain-language alerts). Key takeaway: most counties/nonprofits lack the 24/7 ops-center capacity large operators have.",
+   "source_material": "proposal.md S2", "notes_context": "S2 Problem and users. Quote 'staging decisions are made under forecast uncertainty' and the 24/7 ops center gap."},
+
+  {"index": 3, "type": "diagram", "headline": "The pipeline mirrors the sponsor's own seven-stage design, stage for stage", "primary_visual": "shapes",
+   "content_summary": "Detection to Forecast to Impact Prediction to Risk Assessment to Resource Analysis to Recommended Actions to Human Decision. Key takeaway: every advisory re-runs all seven stages automatically; a human still approves.",
+   "source_material": "proposal.md S2.1 (demo flow / architecture mirror), S6", "notes_context": "Explicitly call out this is sponsor's own suggested Big Idea flow, matched stage for stage -- this is a relevance signal for judges."},
+
+  {"index": 4, "type": "content", "headline": "All 10 MVP-required components ship -- three are the ones teams skip", "primary_visual": "shapes",
+   "content_summary": "NL interface (chat backed by agent tool-calling), why an area is high-risk (feature importance in plain language), underlying data/sources (provenance panel). Key takeaway: full 10-row compliance table in appendix.",
+   "source_material": "proposal.md S2.1", "notes_context": "Sponsor brief lists 10 required MVP components; none deferred. These 3 are commonly missed by other teams -- emphasize as a scoring differentiator (relevance + usability)."},
+
+  {"index": 5, "type": "diagram", "headline": "Each job goes to the tool that's actually good at it", "primary_visual": "shapes",
+   "content_summary": "Hazard scenarios (NHC forecast-error AR(1)) to Impact model (XGBoost, 10yr EAGLE-I) to Staging optimizer (2-stage stochastic, Bhattarai and Song/Clemson) to AI agent (orchestrates, model-agnostic). Key takeaway: the one failure we can't accept is an LLM inventing quantities in a life-safety setting -- this design rules it out.",
+   "source_material": "proposal.md S4, S4.1-S4.4, S5", "notes_context": "Core technical approach slide. Mention Bhattarai & Song is a published Clemson method, reused for scenario generation and staging, extended with an outage-driven resource layer."},
+
+  {"index": 6, "type": "table", "headline": "Every AI output is checked against the models before a human ever sees it", "primary_visual": "shapes",
+   "content_summary": "4 checks: numbers match models, confidence fits lead time, required steps followed, actionable (LLM-as-judge). Key takeaway: this is the differentiator, not a bolt-on.",
+   "source_material": "proposal.md S4.5", "notes_context": "Trust layer is explicitly the key differentiator per task brief. Emphasize LLM-as-judge is validated against human labels before its scores are trusted."},
+
+  {"index": 7, "type": "content", "headline": "Runs end-to-end on GCP's serverless tier -- no BigQuery required", "primary_visual": "shapes",
+   "content_summary": "Left: simplified data flow (sources to models to agent/trust to app). Right: Cloud Storage/DuckDB, Cloud Run, Firestore, Cloud Scheduler, Vertex AI or self-hosted Gemma. Key takeaway: the LLM is a config setting, not an architecture decision.",
+   "source_material": "proposal.md S6, S7", "notes_context": "Model-agnostic: Gemini, Claude via Vertex, or open-weights Gemma via vLLM on Cloud Run GPU. No BigQuery needed -- data is small once aggregated."},
+
+  {"index": 8, "type": "content", "headline": "Every data source is public, grouped into three categories", "primary_visual": "shapes",
+   "content_summary": "Hazard & forecast (NHC advisories/GIS, forecast-error stats, HURDAT2); impact & vulnerability (EAGLE-I 2014-2024, Census/ACS, CDC SVI, FEMA NRI); assets, guidance & phase-2 (HIFLD/OSM facilities, FEMA distribution centers, Ready.gov guidance; phase-2: NFHL, Overture roads, HIFLD grid). Key takeaway: all public, access confirmed before dependency.",
+   "source_material": "proposal.md S8", "notes_context": "Mention EAGLE-I coverage varies by utility/year, normalized by covered customers. Considered-and-not-used sources (S8.1) available if asked."},
+
+  {"index": 9, "type": "table", "headline": "Backtested leave-one-storm-out against ten years of real outages, never on hindsight", "primary_visual": "shapes",
+   "content_summary": "4 questions: impact model MAE/recall vs wind-threshold and NRI-only baselines; staging unmet demand vs single-track and shelter-only baselines; scenario calibration; trust layer mismatch/block/approve rates. Key takeaway: candidate storms Florence (reproduction), Ian, Helene, Milton.",
+   "source_material": "proposal.md S10", "notes_context": "Florence is the credibility step (reproduces Bhattarai & Song's own case study) before generalizing to Ian/Helene/Milton. Archived forecasts used as inputs, not best tracks, to avoid hindsight leakage."},
+
+  {"index": 10, "type": "content", "headline": "Multi-hazard is scoped and data-ready -- deliberately not built for the MVP", "primary_visual": "none",
+   "content_summary": "MVP ships one impact model, backtested on 10 years of real data, not several untested models by Oct 5. Flood/road/transit are the sponsor's own phase-2 examples; data already scoped (NFHL, Overture, HIFLD). Next model after MVP follows same leave-one-storm-out discipline. Key takeaway: deferred by design, not by gap.",
+   "source_material": "proposal.md S11", "notes_context": "This directly answers a likely judge question: why only power outages? Answer is discipline, not limitation -- one rigorously tested model beats three untested ones under an 11-day timeline."},
+
+  {"index": 11, "type": "content", "headline": "Designed to keep running every hurricane season at near-zero idle cost", "primary_visual": "none",
+   "content_summary": "Idle: Cloud Scheduler polls NHC every 6h, services scale to zero. Auto-activates when a storm threatens US land. Public post-storm scorecard published after every storm. Pilot partner sought for 2027 season. Key takeaway: continuously re-tested against real events.",
+   "source_material": "proposal.md S13", "notes_context": "Speaks to impact + presentation scoring -- this isn't a one-off hackathon demo, it's built to operate."},
+
+  {"index": 12, "type": "content", "headline": "Eleven days to build freeze, four workstreams running in parallel", "primary_visual": "shapes",
+   "content_summary": "Timeline: Sep24-25 proposal/architecture; Sep26-29 pipeline+scenarios+baseline+agent skeleton; Sep30-Oct2 backtest+optimizer+trust layer; Oct3-5 end-to-end replay, build freeze; Oct5-9 demo video, submit. Workstreams A data/impact, B scenarios/optimization, C agent/trust, D app/accessibility/demo. Key takeaway: build freeze Oct 5, submit by Oct 9 9PM PT.",
+   "source_material": "proposal.md S12", "notes_context": "4-person team, 1 workstream owner each (owners TBD per proposal header)."},
+
+  {"index": 13, "type": "content", "headline": "Four sponsor decisions would materially change what we can build", "primary_visual": "none",
+   "content_summary": "Proprietary models + Vertex billing coverage; GPU quota (>=1 NVIDIA L4) for the open-weights path; BigQuery disabled vs. unbudgeted; post-hackathon hosting (whose GCP project). Key takeaway: system is model-agnostic and works either way -- these answers shape scope, not feasibility.",
+   "source_material": "proposal.md S14 (items 1,2,4,5,8)", "notes_context": "Full list has 9 questions (S14); these 4 are the ones the task brief asked to foreground. Scope/data/repo questions (3,6,7,9) available in Q&A if asked."},
+
+  {"index": 14, "type": "section", "headline": "Appendix", "primary_visual": "none",
+   "content_summary": "Section divider.", "source_material": "n/a", "notes_context": "Appendix: full MVP compliance table for Q&A defense."},
+
+  {"index": 15, "type": "appendix", "headline": "Full MVP compliance: all 10 required components, mapped to spec section", "primary_visual": "table",
+   "content_summary": "10-row table, 3 rows highlighted (NL interface, why-explanation, sources panel).",
+   "source_material": "proposal.md S2.1", "notes_context": "Backup for Q&A -- judges may ask to see the full mapping rather than just the 3 highlighted items."}
+]
