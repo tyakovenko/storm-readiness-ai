@@ -55,6 +55,7 @@ CONFLICTS_AUTO_RESOLVE = False       # conflicts always go to the reviewer
 MIN_QUOTE_CHARS = 20             # shorter quotes match too easily to tie a value to its claim
 MAX_GEMINI_CALLS = 150           # per county run; hitting a cap ends the run with a partial draft, cap shown
 MAX_FETCHES = 40
+MAX_RUN_SECONDS = 900            # wall clock; at the cap the run stops and still writes its partial draft
 
 # County sites that aren't on .gov (checked by hand per county; add when a new county is targeted).
 OFFICIAL_DOMAINS = {"leegov.com", "hctx.net", "readyharris.org"}

@@ -28,6 +28,16 @@ export function fetchHealth() {
   return fetch("/api/health").then(readJSON);
 }
 
+// Research drafts (read-only): runs list, and one draft with the judge's verdicts.
+export function fetchResearchRuns() {
+  return fetch("/api/research").then(readJSON);
+}
+
+export function fetchResearchRun(hazard, fips, runId) {
+  const p = [hazard, fips, runId].map(encodeURIComponent).join("/");
+  return fetch(`/api/research/${p}`).then(readJSON);
+}
+
 export function chatUrl(agentId) {
   return agentId ? `/api/agents/${encodeURIComponent(agentId)}/chat` : "/api/chat";
 }

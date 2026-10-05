@@ -57,6 +57,7 @@ class FactDraft(BaseModel):
     value_ref: str | None = None  # None = the fact states something exists, with no number
     quote: str | None = None      # only for value_ref None; otherwise code takes the sentence around the span
     storm_id: str | None = None
+    place: str | None = None      # the county (default) or a city in it, when the figure is the city's
     as_of: str | None = None      # date the figure refers to, not the publication date
     source: str                   # title
     source_url: str
@@ -74,6 +75,9 @@ class Fact(BaseModel):
     # How the source phrased the number, read by code: "over 200" -> value 200, qualifier "over".
     qualifier: Qualifier = "exact"
     storm_id: str | None = None
+    # Whose figure it is: None = the county. A city figure (Houston's shelters) is a fact about the city;
+    # stating it as the county's is the scope error the judge rejects.
+    place: str | None = None
     as_of: str | None = None
     quote: str = Field(min_length=1)
     source: str
@@ -133,6 +137,7 @@ class DraftPack(BaseModel):
     facts: list[Fact] = []
     gaps: list[Gap] = []
     reviews: list[FactReview] = []
+    run_log: dict = {}  # model/tool call counts, rejected submissions with reasons, fetch errors, caps hit
 
     @model_validator(mode="after")
     def _ids(self):

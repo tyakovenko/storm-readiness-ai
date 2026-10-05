@@ -14,8 +14,8 @@ Target (county, hazard, aliases, cities, storms)
 Number pass (numbers.py): spans N1..Nk, page tagged ⟦Nk⟧ (code, no LLM)
   │
   ▼
-Researcher (ADK, gemini-3.8-flash)        tools: search sub-agent (Google Search), socrata_catalog,
-  │  FactDrafts with value_ref (never a value)    arcgis_hub_search, legistar_search, fetch_source
+Researcher (ADK, gemini-3.8-flash)        tools: google_search, read_source, find_in_source, submit_fact,
+  │  FactDrafts with value_ref (never a value)    report_gap, arcgis_search, legistar_search
   ▼
 Judge  L1 fixed checks (verify.py)  ──fail──► unsupported / unchecked
   │    L2 entailment (Pro)          ──fail──► unsupported
@@ -51,39 +51,33 @@ Probe scripts are in the session scratchpad, not the repo.
 **Gate:** ✅ 58 research tests; full suite 183 passed, 3 skipped (network-free). Note: `backend/.venv` is incomplete (no numpy/google), so the full suite was run in a fresh venv from `requirements.txt`.
 
 ### R2: fetch + researcher agent
-- `research/fetch.py`: `fetch_source(url) -> Page(final_url, content_type, text, status, retrieved)`. HTML → text (stdlib parser), PDF → text (**adds pypdf: own ADR before merging**). Records redirects. Size and time caps. Errors return a Page with `error`, never raise into the agent silently.
-- `research/tools.py`: `socrata_catalog(domain, q)`, `arcgis_hub_search(q, bbox)`, `legistar_search(client, q)`, plus the search sub-agent.
-- `research/researcher.py`: ADK agent. Instruction is built from `Target` and the pack's `gaps` (the gaps list is the to-do list). Output is validated against `Fact` with pydantic. Invalid facts are dropped and **counted in the run log**.
-- `research/run.py`: `python -m research.run --fips 48201 --hazard hurricane [--push]`. Writes a DraftPack locally and, with `--push`, to GCS.
+- `research/fetch.py`: `Fetcher` (per role, cache + cap) → `Page`. HTML → text (scripts dropped, table cells separated by `|`). JSON → one `KEY: value; …` line per record (ArcGIS features). Errors are returned as `Page.error`. HTML under 200 chars is flagged as a JS-rendered page. **PDFs → error until issue #8** (layout- and table-preserving extraction). No new dependency.
+- `research/numbers.py` addition: field-aware kinds for structured rows (`CAPACITY: 1200` quantity, `OBJECTID`/`LAT`/`ZIP` label, `YEAR_*` year).
+- `research/tools.py` `ResearchSession`: `read_source` (tagged, chunked), `find_in_source`, `submit_fact` (by reference; runs the layer-1 checks on the researcher's copy and returns refusals with reasons, all logged), `report_gap`, `arcgis_search` (+ `query_url` for feature layers), `legistar_search` (only configured clients).
+- `research/targets.py`: Target from the published pack (storms, gaps) + per-county config (aliases, cities, portals). Portals probed 2026-10-05: Legistar only `miamidade`; **no Socrata for the three counties → Socrata tool dropped** (add with the Dallas/winter target).
+- `research/researcher.py`: ADK `LlmAgent` (google_search + tools in one agent, per R0). `CallCap` before_model_callback stops at the cap with a partial draft. `run_log` in the DraftPack.
+- `research/run.py`: CLI, checks the model at start, writes `data/processed/packs_draft/{hazard}/{fips}/{run_id}.json`, `--push` to GCS.
+- Tests: `tests/test_research_tools.py` (offline).
 
-**Gate:** offline tests with recorded pages (fixtures) for each tool. One live run on Harris produces ≥ 10 schema-valid facts, every one with a resolvable URL.
+**Gate:** offline tests pass. One live run on Harris → ≥ 10 schema-valid facts, every one with a resolvable URL.
 
-### R3: judge L2 + L3 + planted-error eval
-- `research/judge.py`: `review(draft) -> DraftPack` with reviews filled in. L1 → L2 → L3 per fact, stopping at the first failure. Every call is logged (model, tokens, latency).
-- `backend/evals/research_planted_errors.py`: start from a correct draft and inject one error per kind:
+### R3: judge L2 + L3 + planted-error eval ✅ 2026-10-05
+- `research/judge.py` `Judge`: L1 (`verify`, own Fetcher) → L2 entailment (passage around the quote + claim in words; labels supports / wrong_metric / wrong_scope / wrong_time / not_enough; unparseable → UNCHECKED) → L3 for key metrics: own Google Search (grounded), candidate pages from other domains (max 3), **model picks a number tag, code compares** (±2 %). Copies are detected by in-order overlap ≥ 0.9 of the shorter sentence (a wire copy's new lead-in defeats plain similarity). A conflict always → CONFLICTING. `GeminiCalls` has its own call cap.
+- **Added `place` to facts** (eval finding): a city's own figure (Houston shelters) is a fact about the city. Without it, every city figure was a scope error. The fixed check requires the place to be the county or one of its listed cities, and named on the page.
+- `evals/research_planted_errors.py`: 10 planted errors + 4 controls on synthetic pages. Only web search is stubbed.
+- `tests/test_research_judge.py`: verdict logic with a scripted model.
 
-| Kind | Example |
-|---|---|
-| wrong value | 1,314 → 1,341 |
-| wrong unit | beds → people/day |
-| wrong county | neighboring county's shelter |
-| applicant county | FEMA PA HQ county as damage county |
-| aggregate vs unit | citywide total stated as one department |
-| wrong storm / year | Ike figure labeled Harvey |
-| quote not in page | paraphrase / invented quote |
-| number only in citation | "FOX 4" |
-| stale | 2012 capacity stated as current |
-| syndicated "second source" | AP copy counted as independent |
+**Gate:** ✅ all three models 10/10 caught, 0 false verifications, 0/4 false alarms (table below). **The eval is at ceiling, so it doesn't pick the model.** The judge stays `gemini-3.1-pro-preview` (strongest available, as specified), but there's no evidence yet that it beats 3.8-flash. Harder cases come from real drafts (R5): a number in a table row, two figures in one sentence across two storms, a figure from a plan vs an after-action report.
 
-**Gate:** every planted error is caught (not `verified`); false alarms on the correct facts are reported (target ≤ 10 %). Results table in this doc.
-
-### R4: job + API + Research page
-- Cloud Run job `storm-research` (same image, entrypoint `research.run`), SA with write access to `processed/packs_draft/` only.
-- API: `POST /api/research` (start; returns run_id), `GET /api/research/{run_id}` (status + DraftPack), `GET /api/research` (runs list).
-- UI: Research page (hash route `#/research`, a card on the landing page). Facts table sorted by verdict, each with quote, source link, the failed check's detail, and accept/reject. Labeled "draft, not published".
-- Publish: `python -m research.publish --run <id>` merges the accepted facts into the pack, sets `status`, updates `index.json`. A UI Approve button only once the API has auth.
-
-**Gate:** headless click-through of the Research page with no errors; a published test pack appears in `/api/agents` and its chat answers from it.
+### R4: job + API + Research page (in progress)
+- [x] `research/store.py` (local, then GCS; path parts validated), `research/run.py` (research → save → judge → save; `--review RUN_ID` re-judges; `--no-judge`), wall-clock cap `MAX_RUN_SECONDS` with a partial draft instead of a kill.
+- [x] `research/publish.py`: reviewer, `--accept verified,single_source`, `--reject ids`, `--also ids` (override, flagged). Writes `pack.json` `facts` + `research` provenance; `--push`.
+- [x] API: `GET /api/research`, `GET /api/research/{hazard}/{fips}/{run_id}` (404 missing, 503 store down).
+- [x] UI: `#/research` (runs) and `#/research/<hazard>/<fips>/<run_id>` (facts sorted conflicting → single → unchecked → verified → unsupported, verdict filters, quote + checks per fact, gaps, run log, partial banner). Landing card links to it. No chat (ADR).
+- [ ] Cloud Run job `storm-research` + SA (write `processed/packs_draft/` only). **Taya runs the IAM commands.**
+- [ ] Fetching from Cloud Run egress (moved from R0).
+- [ ] Headless click-through of the Research pages.
+- [ ] **County agents don't read published research facts yet.** `pack.json` `facts` needs a hurricane tool (e.g. `get_local_facts`) + contract + trust-catalog entries, and the Sources registry (issue #7). Template change → separate step.
 
 ### R5: gold-set eval
 - Hand-label the Harris, Miami-Dade and Lee local facts (the `gaps` metrics). Today's packs have **only national data**, so the gold set has to be built first (Taya + Claude, about 1–2 h per county).
@@ -107,7 +101,65 @@ Defaults in brackets accepted by Taya 2026-10-05, encoded in `research/policy.py
 - #7 Sources section at the bottom of each county page. Research facts feed it with `verdict`.
 
 ## Results
+
+### R3 planted-error eval (2026-10-05)
+#### gemini-3.1-pro-preview: caught 10/10, false verifications 0, false alarms 0/4, 15 calls
+| case | verdict | ok | layer (expected) | detail |
+|---|---|---|---|---|
+| control: evacuees by reference | single_source | ✓ | entailment (entailment) | supports: The passage explicitly states that during Hurricane Beryl in 2024, Harris County shelters reached a  |
+| control: capacity, independent 2nd source | verified | ✓ | corroboration (corroboration) | https://www.houstonchronicle.com/news/beryl-shelters: 2,000 |
+| control: city figure with place=Houston | single_source | ✓ | entailment (entailment) | supports: The passage states that the City of Houston deployed 3,000 employees for the storm response, matchin |
+| control: shelter count (non-key) | single_source | ✓ | entailment (entailment) | supports: The passage explicitly states that Harris County opened 12 shelters ahead of Hurricane Beryl's landf |
+| wrong value | unsupported | ✓ | fixed (fixed) | 1341 not a value in the quote (numbers there: 1,314 (quantity), July 9 (date)) |
+| wrong unit | unsupported | ✓ | fixed (fixed) | metric evacuee_count is counted in people, fact says customers |
+| wrong county | unsupported | ✓ | fixed (fixed) | page never mentions Harris County or its cities |
+| quote not in page | unsupported | ✓ | fixed (fixed) | quote not in the fetched page |
+| number only in citation | unsupported | ✓ | fixed (fixed) | 26 not a value in the quote - present but not a value (numbers there: 26 (label)) |
+| applicant county (FEMA PA) | unsupported | ✓ | entailment (entailment) | wrong_scope: The $4.2 million was for emergency protective measures at a facility in Galveston County, not Har |
+| city figure as county | unsupported | ✓ | entailment (entailment) | wrong_scope: The passage attributes the 3,000 deployed employees to the City of Houston, not Harris County. |
+| wrong storm (Ike figure as Harvey) | unsupported | ✓ | entailment (entailment) | wrong_time: The passage states that 4,100 evacuees were housed during Hurricane Ike in 2008, not Hurricane Har |
+| occupancy as capacity | unsupported | ✓ | entailment (entailment) | wrong_metric: The passage states that 1,314 was the peak occupancy of evacuees, not the shelter capacity, whic |
+| syndicated copy as 2nd source | single_source | ✓ | corroboration (corroboration) | https://www.ksat.com/news/ap-beryl-shelters: same sentence as the cited source (syndicated copy), not counted |
+
+#### gemini-2.5-pro: caught 10/10, false verifications 0, false alarms 0/4, 15 calls
+| case | verdict | ok | layer (expected) | detail |
+|---|---|---|---|---|
+| control: evacuees by reference | single_source | ✓ | entailment (entailment) | supports: The passage states that for Hurricane Beryl, occupancy in Harris County shelters peaked at 1,314 eva |
+| control: capacity, independent 2nd source | verified | ✓ | corroboration (corroboration) | https://www.houstonchronicle.com/news/beryl-shelters: 2,000 |
+| control: city figure with place=Houston | single_source | ✓ | entailment (entailment) | supports: The passage states that citywide, the City of Houston deployed 3,000 employees for storm response du |
+| control: shelter count (non-key) | single_source | ✓ | entailment (entailment) | supports: The passage states 'Harris County opened 12 shelters ahead of landfall on July 8, 2024' in a report  |
+| wrong value | unsupported | ✓ | fixed (fixed) | 1341 not a value in the quote (numbers there: 1,314 (quantity), July 9 (date)) |
+| wrong unit | unsupported | ✓ | fixed (fixed) | metric evacuee_count is counted in people, fact says customers |
+| wrong county | unsupported | ✓ | fixed (fixed) | page never mentions Harris County or its cities |
+| quote not in page | unsupported | ✓ | fixed (fixed) | quote not in the fetched page |
+| number only in citation | unsupported | ✓ | fixed (fixed) | 26 not a value in the quote - present but not a value (numbers there: 26 (label)) |
+| applicant county (FEMA PA) | unsupported | ✓ | entailment (entailment) | wrong_scope: The passage states the $4.2 million was for emergency measures at a hospital in Galveston County, |
+| city figure as county | unsupported | ✓ | entailment (entailment) | wrong_scope: The passage states the 3,000 employees were deployed by the City of Houston, not Harris County. |
+| wrong storm (Ike figure as Harvey) | unsupported | ✓ | entailment (entailment) | wrong_time: The passage states the 4,100 evacuee figure is for Hurricane Ike in 2008, not Hurricane Harvey in  |
+| occupancy as capacity | unsupported | ✓ | entailment (entailment) | wrong_metric: The passage states that 1,314 was the peak shelter occupancy, not the shelter capacity. |
+| syndicated copy as 2nd source | single_source | ✓ | corroboration (corroboration) | https://www.ksat.com/news/ap-beryl-shelters: same sentence as the cited source (syndicated copy), not counted |
+
+#### gemini-3.8-flash: caught 10/10, false verifications 0, false alarms 0/4, 15 calls
+| case | verdict | ok | layer (expected) | detail |
+|---|---|---|---|---|
+| control: evacuees by reference | single_source | ✓ | entailment (entailment) | supports: The passage confirms that Harris County shelter occupancy peaked at 1,314 evacuees during Hurricane  |
+| control: capacity, independent 2nd source | verified | ✓ | corroboration (corroboration) | https://www.houstonchronicle.com/news/beryl-shelters: 2,000 |
+| control: city figure with place=Houston | single_source | ✓ | entailment (entailment) | supports: The passage confirms that the City of Houston deployed 3,000 employees for storm response during Hur |
+| control: shelter count (non-key) | single_source | ✓ | entailment (entailment) | supports: The passage confirms that Harris County opened 12 shelters ahead of Hurricane Beryl's landfall in Ju |
+| wrong value | unsupported | ✓ | fixed (fixed) | 1341 not a value in the quote (numbers there: 1,314 (quantity), July 9 (date)) |
+| wrong unit | unsupported | ✓ | fixed (fixed) | metric evacuee_count is counted in people, fact says customers |
+| wrong county | unsupported | ✓ | fixed (fixed) | page never mentions Harris County or its cities |
+| quote not in page | unsupported | ✓ | fixed (fixed) | quote not in the fetched page |
+| number only in citation | unsupported | ✓ | fixed (fixed) | 26 not a value in the quote - present but not a value (numbers there: 26 (label)) |
+| applicant county (FEMA PA) | unsupported | ✓ | entailment (entailment) | wrong_scope: The funding was for a facility located in Galveston County, rather than Harris County, where the  |
+| city figure as county | unsupported | ✓ | entailment (entailment) | wrong_scope: The 3,000 deployed employees were for the City of Houston, not Harris County as a whole. |
+| wrong storm (Ike figure as Harvey) | unsupported | ✓ | entailment (entailment) | wrong_time: The passage attributes the 4,100 evacuee figure to Hurricane Ike in 2008 rather than Hurricane Har |
+| occupancy as capacity | unsupported | ✓ | entailment (entailment) | wrong_metric: The passage states that 1,314 was the peak shelter occupancy, whereas shelter capacity was 2,000 |
+| syndicated copy as 2nd source | single_source | ✓ | corroboration (corroboration) | https://www.ksat.com/news/ap-beryl-shelters: metric not stated |
+
+### Summary
 | Phase | Result |
 |---|---|
 | R0 | Judge `gemini-3.1-pro-preview` (alt `gemini-2.5-pro`); search + function tools mix in one ADK agent; grounding redirects resolve via HEAD |
+| R3 | 10/10 caught, 0 false verifications, 0/4 false alarms on all 3 models (at ceiling) |
 | R1 | 58 tests (number kinds/qualifiers/ranges, every layer-1 check pass + fail, by-reference round trip). Known limits: "US 59" reads as a quantity; PDF table cells lose headers (ADR numbers-by-reference) |

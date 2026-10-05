@@ -4,7 +4,7 @@ import { CARD, LABEL, NOTE, fmt } from "./dallas/format.js";
 // Landing page of the multi-agent service: one card per county agent (hazard template x county pack).
 const HAZARD_LABEL = { winter: "Winter storm", hurricane: "Hurricane" };
 
-export default function AgentLanding({ agents, error, onOpen }) {
+export default function AgentLanding({ agents, error, onOpen, onResearch }) {
   return (
     <section className={PAGE}>
       <PageTitle>Storm Readiness agents</PageTitle>
@@ -35,11 +35,12 @@ export default function AgentLanding({ agents, error, onOpen }) {
             </button>
           );
         })}
-        <div className={`${CARD} flex flex-col gap-2 border-dashed opacity-80`}>
+        <button type="button" onClick={onResearch}
+          className={`${CARD} flex cursor-pointer flex-col gap-2 border-dashed text-left hover:border-accent`}>
           <span className={LABEL}>Research layer</span>
-          <span className="text-[1.1rem] font-bold text-navy">Research a new county</span>
-          <span className={NOTE}>Coming next: an agent drafts a county pack from public sources for review before it goes live.</span>
-        </div>
+          <span className="text-[1.1rem] font-bold text-navy">Research drafts</span>
+          <span className={NOTE}>An agent drafts county facts from public sources; a stricter judge checks each one. A reviewer publishes what they accept.</span>
+        </button>
       </div>
     </section>
   );

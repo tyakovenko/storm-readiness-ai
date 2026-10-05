@@ -1,0 +1,244 @@
+"""Research judge: layer 1 fixed checks -> layer 2 entailment -> layer 3 independent corroboration
+(ADR layered-judge). The judge refetches every source with its own Fetcher and never sees the researcher's
+reasoning or page copy.
+
+Numbers by reference here too: in corroboration the model picks a number tag on the other page; code
+reads the value and compares (ADR numbers-by-reference).
+"""
+
+from __future__ import annotations
+
+import difflib
+import json
+import logging
+import urllib.request
+from datetime import date
+from urllib.parse import urlparse
+
+from research import config, numbers, policy, verify
+from research.fetch import USER_AGENT, Fetcher
+from research.schema import Check, DraftPack, Fact, FactReview, Page, Target, Verdict
+
+log = logging.getLogger(__name__)
+CONTEXT_CHARS = 600          # passage around the quote given to the entailment model
+MAX_CANDIDATES = 3           # corroborating pages fetched per key fact
+MAX_PICK_LINES = 60          # lines of a candidate page shown when asking which number states the metric
+SYNDICATED_RATIO = 0.9       # share of the shorter sentence found in the other: at or above = a copy
+ENTAIL_LABELS = ("supports", "wrong_metric", "wrong_scope", "wrong_time", "not_enough")
+
+ENTAIL_PROMPT = """You check one claim against one passage from its cited source. Decide only whether the \
+passage states this claim: the same metric (capacity is not occupancy; staff is not volunteers), the same \
+place (a city figure is not the county's; a FEMA applicant's home county is not where the damage was), and \
+the same time or storm. The number itself was already matched by code: do not re-check its digits.
+
+Claim:
+{claim}
+
+Passage (from {url}):
+\"\"\"{passage}\"\"\"
+
+Answer JSON: {{"label": one of {labels}, "reason": one sentence}}"""
+
+PICK_PROMPT = """Below are lines from a web page; numbers are tagged like ⟦N17⟧1,314. Which tag, if any, \
+states this metric for this place and time?
+
+Metric: {claim}
+
+Lines:
+{lines}
+
+Answer JSON: {{"value_ref": "N.." or null, "reason": one sentence}}. Pick only a number that states exactly \
+this metric; if none does, null."""
+
+SEARCH_PROMPT = """Find published sources (official reports, government pages, news) that report: {claim}. \
+List the sources you found."""
+
+
+def _claim(fact: Fact, target: Target) -> str:
+    storm = next((f"{s.name} {s.year}" for s in target.storms if s.id == fact.storm_id), None)
+    value = "no number" if fact.value is None else f"{fact.qualifier.replace('_', ' ')} {fact.value_raw}"
+    parts = [f"metric: {fact.metric} ({fact.unit})", f"value: {value}",
+             f"place: {fact.place or target.county}, {target.state}"]
+    if storm:
+        parts.append(f"storm: {storm}")
+    if fact.as_of:
+        parts.append(f"as of: {fact.as_of}")
+    return "; ".join(parts)
+
+
+def _domain(url: str) -> str:
+    host = (urlparse(url).hostname or "").lower().removeprefix("www.")
+    return ".".join(host.split(".")[-2:])
+
+
+def _overlap(a: str, b: str) -> float:
+    """Share of the shorter text that appears, in order, in the other. Wire copies get a new lead-in
+    ("At Hurricane Beryl's peak, ...") that drops plain similarity below any useful threshold."""
+    a, b = verify._norm(a), verify._norm(b)
+    if not a or not b:
+        return 0.0
+    matched = sum(m.size for m in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks())
+    return matched / min(len(a), len(b))
+
+
+def _resolve(url: str) -> str:
+    """Grounding links are vertexaisearch redirects; store and compare the real URL (R0)."""
+    if "grounding-api-redirect" not in url:
+        return url
+    req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return r.geturl()
+    except Exception as e:
+        log.warning("could not resolve grounding redirect: %s", e)
+        return url
+
+
+class GeminiCalls:
+    """Thin JSON-call wrapper with a per-run cap. Keeps the Client referenced for its lifetime
+    (a temporary Client can be collected mid-call: 'client has been closed')."""
+
+    def __init__(self, model: str, cap: int = policy.MAX_GEMINI_CALLS):
+        from google import genai
+        self.model, self.cap, self.count = model, cap, 0
+        self.client = genai.Client()
+
+    def _go(self, prompt: str, **cfg):
+        from google.genai import types
+        if self.count >= self.cap:
+            raise RuntimeError(f"judge model-call cap reached ({self.cap})")
+        self.count += 1
+        return self.client.models.generate_content(model=self.model, contents=prompt,
+                                                   config=types.GenerateContentConfig(**cfg))
+
+    def json(self, prompt: str) -> dict:
+        r = self._go(prompt, response_mime_type="application/json")
+        return json.loads(r.text or "{}")
+
+    def search(self, prompt: str) -> list[str]:
+        from google.genai import types
+        r = self._go(prompt, tools=[types.Tool(google_search=types.GoogleSearch())])
+        gm = r.candidates[0].grounding_metadata if r.candidates else None
+        return [c.web.uri for c in (gm.grounding_chunks or [])] if gm and gm.grounding_chunks else []
+
+
+class Judge:
+    def __init__(self, model: str = config.JUDGE_MODEL, llm=None, fetcher: Fetcher | None = None,
+                 resolve=_resolve, today: date | None = None):
+        self.model = model
+        self.llm = llm or GeminiCalls(model)
+        self.fetch = fetcher or Fetcher()
+        self.resolve = resolve
+        self.today = today
+
+    # ---- layer 2 -------------------------------------------------------------------------------
+    def entailment(self, fact: Fact, page: Page, target: Target) -> Check:
+        _, where = verify._locate_quote(fact.quote, page.text)
+        s, e = where or (0, 0)
+        passage = page.text[max(0, s - CONTEXT_CHARS): e + CONTEXT_CHARS]
+        try:
+            out = self.llm.json(ENTAIL_PROMPT.format(claim=_claim(fact, target), url=page.final_url or page.url,
+                                                     passage=passage, labels=" | ".join(ENTAIL_LABELS)))
+            label, reason = out.get("label"), out.get("reason", "")
+        except Exception as e:
+            log.error("entailment call failed for %s: %s", fact.id, e)
+            return Check(layer="entailment", name="entailment", ok=None, detail=f"not graded: {e}")
+        if label not in ENTAIL_LABELS:
+            return Check(layer="entailment", name="entailment", ok=None, detail=f"unparseable label {label!r}")
+        return Check(layer="entailment", name="entailment", ok=label == "supports", detail=f"{label}: {reason}")
+
+    # ---- layer 3 -------------------------------------------------------------------------------
+    def _pick(self, fact: Fact, target: Target, page: Page) -> numbers.NumberSpan | None:
+        spans = numbers.extract(page.text)
+        words = policy.UNIT_SYNONYMS.get(fact.unit, ())
+        tagged = numbers.tag(page.text, spans).split("\n")
+        lines = [ln for ln in tagged if "⟦" in ln and any(w in ln.lower() for w in words)][:MAX_PICK_LINES]
+        if not lines:
+            return None
+        out = self.llm.json(PICK_PROMPT.format(claim=_claim(fact, target), lines="\n".join(lines)))
+        ref = out.get("value_ref")
+        span = next((sp for sp in spans if sp.id == ref), None)
+        return span if span and span.usable else None
+
+    def corroborate(self, fact: Fact, target: Target, original: Page) -> tuple[list[Check], list[str]]:
+        try:
+            found = [self.resolve(u) for u in self.llm.search(SEARCH_PROMPT.format(claim=_claim(fact, target)))]
+        except Exception as e:
+            log.error("corroboration search failed for %s: %s", fact.id, e)
+            return [Check(layer="corroboration", name="search", ok=None, detail=f"search failed: {e}")], []
+        own = _domain(original.final_url or original.url)
+        candidates = [u for u in dict.fromkeys(found) if _domain(u) != own][:MAX_CANDIDATES]
+        checks, supporting = [], []
+        for url in candidates:
+            page = self.fetch(url)
+            if page.error:
+                checks.append(Check(layer="corroboration", name="source", ok=None, detail=f"{url}: {page.error}"))
+                continue
+            try:
+                span = self._pick(fact, target, page)
+            except Exception as e:
+                checks.append(Check(layer="corroboration", name="source", ok=None, detail=f"{url}: pick failed {e}"))
+                continue
+            if span is None:
+                checks.append(Check(layer="corroboration", name="source", ok=None, detail=f"{url}: metric not stated"))
+                continue
+            s, e = numbers.sentence_around(page.text, span.start, span.end)
+            sentence = page.text[s:e]
+            other = Fact(**{**fact.model_dump(), "value": span.value, "value_raw": span.raw,
+                            "qualifier": span.qualifier, "quote": sentence, "source_url": url})
+            fixed = verify.check_fact(other, page, target, self.today)
+            if verify.fixed_verdict(fixed) is not None:
+                bad = "; ".join(c.detail for c in fixed if c.ok is False) or "fixed checks did not run"
+                checks.append(Check(layer="corroboration", name="source", ok=None, detail=f"{url}: {bad}"))
+                continue
+            close = abs(span.value - fact.value) <= policy.CORROBORATION_TOLERANCE * abs(fact.value)
+            copy = _overlap(sentence, fact.quote) >= SYNDICATED_RATIO
+            if close and copy:
+                checks.append(Check(layer="corroboration", name="independent", ok=None,
+                                    detail=f"{url}: same sentence as the cited source (syndicated copy), not counted"))
+            elif close:
+                supporting.append(url)
+                checks.append(Check(layer="corroboration", name="independent", ok=True, detail=f"{url}: {span.raw}"))
+            else:
+                checks.append(Check(layer="corroboration", name="conflict", ok=False, severity="flag",
+                                    detail=f"{url}: states {span.raw} ({span.qualifier})"))
+        return checks, supporting
+
+    # ---- verdict ---------------------------------------------------------------------------------
+    def review_fact(self, fact: Fact, target: Target) -> FactReview:
+        page = self.fetch(fact.source_url)
+        checks = verify.check_fact(fact, page, target, self.today)
+        verdict = verify.fixed_verdict(checks)
+        if verdict is not None:
+            return FactReview(fact_id=fact.id, verdict=verdict, checks=checks)
+        l2 = self.entailment(fact, page, target)
+        checks.append(l2)
+        if l2.ok is None:
+            return FactReview(fact_id=fact.id, verdict=Verdict.UNCHECKED, checks=checks)
+        if not l2.ok:
+            return FactReview(fact_id=fact.id, verdict=Verdict.UNSUPPORTED, checks=checks)
+        official = policy.is_official(page.final_url or fact.source_url)
+        note = "official source" if official else ""
+        if fact.value is None or not policy.metric(fact.metric).key:
+            return FactReview(fact_id=fact.id, verdict=Verdict.SINGLE_SOURCE, checks=checks, notes=note)
+        l3, supporting = self.corroborate(fact, target, page)
+        checks += l3
+        # A conflict always goes to the reviewer, even with support (policy.CONFLICTS_AUTO_RESOLVE False).
+        if any(c.name == "conflict" for c in l3):
+            verdict = Verdict.CONFLICTING
+        elif supporting:
+            verdict = Verdict.VERIFIED
+        else:
+            verdict = Verdict.SINGLE_SOURCE
+        return FactReview(fact_id=fact.id, verdict=verdict, checks=checks, corroborating_urls=supporting, notes=note)
+
+    def review(self, draft: DraftPack) -> DraftPack:
+        reviews = []
+        for f in draft.facts:
+            try:
+                reviews.append(self.review_fact(f, draft.target))
+            except Exception as e:  # one broken fact must not sink the run, and must not pass
+                log.error("review of %s failed: %s", f.id, e)
+                reviews.append(FactReview(fact_id=f.id, verdict=Verdict.UNCHECKED, notes=f"review failed: {e}"))
+        log_ = {**draft.run_log, "judge_model_calls": self.llm.count, "judge_fetches": self.fetch.count}
+        return draft.model_copy(update={"reviews": reviews, "judge_model": self.model, "run_log": log_})

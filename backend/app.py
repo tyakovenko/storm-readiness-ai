@@ -4,6 +4,7 @@
   GET  /api/overview -> tool outputs for the dashboard screens (no LLM)
   POST /api/chat     -> run the agent + trust layer on one question
   GET  /api/impact, /api/storm, /api/staging -> single-tool reads (no LLM)
+  GET  /api/research, /api/research/{hazard}/{fips}/{run_id} -> research drafts + judge verdicts (read-only)
 
 AGENT_DOMAIN picks what /api/chat runs:
   dallas (default)  -> ADK agent on the Dallas tools, trust layer around it (agent/dallas_adk.py)
@@ -169,6 +170,26 @@ def agent_chat(agent_id: str, body: ChatRequest, request: Request):
         return registry.chat(agent_id, body.message, [h.model_dump() for h in body.history], request.app.state.judge)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Unknown agent {agent_id!r}")
+
+
+# ---- research drafts (read-only; publishing is research.publish, a human step) ----
+
+@app.get("/api/research")
+def research_runs():
+    from research import store
+    return store.list_drafts()
+
+
+@app.get("/api/research/{hazard}/{fips}/{run_id}")
+def research_run(hazard: str, fips: str, run_id: str):
+    from research import store
+    try:
+        return store.dumps(store.get_draft(hazard, fips, run_id))
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"No research draft {hazard}/{fips}/{run_id}")
+    except Exception as e:  # GCS unreachable or a corrupt draft: say so, don't report it as missing
+        log.error("research draft %s/%s/%s unavailable: %s", hazard, fips, run_id, e)
+        raise HTTPException(status_code=503, detail=f"Draft store unavailable: {e}")
 
 
 @app.get("/api/impact")

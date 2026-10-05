@@ -70,12 +70,16 @@ class NumberSpan(BaseModel):
         return self.kind in USABLE_KINDS
 
 
+def _is_unit_word(name: str) -> bool:
+    """A word or field name ("TOTAL_CAPACITY") whose parts start with a unit word. Parts, not substrings:
+    "bus" must not match "business"."""
+    parts = [p for p in re.split(r"[\W_]+", name.lower()) if p]
+    return any(p.startswith(w) for p in parts for words in policy.UNIT_SYNONYMS.values() for w in words if w.isalpha())
+
+
 def _unit_word_follows(text: str, end: int) -> bool:
     m = re.match(r"\s+([a-z]+)", text[end:end + 30], re.IGNORECASE)
-    if not m:
-        return False
-    word = m.group(1).lower()
-    return any(word.startswith(w) for words in policy.UNIT_SYNONYMS.values() for w in words if w.isalpha())
+    return bool(m) and _is_unit_word(m.group(1))
 
 
 def _qualifier(text: str, start: int) -> str:
@@ -83,7 +87,22 @@ def _qualifier(text: str, start: int) -> str:
     return next((q for q, rx in _QUALIFIER_RES if rx.search(before)), "exact")
 
 
+# Structured rows ("CAPACITY: 1200; LAT: 25.7"): the field name says what the number is.
+_FIELD_BEFORE = re.compile(r"([A-Za-z][\w .]*?)\s*:\s*$")
+_FIELD_YEAR = re.compile(r"year|yr|date", re.IGNORECASE)
+_FIELD_LABEL = re.compile(r"(^|_|\b)(id|objectid|fid|gid|zip|zipcode|phone|fax|code|no|num|number|lat|lon|"
+                          r"latitude|longitude|x|y|shape\w*|district|precinct|zone)$", re.IGNORECASE)
+
+
 def _digit_kind(m: re.Match, text: str) -> str:
+    line_start = text.rfind("\n", 0, m.start()) + 1
+    field = _FIELD_BEFORE.search(re.split(r"[;|]", text[line_start:m.start()])[-1])
+    name = field.group(1).strip() if field else ""
+    if name and not m.group("dollar") and not m.group("pct"):
+        if _FIELD_YEAR.search(name):
+            return "year"
+        if _FIELD_LABEL.search(name):
+            return "label"
     if m.group("dollar") or re.match(r"\s?dollars?\b", text[m.end():], re.IGNORECASE):
         return "money"
     if m.group("pct"):
@@ -91,9 +110,9 @@ def _digit_kind(m: re.Match, text: str) -> str:
     if _LABEL_BEFORE.search(text[max(0, m.start() - 20):m.start()]) or _STREET_AFTER.match(text[m.end():m.end() + 40]):
         return "label"
     plain = not (m.group("dec") or m.group("scale") or m.group("plus") or "," in m.group("int"))
-    # A bare 19xx/20xx is a year unless a unit follows ("2000 beds").
+    # A bare 19xx/20xx is a year unless a unit follows ("2000 beds") or its field names one ("CAPACITY: 1200").
     if plain and len(m.group("int")) == 4 and 1900 <= int(m.group("int")) <= 2099 \
-            and not _unit_word_follows(text, m.end()):
+            and not _unit_word_follows(text, m.end()) and not _is_unit_word(name):
         return "year"
     return "quantity"
 

@@ -100,10 +100,17 @@ def _names_re(names: list[str]) -> re.Pattern:
     return re.compile(r"(?<![\w-])(" + "|".join(re.escape(a).replace(r"\-", r"[- ]?") for a in alts) + r")(?![\w])")
 
 
-def _jurisdiction(target: Target, page: str) -> Check:
-    m = _names_re(target.jurisdiction_names()).search(page)
+def _jurisdiction(fact: Fact, target: Target, page: str) -> Check:
+    if fact.place:
+        # A city figure: the city must belong to the target and be named on the page.
+        if _norm(fact.place) not in {_norm(n) for n in target.jurisdiction_names()}:
+            return _check("jurisdiction", False, f"{fact.place} is not {target.county} or one of its listed cities")
+        names = [fact.place]
+    else:
+        names = target.jurisdiction_names()
+    m = _names_re(names).search(page)
     return (_check("jurisdiction", True, f"page mentions {m.group(1)}") if m
-            else _check("jurisdiction", False, f"page never mentions {target.county} or its cities"))
+            else _check("jurisdiction", False, f"page never mentions {fact.place or target.county + ' or its cities'}"))
 
 
 def _storm(fact: Fact, target: Target, page: str) -> Check:
@@ -141,7 +148,7 @@ def check_fact(fact: Fact, page: Page, target: Target, today: date | None = None
     norm_page = _norm(page.text)
     return [_check("fetch", True, page.final_url or page.url), quote_check,
             _value_at_source(fact, numbers.extract(page.text), where), _unit(fact, sentence),
-            _jurisdiction(target, norm_page), _storm(fact, target, norm_page), _stale(fact, today or date.today())]
+            _jurisdiction(fact, target, norm_page), _storm(fact, target, norm_page), _stale(fact, today or date.today())]
 
 
 def fixed_verdict(checks: list[Check]) -> Verdict | None:

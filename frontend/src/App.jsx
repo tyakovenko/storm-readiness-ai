@@ -9,6 +9,7 @@ import DallasPlanner from "./dallas/DallasPlanner.jsx";
 import HurricaneOverview from "./hurricane/HurricaneOverview.jsx";
 import HurricaneShelters from "./hurricane/HurricaneShelters.jsx";
 import AgentLanding from "./AgentLanding.jsx";
+import { ResearchRun, ResearchRuns } from "./research/ResearchPage.jsx";
 import { fetchAgents, fetchHealth, useOverview } from "./api.js";
 import { PageStatus } from "./components/Page.jsx";
 
@@ -27,9 +28,14 @@ const TEMPLATE_PAGES = {
   },
 };
 
+// #/agents/<id>/<page> | #/research | #/research/<hazard>/<fips>/<run_id>
 function parseHash() {
-  const m = window.location.hash.match(/^#\/agents\/([^/]+)(?:\/([^/]+))?/);
-  return m ? { agentId: decodeURIComponent(m[1]), page: m[2] ?? "storm-overview" } : { agentId: null, page: null };
+  const h = window.location.hash;
+  const r = h.match(/^#\/research(?:\/([^/]+)\/([^/]+)\/([^/]+))?/);
+  if (r) return { agentId: null, page: null, research: r[1] ? r.slice(1, 4).map(decodeURIComponent) : [] };
+  const m = h.match(/^#\/agents\/([^/]+)(?:\/([^/]+))?/);
+  return m ? { agentId: decodeURIComponent(m[1]), page: m[2] ?? "storm-overview", research: null }
+    : { agentId: null, page: null, research: null };
 }
 
 function useHashRoute() {
@@ -44,6 +50,10 @@ function useHashRoute() {
 
 function go(agentId, page) {
   window.location.hash = agentId ? `#/agents/${encodeURIComponent(agentId)}/${page ?? "storm-overview"}` : "#/";
+}
+
+function goResearch(...parts) {
+  window.location.hash = ["#/research", ...parts.map(encodeURIComponent)].join("/");
 }
 
 function SingleAgentApp() {
@@ -65,7 +75,7 @@ function SingleAgentApp() {
 }
 
 function MultiAgentApp() {
-  const { agentId, page } = useHashRoute();
+  const { agentId, page, research } = useHashRoute();
   const [agents, setAgents] = useState(null);
   const [agentsError, setAgentsError] = useState("");
   const [askAIOpen, setAskAIOpen] = useState(false);
@@ -85,13 +95,16 @@ function MultiAgentApp() {
         activePage={page}
         onNavigate={(p) => go(agentId, p)}
         onHome={() => go(null)}
-        title={agent ? `${agent.county}${agent.state ? `, ${agent.state}` : ""}` : null}
+        title={agent ? `${agent.county}${agent.state ? `, ${agent.state}` : ""}` : research ? "Research" : null}
       />
       <main className="flex-1 bg-canvas pt-[102px]">
-        {!agentId || !agent ? (
+        {research ? (
+          research.length ? <ResearchRun hazard={research[0]} fips={research[1]} runId={research[2]} />
+            : <ResearchRuns onOpen={(...p) => goResearch(...p)} />
+        ) : !agentId || !agent ? (
           agents || agentsError ? (
             <AgentLanding agents={agents} error={agentsError || (agentId && agents ? `Unknown agent ${agentId}` : "")}
-              onOpen={(id) => go(id)} />
+              onOpen={(id) => go(id)} onResearch={() => goResearch()} />
           ) : (
             <PageStatus title="Loading agents" />
           )

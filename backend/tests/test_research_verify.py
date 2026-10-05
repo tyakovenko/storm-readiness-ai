@@ -122,6 +122,14 @@ def test_wrong_county_is_unsupported():
     assert fixed_verdict(checks) is Verdict.UNSUPPORTED
 
 
+def test_city_figure_with_place():
+    f = fact(metric="staff_count", value=2000, value_raw="2,000", qualifier="over", storm_id=None, as_of="2024",
+             place="Houston", quote='combined capacity of "more than 2,000 beds" across sites')
+    assert by_name(check_fact(f, PAGE, TARGET, TODAY))["jurisdiction"].ok
+    c = by_name(check_fact(f.model_copy(update={"place": "Galveston"}), PAGE, TARGET, TODAY))["jurisdiction"]
+    assert c.ok is False and "not Harris County" in c.detail
+
+
 def test_hyphenated_alias_matches():
     t = Target(fips="12086", county="Miami-Dade County", state="FL", hazard="hurricane")
     page = Page(url="u", text="Miami Dade shelters opened ahead of Irma 2017.")
