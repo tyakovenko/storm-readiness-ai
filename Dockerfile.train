@@ -1,0 +1,10 @@
+# Hurricane ETL + training job image (Vertex AI custom job). No UI, no agent.
+# Build: docker build -f Dockerfile.train -t us-central1-docker.pkg.dev/<project>/storm-agent/train:<sha> .
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /app/backend
+RUN pip install --no-cache-dir "pandas>=2.0" "numpy>=1.26" "xgboost>=2.0" "scikit-learn>=1.4" "joblib>=1.3" "google-cloud-storage>=2.18"
+COPY backend/models/ models/
+ARG GIT_COMMIT=unknown
+ENV GIT_COMMIT=${GIT_COMMIT}
+ENTRYPOINT ["python", "-m", "models.cloud_job"]
