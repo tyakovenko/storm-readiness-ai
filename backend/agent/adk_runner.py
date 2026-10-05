@@ -54,8 +54,11 @@ def check_model(model) -> None:
     if not isinstance(model, str):
         return
     from google import genai
+    # Keep a reference: a temporary Client can be collected mid-call, closing its HTTP client
+    # ("Cannot send a request, as the client has been closed" - startup crash on Cloud Run).
+    client = genai.Client()
     try:
-        genai.Client().models.generate_content(model=model, contents="Reply with: ok")
+        client.models.generate_content(model=model, contents="Reply with: ok")
     except Exception as e:
         raise ConfigError(f"Gemini model {model} is not callable "
                           f"(location={os.environ.get('GOOGLE_CLOUD_LOCATION')}): {e}") from e
