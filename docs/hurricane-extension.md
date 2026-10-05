@@ -60,6 +60,13 @@ Scale: EAGLE-I covers 2014–2025, which is about 30–40 US landfalling storms 
 
 EAGLE-I stays as the 11.6 GB archive (`raw/census/EAGLE I/24237376.zip`). Direct-to-bucket transfer of the per-year files isn't possible: figshare redirects to a 10-second S3 link, and Storage Transfer Service would need its API enabled + an IAM grant. The training-table builder should stream per-year CSVs and keep only storm windows near each track (as done for Dallas). Running that on GCP needs a service account with bucket write access (IAM grant by Taya).
 
+### Retrain pipeline (2026-10-05)
+
+- `backend/models/build_training_table.py` builds the table; `backend/models/cloud_job.py` runs table → train on **Vertex AI custom jobs** (image `storm-agent/train`, `Dockerfile.train`, service account `storm-training` with bucket objectAdmin).
+- Outputs: `processed/hurricane/training_table.csv` (+ `_manifest.json`), `processed/hurricane/models/<run_id>/{outage_xgb_real.joblib, metrics_temporal.json, metrics_storm.json, run.json}`.
+- **Before the retrained model goes live, the inference pipeline must compute the same inputs.** `models/pipeline.py` still uses hardcoded distances for 4 Florida counties, `tree_canopy_pct=50`, and `customers = population × 0.48`; training uses track geometry, USFS canopy and EAGLE-I MCC. Feeding the new model the old placeholder inputs would make its outputs meaningless.
+- `lead_time_h` is 0 in training (best tracks), so the model can't learn anything from it; at inference it's informational only.
+
 ## 3. Other open issues to carry over
 
 - `storm_agent/agent.py` default `GEMINI_MODEL=gemini-flash-latest` 404s on Vertex. Use `gemini-3.8-flash` with `GOOGLE_CLOUD_LOCATION=global`.
