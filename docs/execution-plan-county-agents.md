@@ -134,6 +134,7 @@ These three packs are the **gold set** the research agent is evaluated against i
 **Gate:** headless click-through of every agent's pages with no browser errors; chat on each agent passes trust checks; deep links load directly.
 
 ### Phase 5: research agent (separate session, 3–5 days)
+**Superseded by `docs/research-agent-plan.md` (2026-10-05).**
 - ADK agent running as a Vertex AI / Cloud Run job, not in chat. Tools: Socrata catalog + SoQL, ArcGIS Hub search, Legistar search, fetch + PDF text, Gemini with Google Search grounding for discovery, structured extraction to the pack schema (pydantic), and triangulation rules.
 - Output: draft pack + review report in `processed/packs_draft/…`, never auto-published.
 - **Evaluation against the gold set:** run the agent on Harris, Miami-Dade, Lee, compare with the hand packs. Fact recall, precision, false-verification rate (a fact marked verified that is wrong). Bar for the demo: no false verifications on key numbers.
