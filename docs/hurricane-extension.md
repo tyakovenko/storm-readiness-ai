@@ -46,6 +46,20 @@ The model code, the 13 inputs and the low/median/high outputs stay the same. The
 
 Scale: EAGLE-I covers 2014–2025, which is about 30–40 US landfalling storms × the counties within ~150 nm of the track, so a few thousand rows. That's enough for quantile XGBoost if validated with the existing held-out-storm split.
 
+### Data staged for the retrain (2026-10-05)
+
+`gs://uc3-storm-impact-intelligence-data/raw/national/` (pull: `python data/sync_cloud_data.py pull --dataset national`; details in its `MANIFEST.md`):
+
+| Path | What | Status |
+|---|---|---|
+| `noaa_storm_events/` | NOAA Storm Events details 2000–2026, all states | done (27 files) |
+| `atcf_archive_2014_2025/` | NHC ATCF a-decks (forecasts) + b-decks (best tracks), Atlantic | done (430 files) |
+| `fema_nss/` | FEMA National Shelter System, all 71,857 shelters | done; 2,205 rows have lat/lon swapped, fips_code blank |
+| `openfema/` | Disaster declarations + Public Assistance funded projects (national bulk CSV) | done |
+| `tree_canopy/` | Mean tree canopy % per CONUS county (USFS NLCD TCC ImageServer) | in progress |
+
+EAGLE-I stays as the 11.6 GB archive (`raw/census/EAGLE I/24237376.zip`). Direct-to-bucket transfer of the per-year files isn't possible: figshare redirects to a 10-second S3 link, and Storage Transfer Service would need its API enabled + an IAM grant. The training-table builder should stream per-year CSVs and keep only storm windows near each track (as done for Dallas). Running that on GCP needs a service account with bucket write access (IAM grant by Taya).
+
 ## 3. Other open issues to carry over
 
 - `storm_agent/agent.py` default `GEMINI_MODEL=gemini-flash-latest` 404s on Vertex. Use `gemini-3.8-flash` with `GOOGLE_CLOUD_LOCATION=global`.

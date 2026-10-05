@@ -7,7 +7,7 @@ Usage:
     # Pull all datasets from Google Cloud Storage
     python data/sync_cloud_data.py pull
 
-    # Pull a specific dataset (nri, svi, hurdat2, oni, atcf, census, eaglei, dallas)
+    # Pull a specific dataset (nri, svi, hurdat2, oni, atcf, census, eaglei, dallas, national)
     python data/sync_cloud_data.py pull --dataset nri
 
     # Check status of local vs cloud data
@@ -41,6 +41,7 @@ DATASET_MAP = {
     "census": "raw/census",
     "eaglei": "raw/census/EAGLE I",
     "dallas": "raw/dallas",  # Dallas County (48113) pivot data; see raw/dallas/MANIFEST.md
+    "national": "raw/national",  # national baseline for hurricane extension; see raw/national/MANIFEST.md
 }
 
 
