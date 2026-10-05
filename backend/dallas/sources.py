@@ -100,6 +100,25 @@ DEPARTMENTS = {
     "DAS": "Dallas Animal Services",
 }
 
+BUDGET_BOOK = "City of Dallas Budget Book FY2025-26, 'Full Time Equivalents and Positions' (pp. 49-50 printed / 62-63 PDF)"
+
+# Storm-relevant departments, budgeted FTEs. FTE, not people on shift: a storm
+# deployment (e.g. 175 TPW staff, Jan 2025) is a fraction of these.
+# OHS shows 0 in FY2025-26: merged into Office of Housing & Community Empowerment.
+DEPARTMENT_STAFF = [
+    {"department": "DPD", "name": "Dallas Police Department", "fte_fy2025": 4217.56, "fte_fy2026": 4338.67},
+    {"department": "DFR", "name": "Dallas Fire-Rescue", "fte_fy2025": 2585.01, "fte_fy2026": 2561.28},
+    {"department": "DWU", "name": "Dallas Water Utilities (incl. stormwater SDM)", "fte_fy2025": 1853.36, "fte_fy2026": 1946.63},
+    {"department": "TPW", "name": "Transportation & Public Works (general + internal fund)", "fte_fy2025": 751.81, "fte_fy2026": 749.81},
+    {"department": "SAN", "name": "Sanitation Services", "fte_fy2025": 696.39, "fte_fy2026": 701.77},
+    {"department": "CCS", "name": "Code Compliance", "fte_fy2025": 435.88, "fte_fy2026": 421.00},
+    {"department": "EFM", "name": "Equipment & Fleet Management", "fte_fy2025": 279.60, "fte_fy2026": 281.25},
+    {"department": "DAS", "name": "Dallas Animal Services", "fte_fy2025": 173.02, "fte_fy2026": 174.06},
+    {"department": "311", "name": "Communications, Customer Experience & 311", "fte_fy2025": 137.37, "fte_fy2026": 119.87},
+    {"department": "EMCR", "name": "Office of Emergency Management & Crisis Response", "fte_fy2025": 30.25, "fte_fy2026": 53.10},
+    {"department": "OHS", "name": "Office of Homeless Solutions (FY26: in Housing & Community Empowerment)", "fte_fy2025": 45.10, "fte_fy2026": None},
+]
+
 # 311 request types -> sector, by substring (case-insensitive). Order matters:
 # first match wins. Types not listed are "other" and never count as storm impact.
 SECTOR_RULES = [

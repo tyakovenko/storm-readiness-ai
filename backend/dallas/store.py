@@ -17,7 +17,7 @@ log = logging.getLogger(__name__)
 
 LOCAL = Path(__file__).resolve().parents[2] / "data" / "processed" / "dallas"
 BUCKET = os.getenv("STORM_DATA_BUCKET", "uc3-storm-impact-intelligence-data")
-FILES = ("storms.json", "assets.json", "districts.geojson", "manifest.json")
+FILES = ("storms.json", "assets.json", "districts.geojson", "climate.json", "manifest.json")
 
 
 class DataUnavailable(RuntimeError):
@@ -61,6 +61,10 @@ def assets() -> dict:
 
 def districts() -> dict:
     return table("districts.geojson")
+
+
+def climate() -> dict:
+    return table("climate.json")
 
 
 def manifest() -> dict:

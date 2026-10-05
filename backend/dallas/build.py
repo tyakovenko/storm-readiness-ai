@@ -6,7 +6,8 @@
 Inputs (pull with `python data/sync_cloud_data.py pull --dataset dallas`):
   dallas311/*.csv, noaa/*.csv, fema/*.json, eaglei/*.csv, weather/*.csv,
   gis/council_districts.geojson, shelters/nss_shelters_dallas_county.csv
-Outputs: storms.json, assets.json, districts.geojson, manifest.json
+  + data/raw/oni/oni.ascii.txt (`pull --dataset oni`)
+Outputs: storms.json, assets.json, districts.geojson, climate.json, manifest.json
 """
 
 from __future__ import annotations
@@ -219,6 +220,7 @@ def build_assets() -> dict:
         "shelter_history": S.SHELTER_HISTORY,
         "resources": S.RESOURCES,
         "departments": S.DEPARTMENTS,
+        "department_staff": {"rows": S.DEPARTMENT_STAFF, "source": S.BUDGET_BOOK},
         "evacuee_shelters_nss": {
             "count": len(nss), "with_evacuation_capacity": sum(1 for c in cap if c > 0),
             "total_evacuation_capacity": sum(cap),
@@ -228,6 +230,49 @@ def build_assets() -> dict:
             "source": "FEMA National Shelter System (gis.fema.gov NSS layer 5)",
         },
     }
+
+
+ONI_FILE = REPO / "data" / "raw" / "oni" / "oni.ascii.txt"
+# CPC 3-month season centered on each month (Jan -> DJF, Feb -> JFM, ...).
+SEASONS = ["DJF", "JFM", "FMA", "MAM", "AMJ", "MJJ", "JJA", "JAS", "ASO", "SON", "OND", "NDJ"]
+
+
+def _oni_rows() -> list[dict]:
+    if not ONI_FILE.exists():
+        raise FileNotFoundError(f"{ONI_FILE} missing: python data/sync_cloud_data.py pull --dataset oni")
+    rows = []
+    for line in ONI_FILE.read_text().splitlines():
+        parts = line.split()
+        if len(parts) == 4 and parts[0] in SEASONS:
+            rows.append({"season": parts[0], "year": int(parts[1]), "oni_c": float(parts[3])})
+    return rows
+
+
+def _phase(oni: float) -> tuple[str, str]:
+    # CPC convention: |ONI| >= 0.5 is an event; strength bands 0.5/1.0/1.5/2.0.
+    if abs(oni) < 0.5:
+        return "Neutral", "n/a"
+    phase = "El Niño" if oni > 0 else "La Niña"
+    a = abs(oni)
+    strength = "weak" if a < 1.0 else "moderate" if a < 1.5 else "strong" if a < 2.0 else "very strong"
+    return phase, strength
+
+
+def build_climate(storms: list[dict]) -> dict:
+    rows = _oni_rows()
+    latest = rows[-1]
+    phase, strength = _phase(latest["oni_c"])
+    for s in storms:
+        d = _d(s["event_dates"][0])
+        season = SEASONS[d.month - 1]
+        # DJF is labeled with the January year in the CPC table.
+        match = next((r for r in rows if r["season"] == season and r["year"] == d.year), None)
+        s["enso"] = None if match is None else {"season": f"{season} {d.year}", "oni_c": match["oni_c"],
+                                                "phase": _phase(match["oni_c"])[0]}
+    return {"enso_latest": {"season": latest["season"], "year": latest["year"], "oni_c": latest["oni_c"],
+                            "phase": phase, "strength": strength,
+                            "recent": rows[-6:],
+                            "source": "NOAA CPC Oceanic Niño Index (oni.ascii.txt)"}}
 
 
 def build_districts(storms: list[dict]) -> dict:
@@ -262,9 +307,10 @@ def build() -> dict:
         rec["city_response"] = S.RESPONSE_FACTS.get(s["id"], [])
         storms.append(rec)
         log.info("built %s", s["id"])
+    climate = build_climate(storms)  # also tags each storm with its season's ONI
     OUT.mkdir(parents=True, exist_ok=True)
     tables = {"storms.json": storms, "assets.json": build_assets(),
-              "districts.geojson": build_districts(storms)}
+              "districts.geojson": build_districts(storms), "climate.json": climate}
     for name, obj in tables.items():
         (OUT / name).write_text(json.dumps(obj, indent=1))
     manifest = {"built_utc": datetime.now(UTC).isoformat(timespec="seconds"),

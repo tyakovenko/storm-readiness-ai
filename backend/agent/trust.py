@@ -15,7 +15,7 @@ LLM judge (non-blocking, flags for the reviewer): actionable. See judge.py.
 """
 
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 NUMBER_RE = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?")
 LIST_MARKER_RE = re.compile(r"^\s*\d+[.)]\s", re.MULTILINE)
@@ -41,6 +41,33 @@ COUNTY_MENTION_RE = re.compile(r"\b((?:[A-Z][a-z]+ )*[A-Z][a-z]+) County\b")
 SHELTER_ID_RE = re.compile(r"\bShelter \d+\b")
 SHELTER_ABSENCE_RE = re.compile(
     r"\b(?:no|zero|without any)\s+(?:open\s+|public\s+|available\s+)?shelters?\b", re.IGNORECASE)
+DISTRICT_MENTION_RE = re.compile(r"\b(?:Council )?District \d+\b")
+
+
+@dataclass(frozen=True)
+class Profile:
+    """What the checks need to know about a tool set. Hurricane is the original;
+    Dallas swaps the alert/plan tools and the version key (scenario_id)."""
+    first_tool: str
+    model_tools: frozenset
+    plan_tool: str
+    version_key: str          # tool outputs carrying this must all match the alert's
+    alert_marker: str         # key that identifies the alert output
+    invented_patterns: tuple = field(default_factory=tuple)
+
+
+HURRICANE = Profile("get_advisory", frozenset(MODEL_TOOLS), "solve_staging", "advisory_number", "storm_name",
+                    (COUNTY_MENTION_RE, SHELTER_ID_RE))
+DALLAS = Profile("get_storm_alert",
+                 frozenset({"find_similar_storms", "estimate_demand", "plan_response", "diff_plans",
+                            "get_enso_context"}),
+                 "plan_response", "scenario_id", "headline",
+                 (COUNTY_MENTION_RE, SHELTER_ID_RE, DISTRICT_MENTION_RE))
+# Dallas forecasts firm up later than hurricane tracks: past 24 h, ice amounts
+# and timing still shift, so no point claims. Calibration target, like the 48 h above.
+DALLAS_UNCERTAIN_LEAD_TIME_H = 24
+# Range unit -> words an answer uses when quoting it.
+UNIT_WORDS = {"people": ("people", "person", "guest"), "requests": ("request",), "customers": ("customer",)}
 
 
 @dataclass
@@ -56,6 +83,11 @@ def _numbers_in_text(text: str) -> set[float]:
     return {float(m.replace(",", "")) for m in NUMBER_RE.findall(text) if m.replace(",", "")}
 
 
+# Provenance strings ("FOX 4", "Budget Book FY2025-26") are citations, not data:
+# a number that only appears there must not vouch for a claim.
+CITATION_KEYS = {"source", "sources"}
+
+
 def _numbers_in_output(value) -> set[float]:
     if isinstance(value, bool):
         return set()
@@ -65,7 +97,8 @@ def _numbers_in_output(value) -> set[float]:
     if isinstance(value, str):
         return _numbers_in_text(value)
     if isinstance(value, dict):
-        return set().union(*(_numbers_in_output(v) for v in value.values())) if value else set()
+        vals = [v for k, v in value.items() if k not in CITATION_KEYS]
+        return set().union(*(_numbers_in_output(v) for v in vals)) if vals else set()
     if isinstance(value, list):
         return set().union(*(_numbers_in_output(v) for v in value)) if value else set()
     return set()
@@ -94,8 +127,9 @@ def _index_numbers(value, catalog: list[dict], bound: dict, free: set) -> None:
             for k in owners:
                 bound.setdefault(k, set()).update(nums)
         else:
-            for v in value.values():
-                _index_numbers(v, catalog, bound, free)
+            for k, v in value.items():
+                if k not in CITATION_KEYS:
+                    _index_numbers(v, catalog, bound, free)
     else:
         free.update(_numbers_in_output(value))
 
@@ -137,7 +171,8 @@ def _strings_in_output(value) -> set[str]:
     return set()
 
 
-def check_entities(answer: str, tool_outputs: list[dict], catalog: list[dict]) -> Check:
+def check_entities(answer: str, tool_outputs: list[dict], catalog: list[dict],
+                   profile: Profile = HURRICANE) -> Check:
     name = "entities_match_tools"
     returned = _strings_in_output(tool_outputs)
     problems = []
@@ -146,12 +181,13 @@ def check_entities(answer: str, tool_outputs: list[dict], catalog: list[dict]) -
         if not ({e["key"], *e["names"]} & returned):
             problems.append(f"{e['label']} named but no tool returned it this turn")
     known = {n for e in catalog for n in e["names"]}
-    for m in dict.fromkeys(COUNTY_MENTION_RE.findall(answer)):
-        if m not in known and f"{m} County" not in known:
-            problems.append(f"{m} County is not in any tool output")
-    for m in dict.fromkeys(SHELTER_ID_RE.findall(answer)):
-        if m not in known:
-            problems.append(f"{m} is not in any tool output")
+    for pattern in profile.invented_patterns:
+        for m in dict.fromkeys(pattern.findall(answer)):
+            if pattern is COUNTY_MENTION_RE:  # group captures the name without " County"
+                if m not in known and f"{m} County" not in known:
+                    problems.append(f"{m} County is not in any tool output")
+            elif m not in known:
+                problems.append(f"{m} is not in any tool output")
 
     # Absence needs evidence: an empty, successful shelter lookup for that county.
     empty_lookups = {o.get("county_fips") for o in tool_outputs if "shelters" in o and not o["shelters"]}
@@ -170,22 +206,25 @@ def check_entities(answer: str, tool_outputs: list[dict], catalog: list[dict]) -
 
 
 def check_steps(answer: str, calls: list[str], tool_outputs: list[dict],
-                order_calls: list[str] | None = None) -> Check:
+                order_calls: list[str] | None = None, profile: Profile = HURRICANE) -> Check:
     """calls: every call this turn (for "was solve_staging run at all").
     order_calls: the calls whose order matters (the latest attempt's, so a retry can fix it)."""
     problems = []
     order_calls = calls if order_calls is None else order_calls
+    p = profile
     for i, name in enumerate(order_calls):
-        if name in MODEL_TOOLS and "get_advisory" not in order_calls[:i + 1]:
-            problems.append(f"{name} ran without get_advisory first")
+        if name in p.model_tools and p.first_tool not in order_calls[:i + 1]:
+            problems.append(f"{name} ran without {p.first_tool} first")
             break
-    if STAGING_WORDS_RE.search(answer) and "solve_staging" not in calls:
-        problems.append("staging advice given without calling solve_staging")
-    current = next((o["advisory_number"] for o in reversed(tool_outputs) if "storm_name" in o), None)
-    stale = sorted({o["advisory_number"] for o in tool_outputs
-                    if "advisory_number" in o and o["advisory_number"] != current})
+    if STAGING_WORDS_RE.search(answer) and p.plan_tool not in calls:
+        problems.append(f"staging advice given without calling {p.plan_tool}")
+    current = next((o[p.version_key] for o in reversed(tool_outputs)
+                    if p.alert_marker in o and p.version_key in o), None)
+    stale = sorted({o[p.version_key] for o in tool_outputs
+                    if p.version_key in o and o[p.version_key] != current})
     if current is not None and stale:
-        problems.append(f"tool output from advisory {stale} mixed with current advisory {current}")
+        label = "advisory" if p is HURRICANE else "scenario"
+        problems.append(f"tool output from {label} {stale} mixed with current {label} {current}")
     if problems:
         return Check("required_steps", False, True, "; ".join(problems))
     return Check("required_steps", True, True, "Tool-call sequence OK")
@@ -224,14 +263,57 @@ def check_confidence(answer: str, tool_outputs: list[dict], catalog: list[dict] 
     return Check(name, True, True, f"No certainty words; outage figures carry ranges ({context})")
 
 
+def _ranges(value) -> list[dict]:
+    """Every low/median/high range in the tool outputs (estimate_demand, plan_response)."""
+    if isinstance(value, dict):
+        if {"low", "median", "high"} <= value.keys():
+            return [value]
+        return [r for v in value.values() for r in _ranges(v)]
+    if isinstance(value, list):
+        return [r for v in value for r in _ranges(v)]
+    return []
+
+
+def check_confidence_dallas(answer: str, tool_outputs: list[dict]) -> Check:
+    name = "confidence_fits_lead_time"
+    alert = next((o for o in reversed(tool_outputs) if "lead_time_h" in o and "headline" in o), None)
+    if alert is None:
+        return Check(name, None, False, "No storm alert in tool outputs, so lead time is unknown")
+    lead = alert["lead_time_h"]
+    problems = []
+    if lead > DALLAS_UNCERTAIN_LEAD_TIME_H:
+        problems += [f'certainty word "{m}"' for m in dict.fromkeys(CERTAINTY_RE.findall(answer))]
+    # A history-based estimate quoted by its median alone hides how thin it is.
+    # Only a clause that uses the range's unit counts as quoting it: "30 trucks"
+    # is not District 2's median of 30 transport requests.
+    answer_nums = _numbers_in_text(answer)
+    clauses = [(c, _numbers_in_text(c)) for c in CLAUSE_SPLIT_RE.split(answer)]
+    for r in _ranges(tool_outputs):
+        if r["low"] == r["high"]:
+            continue
+        words = UNIT_WORDS.get(r.get("unit", ""), (r.get("unit", ""),))
+        quoted = any(float(r["median"]) in nums and any(w and w in c.lower() for w in words)
+                     for c, nums in clauses)
+        if quoted and not {float(r["low"]), float(r["high"])} <= answer_nums:
+            problems.append(f"estimate {r['median']:g} {r.get('unit', '')} given without its range "
+                            f"({r['low']:g}-{r['high']:g}, n={r.get('n')})")
+    if problems:
+        return Check(name, False, True, f"Estimates rest on few past storms (lead time {lead:g} h) but the "
+                     "answer has: " + "; ".join(dict.fromkeys(problems)) + ". State the range and drop certainty words")
+    return Check(name, True, True, f"Estimates carry their ranges; no certainty words (lead time {lead:g} h)")
+
+
 def run_checks(answer: str, calls: list[str], tool_outputs: list[dict], question: str,
-               catalog: list[dict], order_calls: list[str] | None = None) -> list[Check]:
+               catalog: list[dict], order_calls: list[str] | None = None,
+               profile: Profile = HURRICANE) -> list[Check]:
     """Deterministic checks. The actionable judge runs separately, on the final answer only."""
+    confidence = (check_confidence(answer, tool_outputs, catalog) if profile is HURRICANE
+                  else check_confidence_dallas(answer, tool_outputs))
     return [
         check_numbers(answer, tool_outputs, question, catalog),
-        check_entities(answer, tool_outputs, catalog),
-        check_steps(answer, calls, tool_outputs, order_calls),
-        check_confidence(answer, tool_outputs, catalog),
+        check_entities(answer, tool_outputs, catalog, profile),
+        check_steps(answer, calls, tool_outputs, order_calls, profile),
+        confidence,
     ]
 
 
