@@ -1,6 +1,6 @@
 # Research layer runs only on Gemini (Vertex AI)
 
-**Status:** Accepted 2026-10-05. Judge model id still to be confirmed on Vertex (plan R0).
+**Status:** Accepted 2026-10-05. R0 (same day): judge `gemini-3.1-pro-preview` (global), GA alternative `gemini-2.5-pro`; final pick by the R3 eval. The google_search sub-agent isn't needed on ADK 2.11.
 
 ## Context
 Taya wants GCP credits used and everything on Gemini. The chat agents already run on Vertex Gemini through ADK (ADC, no API key). `agent/judge.py` also accepts LiteLLM model strings (Claude, used in early local runs).

@@ -32,14 +32,14 @@ registry lists the county → template pages + its own chat (no new UI code)
 
 ## Phases
 
-### R0: verify platform assumptions (no product code)
-Write each check's result into project-log.
-- [ ] Which Pro-tier Gemini ids answer on Vertex (`global`, `us-central1`). Pick `RESEARCH_JUDGE_MODEL`.
-- [ ] Installed ADK version: can `google_search` share an agent with function tools, or does it need the `AgentTool` sub-agent?
-- [ ] Grounding metadata: what form are the source URLs in (redirects?), and how do we resolve them?
-- [ ] Fetching from Cloud Run: do the target domains (county .gov, Legistar, ArcGIS Hub) answer with our User-Agent?
+### R0: verify platform assumptions (no product code) ✅ 2026-10-05
+- [x] Gemini on Vertex (`models.list`, project uc3-storm-impact-intelligence): Pro tier = `gemini-3.1-pro-preview` (global only), `gemini-2.5-pro` (global + us-central1). `gemini-3.8-flash` global only. No 3.5/3.8 Pro.
+- [x] Scope-trap probe (FEMA PA applicant county vs damage site): 3.1-pro-preview, 2.5-pro and 3.8-flash all reject it (9–14 s). **Judge default `gemini-3.1-pro-preview`**. 2.5-pro is the GA alternative if the preview is withdrawn. Final pick by the R3 planted-error eval across all three, not by this one probe.
+- [x] ADK 2.11.0 / google-genai 2.28.0: `google_search` **can** share an `LlmAgent` with function tools on 3.8-flash (grounded, 2 URLs). No `AgentTool` sub-agent needed.
+- [x] Grounding sources = `vertexaisearch.cloud.google.com/grounding-api-redirect/…`, title = domain only. HEAD with a browser-like User-Agent resolves them (→ `https://mitigation.readyharris.org/`). `fetch.py` resolves before storing.
+- [ ] Fetching from Cloud Run egress: moved to R4 (needs the job deployed).
 
-**Gate:** a smoke script runs researcher-search → one fact → judge ping end to end on Vertex. Results logged.
+Probe scripts are in the session scratchpad, not the repo.
 
 ### R1: schema + number pass + fixed checks (no LLM) ✅ 2026-10-05
 - `backend/research/schema.py`: Target, FactDraft (researcher output, `value_ref`), Fact (`value_raw` required with a value), Page, Check (`severity` block|flag), FactReview, Verdict, DraftPack.
@@ -109,4 +109,5 @@ Defaults in brackets accepted by Taya 2026-10-05, encoded in `research/policy.py
 ## Results
 | Phase | Result |
 |---|---|
+| R0 | Judge `gemini-3.1-pro-preview` (alt `gemini-2.5-pro`); search + function tools mix in one ADK agent; grounding redirects resolve via HEAD |
 | R1 | 58 tests (number kinds/qualifiers/ranges, every layer-1 check pass + fail, by-reference round trip). Known limits: "US 59" reads as a quantity; PDF table cells lose headers (ADR numbers-by-reference) |
