@@ -20,6 +20,10 @@ from models.schema import CountyFeatures
 
 from .hurricane_contracts import CONTRACTS
 
+# Temporal split boundary of the kept model: models.train.train_and_save(train_end_year=2021) default,
+# as run by models.cloud_job. run.json records it from now on; this is the fallback for older runs.
+DEFAULT_TRAIN_END_YEAR = 2021
+
 GUIDANCE_SOURCE = "NWS / NHC hurricane safety (weather.gov/safety/hurricane, nhc.noaa.gov/prepare)"
 GUIDANCE = [
     {"keywords": ["evacuate", "evacuation", "zone", "leave", "order"],
@@ -112,7 +116,11 @@ class HurricaneToolset:
     def get_storm_alert(self) -> dict:
         r = self._replay()
         f = self._forecast_features()
-        in_train = r["year"] <= 2021  # kept model: temporal split, trained on storms through 2021
+        try:
+            train_end = store.model()[1].get("train_end_year", DEFAULT_TRAIN_END_YEAR)
+        except Exception:  # model not loaded: the alert still works; estimate_impact reports the error
+            train_end = DEFAULT_TRAIN_END_YEAR
+        in_train = r["year"] <= train_end
         return {
             "advisory_id": self._advisory_id(), "kind": "replay",
             "headline": f"REPLAY: NHC forecast for {r['storm_name']} {r['year']}, issued "
@@ -166,7 +174,7 @@ class HurricaneToolset:
         out = model.predict([cf], source_note="trained-model")["counties"][0]
         q = out["pct_customers_out"]
         cust = p["customers"]
-        # The kept artifact is the temporal-split model (trained <= 2021), so its skill = the 2022+ test storms.
+        # The kept artifact is the temporal-split model, so its skill = the test-period storms.
         skill = meta.get("metrics", {}).get("temporal", {})
         return {
             "advisory_id": self._advisory_id(), "county": self.county, "fips": self.fips, "risk_tier": out["risk_tier"],
@@ -174,7 +182,7 @@ class HurricaneToolset:
             "customers_out": _rng(q["low"] * cust / 100, q["median"] * cust / 100, q["high"] * cust / 100, "customers", 0),
             "customers_served": cust, "why": out["why"], "model_run": meta.get("run_id", "?"),
             "model_skill": {k: skill[k] for k in ("mae_median", "coverage_pct", "recall_hardest_hit_pct") if k in skill}
-            | {"tested_on": "storms 2022-2025, never seen in training (model trained on 2014-2021)"},
+            | {"tested_on": self._split_text(meta)},
             "inputs": {"forecast_wind_at_county_kt": f["max_wind_kt"], "forecast_closest_nm": f["dist_to_track_nm"],
                        "forward_speed_kt": f["forward_speed_kt"], "right_of_track": bool(f["quadrant_right"]),
                        "lead_time_h_used_by_model": 0, "oni_c": oni["oni_c"]},
@@ -183,6 +191,17 @@ class HurricaneToolset:
             "source": f"Quantile XGBoost outage model, run {meta.get('run_id', '?')} ({meta.get('rows', '?')} storm-county rows, "
                       f"{meta.get('storms', '?')} storms, EAGLE-I labels)",
         }
+
+    @staticmethod
+    def _split_text(meta: dict) -> str:
+        """Train/test years from the run itself (temporal split at train_end_year)."""
+        end = meta.get("train_end_year", DEFAULT_TRAIN_END_YEAR)
+        years = sorted(int(y) for y in meta.get("years", []))
+        train = [y for y in years if y <= end]
+        test = [y for y in years if y > end]
+        if not train or not test:
+            return "unknown split (run.json has no years)"
+        return f"storms {test[0]}-{test[-1]}, never seen in training (model trained on {train[0]}-{train[-1]})"
 
     def get_storm_impacts(self, storm_id: str) -> dict:
         s = next((x for x in self._storms() if x["storm_id"] == storm_id), None)

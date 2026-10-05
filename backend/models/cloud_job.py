@@ -32,6 +32,7 @@ log = logging.getLogger(__name__)
 PREFIX = f"gs://{DEFAULT_GCS_BUCKET}/processed/hurricane"
 TABLE = f"{PREFIX}/training_table.csv"
 MIN_ROWS = 300
+TRAIN_END_YEAR = 2021   # temporal split: train <= this, test after; recorded in run.json
 
 
 def upload(local: str, gs: str) -> None:
@@ -60,17 +61,19 @@ def stage_train(table: str, run_id: str) -> None:
         raise SystemExit(f"{table}: {len(df)} rows / columns {list(df.columns)[:6]}... - refusing to train")
     out = f"{PREFIX}/models/{run_id}"
     runs = {}
-    # Temporal split (train <= 2021, test >= 2022) is the artifact we keep; the held-out-storm split
+    # Temporal split (train <= TRAIN_END_YEAR, test after) is the artifact we keep; the held-out-storm split
     # (Idalia, Hilary, Michael, Ian) is a second, harder check reported alongside it.
     for split in ("storm", "temporal"):
         path = f"/tmp/outage_xgb_real_{split}.joblib"
-        _, metrics = train_and_save(data_path=table, output_path=path, split_strategy=split)
+        _, metrics = train_and_save(data_path=table, output_path=path, split_strategy=split,
+                                    train_end_year=TRAIN_END_YEAR, test_start_year=TRAIN_END_YEAR + 1)
         runs[split] = metrics
         put_json(metrics, f"{out}/metrics_{split}.json")
     upload("/tmp/outage_xgb_real_temporal.joblib", f"{out}/outage_xgb_real.joblib")
     put_json({"run_id": run_id, "finished_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
               "table": table, "rows": len(df), "storms": int(df["storm_id"].nunique()),
               "years": sorted(int(y) for y in df["year"].unique()), "artifact_split": "temporal",
+              "train_end_year": TRAIN_END_YEAR,
               "metrics": runs, "git_commit": os.getenv("GIT_COMMIT", "unknown")}, f"{out}/run.json")
     log.info("done: %s", out)
 
