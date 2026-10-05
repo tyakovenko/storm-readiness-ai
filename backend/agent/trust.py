@@ -37,7 +37,8 @@ PCT_RE = re.compile(r"(\d+(?:\.\d+)?)\s*%")
 # Lines, then sentences/clauses: a number binds to the entities in its own clause.
 CLAUSE_SPLIT_RE = re.compile(r"\n|(?<=[.!?;])\s+")
 # Names that look like places/facilities but may not be in the catalog (invented ones).
-COUNTY_MENTION_RE = re.compile(r"\b((?:[A-Z][a-z]+ )*[A-Z][a-z]+) County\b")
+# Hyphenated names count as one name: "Miami-Dade County" is not an invented "Dade County".
+COUNTY_MENTION_RE = re.compile(r"(?<![\w-])((?:[A-Z][a-z]+[ -])*[A-Z][a-z]+) County\b")
 SHELTER_ID_RE = re.compile(r"\bShelter \d+\b")
 SHELTER_ABSENCE_RE = re.compile(
     r"\b(?:no|zero|without any)\s+(?:open\s+|public\s+|available\s+)?shelters?\b", re.IGNORECASE)
@@ -54,6 +55,7 @@ class Profile:
     version_key: str          # tool outputs carrying this must all match the alert's
     alert_marker: str         # key that identifies the alert output
     invented_patterns: tuple = field(default_factory=tuple)
+    uncertain_lead_h: float = 24.0   # past this lead time: no certainty words (range-based profiles)
 
 
 HURRICANE = Profile("get_advisory", frozenset(MODEL_TOOLS), "solve_staging", "advisory_number", "storm_name",
@@ -66,6 +68,12 @@ DALLAS = Profile("get_storm_alert",
 # Dallas forecasts firm up later than hurricane tracks: past 24 h, ice amounts
 # and timing still shift, so no point claims. Calibration target, like the 48 h above.
 DALLAS_UNCERTAIN_LEAD_TIME_H = 24
+# Hurricane county agents (real tools + trained model): NHC's 48 h warning horizon.
+HURRICANE_COUNTY = Profile("get_storm_alert",
+                           frozenset({"find_similar_storms", "estimate_impact", "plan_shelters", "diff_plans",
+                                      "get_enso_context"}),
+                           "plan_shelters", "advisory_id", "headline",
+                           (COUNTY_MENTION_RE, SHELTER_ID_RE), uncertain_lead_h=UNCERTAIN_LEAD_TIME_H)
 # Range unit -> words an answer uses when quoting it.
 UNIT_WORDS = {"people": ("people", "person", "guest"), "requests": ("request",), "customers": ("customer",)}
 
@@ -376,14 +384,17 @@ def _ranges(value) -> list[dict]:
     return []
 
 
-def check_confidence_dallas(answer: str, tool_outputs: list[dict], catalog: list[dict] | None = None) -> Check:
+def check_confidence_dallas(answer: str, tool_outputs: list[dict], catalog: list[dict] | None = None,
+                            lead_threshold_h: float = DALLAS_UNCERTAIN_LEAD_TIME_H) -> Check:
+    """Range-based confidence check (Dallas, hurricane counties): certainty words past the lead
+    threshold, and any quoted estimate median needs its low and high."""
     name = "confidence_fits_lead_time"
     alert = next((o for o in reversed(tool_outputs) if "lead_time_h" in o and "headline" in o), None)
     if alert is None:
         return Check(name, None, False, "No storm alert in tool outputs, so lead time is unknown")
     lead = alert["lead_time_h"]
     problems = []
-    if lead > DALLAS_UNCERTAIN_LEAD_TIME_H:
+    if lead > lead_threshold_h:
         problems += [f'certainty word "{m}"' for m in dict.fromkeys(CERTAINTY_RE.findall(answer))]
     # A history-based estimate quoted by its median alone hides how thin it is.
     # Only a clause that uses the range's unit counts as quoting it: "30 trucks"
@@ -421,7 +432,7 @@ def run_checks(answer: str, calls: list[str], tool_outputs: list[dict], question
                profile: Profile = HURRICANE) -> list[Check]:
     """Deterministic checks. The actionable judge runs separately, on the final answer only."""
     confidence = (check_confidence(answer, tool_outputs, catalog) if profile is HURRICANE
-                  else check_confidence_dallas(answer, tool_outputs, catalog))
+                  else check_confidence_dallas(answer, tool_outputs, catalog, profile.uncertain_lead_h))
     return [
         check_numbers(answer, tool_outputs, question, catalog),
         check_entities(answer, tool_outputs, catalog, profile),

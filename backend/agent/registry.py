@@ -1,0 +1,92 @@
+"""Agent registry for the multi-agent service (AGENT_DOMAIN=multi).
+
+Agents = hazard template x county pack:
+  dallas-winter          winter template (backend/dallas, agent/dallas_*)       - existing Dallas agent
+  <slug> per pack        hurricane template (agent/hurricane_*), packs from hurricane/store.index()
+
+Agents are built lazily on first use and cached; a broken pack fails that agent only, visibly.
+"""
+
+from __future__ import annotations
+
+import logging
+import threading
+
+log = logging.getLogger(__name__)
+
+DALLAS = {"id": "dallas-winter", "name": "Dallas County winter storm", "hazard": "winter", "county": "Dallas County",
+          "state": "TX", "fips": "48113", "status": "live"}
+
+_lock = threading.Lock()
+_agents: dict[str, tuple] = {}
+
+
+def list_agents() -> list[dict]:
+    from hurricane import store
+    out = [dict(DALLAS)]
+    try:
+        for p in store.index():
+            out.append({"id": p["slug"], "name": f"{p['county']} hurricane", "hazard": "hurricane", "county": p["county"],
+                        "state": p["state"], "fips": p["fips"], "status": p["status"], "replay": p.get("replay"),
+                        "storms": p.get("storms"), "shelters": p.get("shelters")})
+    except Exception as e:  # no packs published: Dallas still works, the gap is visible in the list
+        log.error("hurricane pack index unavailable: %s", e)
+        out.append({"id": "hurricane-packs", "name": "Hurricane packs unavailable", "hazard": "hurricane",
+                    "status": f"error: {e}"})
+    return out
+
+
+def get(agent_id: str, model_name: str | None = None):
+    """(kind, agent, toolset_or_None) for an agent id. Raises KeyError for an unknown id."""
+    with _lock:
+        if agent_id in _agents:
+            return _agents[agent_id]
+        meta = next((a for a in list_agents() if a["id"] == agent_id), None)
+        if meta is None or str(meta.get("status", "")).startswith("error"):
+            raise KeyError(agent_id)
+        if meta["hazard"] == "winter":
+            from agent.dallas_adk import build_agent, build_model
+            built = ("winter", build_agent(build_model(model_name)), None)
+        else:
+            from agent.hurricane_adk import build_county_agent
+            agent, ts = build_county_agent(meta["fips"], model_name)
+            built = ("hurricane", agent, ts)
+        _agents[agent_id] = built
+        return built
+
+
+def chat(agent_id: str, question: str, history: list[dict], judge=None) -> dict:
+    kind, agent, ts = get(agent_id)
+    if kind == "winter":
+        from agent.dallas_adk import run_dallas_agent
+        return run_dallas_agent(question, history, agent, judge)
+    from agent.hurricane_adk import run_county_agent
+    return run_county_agent(question, history, agent, ts, judge)
+
+
+def hurricane_overview(agent_id: str, closed: list[str], include_surge: bool) -> dict:
+    """Dashboard data for a hurricane county agent: the same tools the agent calls, no LLM."""
+    from hurricane import store
+    kind, _, ts = get(agent_id)
+    if kind != "hurricane":
+        raise KeyError(agent_id)
+    what_if = {"exclude_surge_and_floodplain": not include_surge}
+    if closed:
+        what_if["unavailable_shelters"] = closed
+    plan = ts.run_tool("plan_shelters", what_if)
+    return {
+        "domain": "hurricane", "agent_id": agent_id, "county": ts.county, "fips": ts.fips,
+        "alert": ts.run_tool("get_storm_alert", {}),
+        "impact": ts.run_tool("estimate_impact", {}),
+        "similar": ts.run_tool("find_similar_storms", {}),
+        "assets": ts.run_tool("query_assets", {}),
+        "plan": plan,
+        "diff": ts.run_tool("diff_plans", what_if) if (closed or include_surge) else None,
+        "enso": ts.run_tool("get_enso_context", {}),
+        "shelters": store.table(ts.fips, "assets.json")["shelters"],
+        "storms": store.table(ts.fips, "storms.json")["storms"],
+        "fema": store.table(ts.fips, "storms.json")["fema"],
+        "geo": store.table(ts.fips, "geo.geojson"),
+        "profile": ts.pack["profile"],
+        "gaps": ts.pack["gaps"],
+    }

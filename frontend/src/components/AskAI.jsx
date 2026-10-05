@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { chatUrl } from "../api.js";
 
 // All agent/trust logic lives in the backend. This panel only sends a
 // question to POST /api/chat and displays what comes back. Moved out of
@@ -23,6 +24,20 @@ const DALLAS_EXAMPLES = [
 // Mock-only: the scripted client misbehaves once so the trust layer has something to block.
 const TRUST_DEMOS = ["Trust demo: hallucinate a number", "Trust demo: overconfident outage risk"];
 const DALLAS_TRUST_DEMOS = ["Trust demo: shelter demand without its range"];
+const HURRICANE_EXAMPLES = [
+  "How bad could the power outages be?",
+  "Has this county had a storm like this before?",
+  "What shelters do we have outside the surge zone?",
+  "What if we include surge-zone shelters too?",
+  "Does El Niño matter this season?",
+  "What should residents do to evacuate?",
+];
+const HURRICANE_TRUST_DEMOS = ["Trust demo: outage estimate without its range"];
+const BANNER = {
+  winter: "Past-storm numbers are real (NOAA, Dallas 311, EAGLE-I, FEMA, city records). The storm is a planning scenario, not a forecast; estimates are ranges from past storms.",
+  hurricane: "Past-storm numbers are real (HURDAT2, EAGLE-I outages, NOAA, FEMA). The storm is a replay of a real past NHC forecast; outage ranges come from a trained model with its tested error shown.",
+  stub: "Demo data only. Every number comes from stub tools, not a real forecast.",
+};
 
 const BADGE = "inline-block rounded-full px-2.5 py-[3px] text-xs font-semibold";
 const BADGE_OK = `${BADGE} bg-ok-bg text-ok-text`;
@@ -112,7 +127,8 @@ function AgentReply({ result }) {
   );
 }
 
-export default function AskAI({ open, onClose }) {
+// agentId/hazard/agentName come from the multi-agent app; the single-agent app passes none.
+export default function AskAI({ open, onClose, agentId = null, hazard = null, agentName = null, disabled = false }) {
   const [health, setHealth] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -153,7 +169,7 @@ export default function AskAI({ open, onClose }) {
     setError("");
     setLoading(true);
     try {
-      const r = await fetch("/api/chat", {
+      const r = await fetch(chatUrl(agentId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: question, history }),
@@ -168,9 +184,11 @@ export default function AskAI({ open, onClose }) {
     }
   }
 
-  const dallas = health?.domain === "dallas";
-  const base = dallas ? DALLAS_EXAMPLES : EXAMPLES;
-  const examples = health?.mock ? [...base, ...(dallas ? DALLAS_TRUST_DEMOS : TRUST_DEMOS)] : base;
+  // Which template answers: the open agent's hazard (multi), else the single service's domain.
+  const kind = hazard ?? (health?.domain === "dallas" ? "winter" : "stub");
+  const base = { winter: DALLAS_EXAMPLES, hurricane: HURRICANE_EXAMPLES }[kind] ?? EXAMPLES;
+  const demos = { winter: DALLAS_TRUST_DEMOS, hurricane: HURRICANE_TRUST_DEMOS }[kind] ?? TRUST_DEMOS;
+  const examples = disabled ? [] : health?.mock ? [...base, ...demos] : base;
 
   return (
     <>
@@ -185,7 +203,7 @@ export default function AskAI({ open, onClose }) {
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="mb-1.5 text-[1.05rem] font-bold text-ink">Ask AI</h2>
+            <h2 className="mb-1.5 text-[1.05rem] font-bold text-ink">Ask AI{agentName ? ` — ${agentName}` : ""}</h2>
             {health && (
               <div className="mt-1 flex flex-wrap gap-1.5">
                 <span className={health.mock ? BADGE_WARN : BADGE_OK}>
@@ -201,9 +219,7 @@ export default function AskAI({ open, onClose }) {
         </div>
 
         <p className="rounded bg-warn-bg px-3 py-2 text-[0.85rem] text-warn-text" role="note">
-          {dallas
-            ? "Past-storm numbers are real (NOAA, Dallas 311, EAGLE-I, FEMA, city records). The storm is a planning scenario, not a forecast; estimates are ranges from past storms."
-            : "Demo data only. Every number comes from stub tools, not a real forecast."}
+          {disabled ? "Open a county agent to ask questions about it." : BANNER[kind]}
         </p>
 
         <div className="flex min-h-[120px] flex-1 flex-col gap-3 overflow-y-auto" aria-live="polite">

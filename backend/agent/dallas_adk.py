@@ -11,24 +11,16 @@ of the turn's tool outputs and must be able to ask for a rewrite (decision
 
 from __future__ import annotations
 
-import asyncio
 import logging
-import os
-import uuid
 
 from google.adk.agents.llm_agent import Agent
-from google.adk.events import Event
-from google.adk.runners import InMemoryRunner
-from google.genai import types
 
-from . import judge as judge_mod
 from . import trust
-from .dallas_mock import TRUST_PREFIX, MockDallasLlm
+from .adk_runner import check_model, model_from_name, model_label, run_with_trust  # noqa: F401  (re-exported for app.py)
+from .dallas_mock import MockDallasLlm
 from .dallas_tools import entity_catalog, run_tool
-from .llm import ConfigError
 
 log = logging.getLogger(__name__)
-APP = "dallas_storm_readiness"
 
 INSTRUCTION = """You are the Dallas Storm Readiness assistant. You help City of Dallas \
 emergency managers prepare for a winter storm: what past storms broke, how much demand to \
@@ -144,38 +136,11 @@ ADK_TOOLS = [get_storm_alert, find_similar_storms, get_storm_impacts, estimate_d
              plan_response, diff_plans, get_enso_context, retrieve_guidance]
 
 
-# ---- model + agent ----
+# ---- model + agent (shared runner in adk_runner.py) ----
 
 def build_model(name: str | None = None, bad_first: bool = False):
-    """LLM_MODEL: "mock" | a Gemini model id (Vertex, via ADC) | a LiteLLM string with "/" (e.g. anthropic/...)."""
-    name = (name or os.environ.get("LLM_MODEL", "")).strip()
-    if not name:
-        raise ConfigError("LLM_MODEL is not set: use 'mock', a Gemini id such as gemini-3.8-flash, "
-                          "or a LiteLLM model string.")
-    if name == "mock":
-        log.warning("LLM_MODEL=mock: scripted Dallas demo model, not a real LLM")
-        return MockDallasLlm(bad_first=bad_first)
-    if "/" in name:
-        from google.adk.models.lite_llm import LiteLlm
-        return LiteLlm(model=name)
-    if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").upper() not in {"TRUE", "1"} \
-            or not os.environ.get("GOOGLE_CLOUD_PROJECT"):
-        raise ConfigError(f"{name} needs GOOGLE_GENAI_USE_VERTEXAI=TRUE and GOOGLE_CLOUD_PROJECT "
-                          "(and GOOGLE_CLOUD_LOCATION=global for gemini-3.8-flash).")
-    return name
-
-
-def check_model(model) -> None:
-    """Fail at startup if a real Gemini model can't be called (no deferred validation)."""
-    if not isinstance(model, str):
-        return
-    from google import genai
-    client = genai.Client()
-    try:
-        client.models.generate_content(model=model, contents="Reply with: ok")
-    except Exception as e:
-        raise ConfigError(f"Gemini model {model} is not callable "
-                          f"(location={os.environ.get('GOOGLE_CLOUD_LOCATION')}): {e}") from e
+    """LLM_MODEL: "mock" | a Gemini id (Vertex, via ADC) | a LiteLLM string with "/" (e.g. anthropic/...)."""
+    return model_from_name(name, lambda: MockDallasLlm(bad_first=bad_first))
 
 
 def build_agent(model) -> Agent:
@@ -183,75 +148,5 @@ def build_agent(model) -> Agent:
                  description="Dallas winter storm readiness: past impacts, demand ranges, truck and shelter plans.")
 
 
-def model_label(model) -> str:
-    return model if isinstance(model, str) else getattr(model, "model", type(model).__name__)
-
-
-# ---- run + trust ----
-
-async def _attempt(runner, session_id: str, text: str) -> tuple[str, list[dict], list[dict]]:
-    calls, outputs, answer = [], [], ""
-    async for ev in runner.run_async(user_id="user", session_id=session_id,
-                                     new_message=types.Content(role="user", parts=[types.Part(text=text)])):
-        for p in (ev.content.parts if ev.content else None) or []:
-            if p.function_call:
-                calls.append({"name": p.function_call.name, "arguments": dict(p.function_call.args or {})})
-            elif p.function_response:
-                outputs.append(dict(p.function_response.response or {}))
-            elif p.text and not p.thought:
-                answer = p.text if ev.is_final_response() else answer
-    return answer, calls, outputs
-
-
-async def _run(agent: Agent, question: str, history: list[dict]) -> tuple[list[dict], list[dict], list[dict], str]:
-    runner = InMemoryRunner(agent=agent, app_name=APP)
-    session = await runner.session_service.create_session(app_name=APP, user_id="user")
-    for h in history:  # earlier turns from the UI, replayed as session events
-        role = "user" if h["role"] == "user" else "model"
-        await runner.session_service.append_event(session, Event(
-            invocation_id=str(uuid.uuid4()), author="user" if role == "user" else agent.name,
-            content=types.Content(role=role, parts=[types.Part(text=h["content"])])))
-
-    all_calls, outputs, attempts = [], [], []
-    catalog = entity_catalog()
-    status, message = "blocked", question
-    for attempt in range(2):
-        text, calls, outs = await _attempt(runner, session.id, message)
-        all_calls += calls
-        outputs += outs
-        names_all = [c["name"] for c in all_calls]
-        names_now = [c["name"] for c in calls] or names_all
-        checks = trust.run_checks(text, names_all, outputs, question, catalog, order_calls=names_now,
-                                  profile=trust.DALLAS)
-        attempts.append({"text": text, "checks": trust.to_dicts(checks)})
-        failed = [c for c in checks if c.blocking and c.passed is False]
-        if not failed:
-            status = "passed" if attempt == 0 else "regenerated"
-            break
-        message = (f"{TRUST_PREFIX} Your answer was blocked: " + "; ".join(c.detail for c in failed)
-                   + ". Rewrite it to fix these. Use only numbers from tool results; call tools again if you need to "
-                   "(if the tool order was wrong, call get_storm_alert first, then re-run the other tools). "
-                   "Reply with the corrected answer only: users never see this feedback.")
-    return attempts, all_calls, outputs, status
-
-
 def run_dallas_agent(question: str, history: list[dict], agent: Agent, judge=None) -> dict:
-    attempts, all_calls, outputs, status = asyncio.run(_run(agent, question, history))
-    final = (judge_mod.grade_or_report(judge, question, attempts[-1]["text"]) if status != "blocked"
-             else trust.Check(judge_mod.NAME, None, False, "Not graded: answer was blocked"))
-    attempts[-1]["checks"] += trust.to_dicts([final])
-    sources = set()
-    for o in outputs:
-        if isinstance(o.get("source"), str):
-            sources.add(o["source"])
-        sources.update(s for s in o.get("sources", []) if isinstance(s, str))
-    return {
-        "status": status,
-        "answer": attempts[-1]["text"] if status != "blocked" else None,
-        "checks": attempts[-1]["checks"],
-        "attempts": attempts,
-        "tool_calls": all_calls,
-        "sources": sorted(sources),
-        "why": [],
-        "model": model_label(agent.model),
-    }
+    return run_with_trust(question, history, agent, judge, trust.DALLAS, entity_catalog())

@@ -36,6 +36,7 @@ from agent.loop import run_agent  # noqa: E402
 from agent.tools import run_tool  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 DOMAIN = os.getenv("AGENT_DOMAIN", "dallas").strip().lower()
@@ -44,7 +45,7 @@ DOMAIN = os.getenv("AGENT_DOMAIN", "dallas").strip().lower()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Fail loudly: a bad model config, missing key or missing data stops the server here.
-    if DOMAIN == "dallas":
+    if DOMAIN in ("dallas", "multi"):
         from agent.dallas_adk import build_agent, build_model, check_model, model_label
         from dallas import store
         store.load_all()
@@ -52,11 +53,14 @@ async def lifespan(app: FastAPI):
         check_model(model)
         app.state.agent = build_agent(model)
         app.state.model_label = model_label(model)
+        if DOMAIN == "multi":  # hurricane packs load lazily per agent; list them now so a bad index shows at startup
+            from agent import registry
+            log.info("agents: %s", [a["id"] for a in registry.list_agents()])
     elif DOMAIN == "hurricane":
         app.state.llm = build_llm()
         app.state.model_label = app.state.llm.model
     else:
-        raise RuntimeError(f"AGENT_DOMAIN must be 'dallas' or 'hurricane', got {DOMAIN!r}")
+        raise RuntimeError(f"AGENT_DOMAIN must be 'dallas', 'multi' or 'hurricane', got {DOMAIN!r}")
     app.state.judge = build_judge()
     yield
 
@@ -90,7 +94,7 @@ def overview(max_trucks: int | None = Query(None, ge=0),
     exactly the shapes the data team builds to. max_trucks/closed are the
     Resource Planner's what-if inputs, passed straight to solve_staging.
     """
-    if DOMAIN == "dallas":
+    if DOMAIN in ("dallas", "multi"):
         return dallas_overview(max_trucks, closed)
     staging_args = {}
     if max_trucks is not None:  # 0 trucks is a valid what-if
@@ -132,10 +136,39 @@ def dallas_overview(trucks: int | None, closed: list[str]) -> dict:
 @app.post("/api/chat")
 def chat(body: ChatRequest, request: Request):
     history = [h.model_dump() for h in body.history]
-    if DOMAIN == "dallas":
+    if DOMAIN in ("dallas", "multi"):
         from agent.dallas_adk import run_dallas_agent
         return run_dallas_agent(body.message, history, request.app.state.agent, request.app.state.judge)
     return run_agent(body.message, history, request.app.state.llm, request.app.state.judge)
+
+
+# ---- multi-agent routes (AGENT_DOMAIN=multi): one link, one page set per agent ----
+
+@app.get("/api/agents")
+def agents():
+    from agent import registry
+    return registry.list_agents()
+
+
+@app.get("/api/agents/{agent_id}/overview")
+def agent_overview(agent_id: str, max_trucks: int | None = Query(None, ge=0),
+                   closed: list[str] = Query(default_factory=list), include_surge: bool = False):
+    from agent import registry
+    if agent_id == registry.DALLAS["id"]:
+        return dallas_overview(max_trucks, closed)
+    try:
+        return registry.hurricane_overview(agent_id, closed, include_surge)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Unknown agent {agent_id!r}")
+
+
+@app.post("/api/agents/{agent_id}/chat")
+def agent_chat(agent_id: str, body: ChatRequest, request: Request):
+    from agent import registry
+    try:
+        return registry.chat(agent_id, body.message, [h.model_dump() for h in body.history], request.app.state.judge)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Unknown agent {agent_id!r}")
 
 
 @app.get("/api/impact")

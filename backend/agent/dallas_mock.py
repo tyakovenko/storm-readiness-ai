@@ -18,7 +18,7 @@ from google.adk.models.llm_request import LlmRequest
 from google.adk.models.llm_response import LlmResponse
 from google.genai import types
 
-TRUST_PREFIX = "[trust-layer]"
+from .adk_runner import TRUST_PREFIX  # noqa: E402  (shared feedback marker)
 TRUCKS_RE = re.compile(r"(\d+)\s+(?:sanding\s+)?trucks?", re.IGNORECASE)
 CLOSED_RE = re.compile(r"(fair park|austin street|oak lawn)[^.?!]*?\b(closed|unavailable|can'?t open|not available|down)\b"
                        r"|\b(closed|unavailable|without|lose|lost)\b[^.?!]*?(fair park|austin street|oak lawn)", re.IGNORECASE)

@@ -3,13 +3,22 @@ const NAV_ITEMS = [
   { id: "resource-planner", label: "Resource Planner" },
 ];
 
-export default function Navigation({ activePage, onNavigate }) {
+// items/onHome/title are set by the multi-agent app (one page set per agent + "All agents");
+// the single-agent app passes neither and gets the original two tabs.
+export default function Navigation({ activePage, onNavigate, items = NAV_ITEMS, onHome, title }) {
   return (
     <nav
       className="fixed inset-x-0 top-14 z-90 flex h-[46px] items-center justify-center gap-8 overflow-x-auto border-b border-line bg-surface px-5 max-[560px]:gap-4"
       aria-label="Primary"
     >
-      {NAV_ITEMS.map((item) => (
+      {onHome && (
+        <button type="button" onClick={onHome}
+          className="inline-flex h-full cursor-pointer items-center whitespace-nowrap bg-transparent text-[0.85rem] font-semibold text-accent hover:underline">
+          ← All agents
+        </button>
+      )}
+      {title && <span className="whitespace-nowrap text-[0.9rem] font-bold text-navy">{title}</span>}
+      {items.map((item) => (
         <button
           key={item.id}
           type="button"

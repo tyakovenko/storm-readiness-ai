@@ -48,7 +48,7 @@ function WhatIf({ shelters, trucks, closed, busy, onApply, onReset }) {
   );
 }
 
-export default function DallasPlanner({ overview: initial }) {
+export default function DallasPlanner({ overview: initial, agentId = null }) {
   const [overview, setOverview] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -59,7 +59,7 @@ export default function DallasPlanner({ overview: initial }) {
     setBusy(true);
     setError("");
     try {
-      setOverview(await fetchOverview({ max_trucks: trucks, closed }));
+      setOverview(await fetchOverview({ max_trucks: trucks, closed }, agentId));
     } catch (e) {
       setError(`Re-plan failed: ${e.message}`);
     } finally {

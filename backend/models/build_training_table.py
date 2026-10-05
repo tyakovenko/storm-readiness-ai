@@ -123,7 +123,7 @@ def haversine_nm(lat1, lon1, lat2, lon2):
     return 2 * r * np.arcsin(np.sqrt(a))
 
 
-def storm_county_features(s: Storm, counties: pd.DataFrame) -> pd.DataFrame:
+def storm_county_features(s: Storm, counties: pd.DataFrame, min_wind_kt: float = MIN_STORM_WIND_KT) -> pd.DataFrame:
     """Per county near the track: max wind at county, closest distance, motion at closest approach, label window."""
     clat, clon = counties["lat"].to_numpy(), counties["lon"].to_numpy()
     d = haversine_nm(s.lat[:, None], s.lon[:, None], clat[None, :], clon[None, :])   # hours x counties
@@ -150,7 +150,8 @@ def storm_county_features(s: Storm, counties: pd.DataFrame) -> pd.DataFrame:
             "window_end": s.t[hours[-1]] + timedelta(hours=WINDOW_AFTER_H),
         })
     out = pd.DataFrame(rows)
-    return out if out["max_wind_kt"].max() >= MIN_STORM_WIND_KT else pd.DataFrame()
+    # Storm selection for training (some county saw tropical-storm force); inference passes 0.
+    return out if out["max_wind_kt"].max() >= min_wind_kt else pd.DataFrame()
 
 
 # ---------- static county data ----------
