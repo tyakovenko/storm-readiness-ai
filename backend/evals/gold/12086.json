@@ -1,0 +1,82 @@
+{
+ "fips": "12086",
+ "county": "Miami-Dade County",
+ "status": "draft - awaiting Taya's review",
+ "built": "2026-10-05",
+ "note": "Specs built by reference from live pages (see 48201.json). floridapolitics.com and nbcmiami.com carry the same AP text: one source, not two (syndicated_with). m4 (Tamiami Park 'sheltered more than 2,000') dropped: the sentence names no unit, so the fixed unit check rightly refuses it.",
+ "facts": [
+  {
+   "id": "m1",
+   "metric": "shelter_count",
+   "unit": "shelters",
+   "value_raw": "43",
+   "storm_id": "AL112017",
+   "place": null,
+   "subject": "Miami-Dade County",
+   "source_url": "https://floridapolitics.com/archives/246198-last-shelter-used-hurricane-irma-evacuees-closes/",
+   "found_by": "claude-manual",
+   "syndicated_with": "https://www.nbcmiami.com/news/local/last-shelter-used-for-hurricane-irma-closes-in-miami-dade/25117/"
+  },
+  {
+   "id": "m1b",
+   "metric": "shelter_count",
+   "unit": "shelters",
+   "value_raw": "43",
+   "storm_id": "AL112017",
+   "place": null,
+   "subject": "Miami-Dade County",
+   "source_url": "https://www.cbsnews.com/miami/news/miami-dade-to-open-13-more-shelters-for-hurricane-evacuees/",
+   "found_by": "claude-manual",
+   "same_as": "m1"
+  },
+  {
+   "id": "m2",
+   "metric": "shelter_capacity",
+   "unit": "people",
+   "value_raw": "100,000",
+   "storm_id": "AL112017",
+   "place": null,
+   "subject": "Miami-Dade County",
+   "source_url": "https://floridapolitics.com/archives/246198-last-shelter-used-hurricane-irma-evacuees-closes/",
+   "found_by": "claude-manual"
+  },
+  {
+   "id": "m2b",
+   "metric": "shelter_capacity",
+   "unit": "people",
+   "value_raw": "100,000",
+   "storm_id": "AL112017",
+   "place": null,
+   "subject": "Miami-Dade County",
+   "source_url": "https://www.cbsnews.com/miami/news/miami-dade-to-open-13-more-shelters-for-hurricane-evacuees/",
+   "found_by": "claude-manual",
+   "same_as": "m2"
+  },
+  {
+   "id": "m3",
+   "metric": "evacuee_count",
+   "unit": "people",
+   "value_raw": "32,000",
+   "storm_id": "AL112017",
+   "place": null,
+   "subject": "county",
+   "source_url": "https://floridapolitics.com/archives/246198-last-shelter-used-hurricane-irma-evacuees-closes/",
+   "found_by": "claude-manual"
+  }
+ ],
+ "decoys": [
+  {
+   "metric": "evacuee_count",
+   "value": 660000,
+   "storm_id": "AL112017",
+   "why": "population under evacuation orders, not people evacuated or sheltered"
+  },
+  {
+   "metric": "evacuee_count",
+   "value": 2000,
+   "storm_id": "AL112017",
+   "unless_subject": "Tamiami",
+   "why": "one shelter (Youth Fair complex at Tamiami Park); a decoy unless the subject names it"
+  }
+ ]
+}

@@ -100,11 +100,12 @@ gcloud run jobs execute storm-research --region=us-central1 --args=-m,research.r
 - [x] County agents read published facts: hurricane tool `get_local_facts(metric?, storm_id?)` + `LocalFacts` contract + instruction line (say whose figure, which storm/date; single-source said as such; conflicting/unchecked never stated as settled). Quote + URL under `source` (trust citation key), so numbers inside a quote can't vouch for a claim. Sources registry on pages = issue #7.
 - [x] Judge: key-metric entailment must be unanimous over 3 calls (Harris f3 flipped between runs); JSON list responses unwrapped. Re-judge after typed contract: f8 (utility workers) now unsupported; f7 re-checked by hand: the governor's "250 bed medical shelter" and PBS's "as many as 250 people" area are very likely the same facility → legitimate corroboration, not a false verification.
 
-### R5: gold-set eval
-- Hand-label the Harris, Miami-Dade and Lee local facts (the `gaps` metrics). Today's packs have **only national data**, so the gold set has to be built first (Taya + Claude, about 1–2 h per county).
-- Metrics per county: fact recall vs gold, precision, **false-verification rate on key metrics (bar: 0)**, `unchecked` share, cost and time per run.
-
-**Gate:** metrics table in this doc; the demo runs the 4th county (Palm Beach or Charleston) from a recorded run.
+### R5: gold-set eval (in progress)
+- [x] `evals/research_gold.py`: gold facts are **specs** (metric, storm, place, subject, URL, number as written), built by reference from the live page and held to the same fixed checks as the researcher (`--validate`). Scores: recall (`same_as` merges two sources of one fact), verdicts on matched facts, **false verifications** (verified facts matching a decoy, or contradicting a gold fact with the same metric/storm/place/subject), unscored count.
+- [x] Gold sets (drafts, **need Taya's review**): `evals/gold/48201.json` (Harris: 7 facts, 3 decoys, 1 pending PDF), `12086.json` (Miami-Dade: 5 facts incl. two syndicated AP copies, 2 decoys), `12071.json` (Lee: 1 fact, 1 decoy; Ian AAR + Milton figures are in PDFs → #8). All gold facts pass `--validate` live.
+- Two candidate gold facts were dropped because their sentence names no unit ("sheltered more than 2,000 from Hurricane Irma", "We had room for 40,000."). The strict unit rule stays: it refuses unclear numbers, at the cost of these.
+- [ ] Fresh researcher + judge runs with current code on all three counties, scored against gold.
+- [ ] Gating: 0 false verifications on key metrics.
 
 ## Judge inputs
 Defaults in brackets accepted by Taya 2026-10-05, encoded in `research/policy.py`.

@@ -1,0 +1,37 @@
+{
+ "fips": "12071",
+ "county": "Lee County",
+ "status": "draft - awaiting Taya's review",
+ "built": "2026-10-05",
+ "note": "Lee's own Ian after-action report is a PDF (issue #8): its figures (shelters opened, 5,954 sheltered) wait under pending_pdf. Bonita Springs page says 14 shelters opened, the AAR (via search) 11: unresolved, left out. l2 ('We had room for 40,000.') dropped: its sentence names no unit. Milton 2024 shelter counts (1,650 / 6,800 in 13 shelters per search) only found on pages that 404 to our fetcher or in leegov PDFs. Lee gold is thin until #8.",
+ "facts": [
+  {
+   "id": "l1",
+   "metric": "evacuee_count",
+   "unit": "people",
+   "value_raw": "4,000",
+   "storm_id": "AL092022",
+   "place": null,
+   "subject": "county",
+   "source_url": "https://www.naco.org/articles/florida-counties-dig-out-hurricane-ian",
+   "found_by": "claude-manual"
+  }
+ ],
+ "pending_pdf": [
+  {
+   "metric": "evacuee_count",
+   "storm_id": "AL092022",
+   "subject": "Lee County",
+   "source_url": "https://www.leegov.com/hurricane/Documents/AAR/Lee%20County%20Hurricane%20Ian%20AAR.pdf",
+   "why": "AAR PDF (issue #8): general-population shelters opened and total sheltered"
+  }
+ ],
+ "decoys": [
+  {
+   "metric": "evacuee_count",
+   "value": 10000,
+   "storm_id": "AL092022",
+   "why": "statewide Florida shelter population after Ian, not Lee"
+  }
+ ]
+}

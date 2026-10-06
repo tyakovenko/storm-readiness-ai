@@ -8,6 +8,7 @@ PDFs return an error until extraction keeps layout and tables intact (issue #8).
 from __future__ import annotations
 
 import html as _html
+import http.client
 import json
 import logging
 import re
@@ -113,7 +114,13 @@ def _get(url: str) -> Page:
             while size <= MAX_BYTES:
                 if time.monotonic() - t0 > TOTAL_TIMEOUT_S:
                     return Page(url=url, error=f"download exceeded {TOTAL_TIMEOUT_S} s", retrieved=_now())
-                chunk = r.read(65536)
+                try:
+                    chunk = r.read(65536)
+                except http.client.IncompleteRead as e:
+                    # Chunked response cut short (NBC Miami): keep what arrived; quote checks still apply.
+                    chunks.append(e.partial)
+                    log.warning("fetch %s: incomplete read, using %d bytes received", url, size + len(e.partial))
+                    break
                 if not chunk:
                     break
                 chunks.append(chunk)
