@@ -5,6 +5,9 @@ import os
 
 RESEARCH_MODEL = os.getenv("RESEARCH_MODEL", "gemini-3.8-flash")
 JUDGE_MODEL = os.getenv("RESEARCH_JUDGE_MODEL", "gemini-3.1-pro-preview")
+# Corroboration's "which number on this page states the metric" step only picks a tag; the picked passage
+# then needs unanimous entailment on JUDGE_MODEL, so the cheaper model here doesn't weaken the check.
+PICK_MODEL = os.getenv("RESEARCH_PICK_MODEL", "gemini-3.8-flash")
 
 
 def vertex_env() -> None:

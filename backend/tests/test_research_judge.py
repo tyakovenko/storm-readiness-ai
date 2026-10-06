@@ -154,7 +154,8 @@ def test_rate_limit_retried_then_surfaced(monkeypatch):
             return type("R", (), {"text": '{"label": "supports"}'})()
 
     g = J.GeminiCalls.__new__(J.GeminiCalls)
-    g.model, g.cap, g.count, g._sleep = "m", 10, 0, lambda s: None
+    import threading
+    g.model, g.cap, g.count, g._sleep, g._lock = "m", 10, 0, lambda s: None, threading.Lock()
     g.client = type("C", (), {"models": Models()})()
     assert g.json("x") == {"label": "supports"} and len(calls) == 3
 
@@ -187,7 +188,30 @@ def test_non_key_metric_one_vote():
 def test_json_list_response_unwrapped():
     from research import judge as J
     g = J.GeminiCalls.__new__(J.GeminiCalls)
-    g.model, g.cap, g.count, g._sleep = "m", 10, 0, lambda s: None
+    import threading
+    g.model, g.cap, g.count, g._sleep, g._lock = "m", 10, 0, lambda s: None, threading.Lock()
     g.client = type("C", (), {"models": type("M", (), {"generate_content": lambda self, **kw:
                                                          type("R", (), {"text": '[{"value_ref": "N3"}]'})()})()})()
     assert g.json("x") == {"value_ref": "N3"}
+
+
+def test_review_runs_facts_in_parallel_and_keeps_order():
+    import threading
+    import time as _t
+    active, peak = [0], [0]
+    lock = threading.Lock()
+    j, _ = judge()
+
+    def slow(f, t):
+        with lock:
+            active[0] += 1
+            peak[0] = max(peak[0], active[0])
+        _t.sleep(0.05)
+        with lock:
+            active[0] -= 1
+        return FactReview(fact_id=f.id, verdict=Verdict.SINGLE_SOURCE)
+    j.review_fact = slow
+    facts = [fact().model_copy(update={"id": f"f{i}"}) for i in range(8)]
+    out = j.review(DraftPack(target=TARGET, run_id="r", researcher_model="m", facts=facts), workers=4)
+    assert [r.fact_id for r in out.reviews] == [f.id for f in facts] and peak[0] > 1
+    assert out.run_log["judge_workers"] == 4

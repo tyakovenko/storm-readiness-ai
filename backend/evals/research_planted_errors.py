@@ -171,7 +171,8 @@ def run(model: str) -> dict:
     llm = StubSearch(model)
     fetcher = Fetcher(get=lambda url: Page(url=url, final_url=url, text=PAGES[url], retrieved="2026-10-05")
                       if url in PAGES else Page(url=url, error="HTTP 404"))
-    judge = Judge(model, llm=llm, fetcher=fetcher, resolve=lambda u: u, today=TODAY)
+    # Same roles as production: the judge model for entailment, config.PICK_MODEL for picking a number tag.
+    judge = Judge(model, llm=llm, fetcher=fetcher, resolve=lambda u: u, today=TODAY, picker=GeminiCalls(config.PICK_MODEL))
     rows = []
     for c in cases():
         llm.results = c.search

@@ -12,7 +12,9 @@ import difflib
 import json
 import logging
 import re
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 import urllib.error
 import urllib.request
 from datetime import date
@@ -118,6 +120,7 @@ class GeminiCalls:
     def __init__(self, model: str, cap: int = policy.MAX_GEMINI_CALLS):
         from google import genai
         self.model, self.cap, self.count = model, cap, 0
+        self._lock = threading.Lock()  # shared across judge threads
         from google.genai import types
         self.client = genai.Client(http_options=types.HttpOptions(timeout=CALL_TIMEOUT_MS))
         self._sleep = time.sleep
@@ -125,9 +128,10 @@ class GeminiCalls:
     def _go(self, prompt: str, **cfg):
         from google.genai import types
         for attempt in range(RETRIES + 1):
-            if self.count >= self.cap:
-                raise RuntimeError(f"judge model-call cap reached ({self.cap})")
-            self.count += 1
+            with self._lock:
+                if self.count >= self.cap:
+                    raise RuntimeError(f"judge model-call cap reached ({self.cap})")
+                self.count += 1
             try:
                 return self.client.models.generate_content(model=self.model, contents=prompt,
                                                            config=types.GenerateContentConfig(**cfg))
@@ -156,9 +160,11 @@ class GeminiCalls:
 
 class Judge:
     def __init__(self, model: str = config.JUDGE_MODEL, llm=None, fetcher: Fetcher | None = None,
-                 resolve=_resolve, today: date | None = None):
+                 resolve=_resolve, today: date | None = None, picker=None):
         self.model = model
         self.llm = llm or GeminiCalls(model)
+        # Tests pass one scripted llm: it serves both roles unless a picker is given.
+        self.picker = picker or (GeminiCalls(config.PICK_MODEL) if llm is None else llm)
         self.fetch = fetcher or Fetcher()
         self.resolve = resolve
         self.today = today
@@ -197,7 +203,7 @@ class Judge:
         lines = [ln for ln in tagged if "⟦" in ln and any(w in ln.lower() for w in words)][:MAX_PICK_LINES]
         if not lines:
             return None
-        out = self.llm.json(PICK_PROMPT.format(claim=_claim(fact, target), lines="\n".join(lines)))
+        out = self.picker.json(PICK_PROMPT.format(claim=_claim(fact, target), lines="\n".join(lines)))
         ref = out.get("value_ref")
         span = next((sp for sp in spans if sp.id == ref), None)
         return span if span and span.usable else None
@@ -283,13 +289,20 @@ class Judge:
             verdict = Verdict.SINGLE_SOURCE
         return FactReview(fact_id=fact.id, verdict=verdict, checks=checks, corroborating_urls=supporting, notes=note)
 
-    def review(self, draft: DraftPack) -> DraftPack:
-        reviews = []
-        for f in draft.facts:
-            try:
-                reviews.append(self.review_fact(f, draft.target))
-            except Exception as e:  # one broken fact must not sink the run, and must not pass
-                log.error("review of %s failed: %s", f.id, e)
-                reviews.append(FactReview(fact_id=f.id, verdict=Verdict.UNCHECKED, notes=f"review failed: {e}"))
-        log_ = {**draft.run_log, "judge_model_calls": self.llm.count, "judge_fetches": self.fetch.count}
+    def _safe_review(self, f: Fact, target: Target) -> FactReview:
+        try:
+            return self.review_fact(f, target)
+        except Exception as e:  # one broken fact must not sink the run, and must not pass
+            log.error("review of %s failed: %s", f.id, e)
+            return FactReview(fact_id=f.id, verdict=Verdict.UNCHECKED, notes=f"review failed: {e}")
+
+    def review(self, draft: DraftPack, workers: int = policy.JUDGE_CONCURRENCY) -> DraftPack:
+        # Facts are independent; one call at a time made a 20-fact county take ~25 min.
+        t0 = time.time()
+        with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+            reviews = list(pool.map(lambda f: self._safe_review(f, draft.target), draft.facts))
+        log_ = {**draft.run_log, "judge_model_calls": self.llm.count,
+                "judge_pick_calls": self.picker.count if self.picker is not self.llm else None,
+                "judge_pick_model": getattr(self.picker, "model", None), "judge_fetches": self.fetch.count,
+                "judge_seconds": round(time.time() - t0, 1), "judge_workers": workers}
         return draft.model_copy(update={"reviews": reviews, "judge_model": self.model, "run_log": log_})

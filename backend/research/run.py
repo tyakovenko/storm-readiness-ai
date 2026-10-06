@@ -53,6 +53,7 @@ def main() -> None:
         check_model(a.model)
     if not a.no_judge:
         check_model(a.judge_model)
+        check_model(config.PICK_MODEL)
 
     if a.review:
         draft = store.get_draft("hurricane", a.fips, a.review)

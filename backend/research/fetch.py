@@ -12,6 +12,7 @@ import http.client
 import json
 import logging
 import re
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -161,17 +162,20 @@ class Fetcher:
         self._get = get
         self.cache: dict[str, Page] = {}
         self.count = 0
+        self._lock = threading.Lock()  # the judge fetches from several threads
 
     def __call__(self, url: str) -> Page:
-        if url in self.cache:
-            return self.cache[url]
-        if self.count >= self.max_fetches:
-            return Page(url=url, error=f"fetch cap reached ({self.max_fetches} per run)", retrieved=_now())
-        self.count += 1
+        with self._lock:
+            if url in self.cache:
+                return self.cache[url]
+            if self.count >= self.max_fetches:
+                return Page(url=url, error=f"fetch cap reached ({self.max_fetches} per run)", retrieved=_now())
+            self.count += 1
         page = self._get(url)
         if page.error:
             log.warning("fetch %s: %s", url, page.error)
-        self.cache[url] = page
-        if page.final_url and page.final_url != url:
-            self.cache.setdefault(page.final_url, page)
+        with self._lock:
+            self.cache[url] = page
+            if page.final_url and page.final_url != url:
+                self.cache.setdefault(page.final_url, page)
         return page
