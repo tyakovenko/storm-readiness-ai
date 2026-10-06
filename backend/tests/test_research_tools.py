@@ -208,6 +208,7 @@ def test_agent_builds_with_instruction_and_tools():
     assert "AL022024: Beryl 2024" in agent.instruction and "shelter_capacity: people (key)" in agent.instruction
     assert "legistar_search (clients: miamidade)" in agent.instruction
     assert len(agent.tools) == 1 + len(s.tools())
+    assert agent.generate_content_config.http_options.timeout == 120_000
 
 
 def test_call_cap_answers_in_place_of_model():

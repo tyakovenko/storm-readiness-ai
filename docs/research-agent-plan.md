@@ -50,7 +50,7 @@ Probe scripts are in the session scratchpad, not the repo.
 
 **Gate:** ✅ 58 research tests; full suite 183 passed, 3 skipped (network-free). Note: `backend/.venv` is incomplete (no numpy/google), so the full suite was run in a fresh venv from `requirements.txt`.
 
-### R2: fetch + researcher agent
+### R2: fetch + researcher agent ✅ 2026-10-05
 - `research/fetch.py`: `Fetcher` (per role, cache + cap) → `Page`. HTML → text (scripts dropped, table cells separated by `|`). JSON → one `KEY: value; …` line per record (ArcGIS features). Errors are returned as `Page.error`. HTML under 200 chars is flagged as a JS-rendered page. **PDFs → error until issue #8** (layout- and table-preserving extraction). No new dependency.
 - `research/numbers.py` addition: field-aware kinds for structured rows (`CAPACITY: 1200` quantity, `OBJECTID`/`LAT`/`ZIP` label, `YEAR_*` year).
 - `research/tools.py` `ResearchSession`: `read_source` (tagged, chunked), `find_in_source`, `submit_fact` (by reference; runs the layer-1 checks on the researcher's copy and returns refusals with reasons, all logged), `report_gap`, `arcgis_search` (+ `query_url` for feature layers), `legistar_search` (only configured clients).
@@ -69,7 +69,7 @@ Probe scripts are in the session scratchpad, not the repo.
 
 **Gate:** ✅ all three models 10/10 caught, 0 false verifications, 0/4 false alarms (table below). **The eval is at ceiling, so it doesn't pick the model.** The judge stays `gemini-3.1-pro-preview` (strongest available, as specified), but there's no evidence yet that it beats 3.8-flash. Harder cases come from real drafts (R5): a number in a table row, two figures in one sentence across two storms, a figure from a plan vs an after-action report.
 
-### R4: job + API + Research page (in progress)
+### R4: job + API + Research page ✅ 2026-10-06 (app redeploy waits for Taya's go)
 - [x] `research/store.py` (local, then GCS; path parts validated), `research/run.py` (research → save → judge → save; `--review RUN_ID` re-judges; `--no-judge`), wall-clock cap `MAX_RUN_SECONDS` with a partial draft instead of a kill.
 - [x] `research/publish.py`: reviewer, `--accept verified,single_source`, `--reject ids`, `--also ids` (override, flagged). Writes `pack.json` `facts` + `research` provenance; `--push`.
 - [x] API: `GET /api/research`, `GET /api/research/{hazard}/{fips}/{run_id}` (404 missing, 503 store down).
@@ -95,17 +95,27 @@ gcloud run jobs create storm-research --project=$P --region=us-central1 --image=
 gcloud run jobs execute storm-research --region=us-central1 --args=-m,research.run,--fips,12086,--push
 ```
 `objectCreator` can create but not overwrite, and each run writes a new `<run_id>.json`. `--review` re-judging an existing draft writes the same path, so it runs locally (or with objectAdmin on that prefix if needed later).
-- [ ] Fetching from Cloud Run egress (moved from R0).
-- [ ] Headless click-through of the Research pages.
+- [x] Fetching from Cloud Run egress (moved from R0): works (job fetched ArcGIS + miamidade.gov, 2026-10-05).
+- [x] Headless click-through of the Research pages (landing card, runs list, draft table + detail, 404 alert; no errors besides favicon).
 - [x] County agents read published facts: hurricane tool `get_local_facts(metric?, storm_id?)` + `LocalFacts` contract + instruction line (say whose figure, which storm/date; single-source said as such; conflicting/unchecked never stated as settled). Quote + URL under `source` (trust citation key), so numbers inside a quote can't vouch for a claim. Sources registry on pages = issue #7.
 - [x] Judge: key-metric entailment must be unanimous over 3 calls (Harris f3 flipped between runs); JSON list responses unwrapped. Re-judge after typed contract: f8 (utility workers) now unsupported; f7 re-checked by hand: the governor's "250 bed medical shelter" and PBS's "as many as 250 people" area are very likely the same facility → legitimate corroboration, not a false verification.
 
-### R5: gold-set eval (in progress)
+### R5: gold-set eval ✅ 2026-10-06 (gold sets await Taya's review)
 - [x] `evals/research_gold.py`: gold facts are **specs** (metric, storm, place, subject, URL, number as written), built by reference from the live page and held to the same fixed checks as the researcher (`--validate`). Scores: recall (`same_as` merges two sources of one fact), verdicts on matched facts, **false verifications** (verified facts matching a decoy, or contradicting a gold fact with the same metric/storm/place/subject), unscored count.
 - [x] Gold sets (drafts, **need Taya's review**): `evals/gold/48201.json` (Harris: 7 facts, 3 decoys, 1 pending PDF), `12086.json` (Miami-Dade: 5 facts incl. two syndicated AP copies, 2 decoys), `12071.json` (Lee: 1 fact, 1 decoy; Ian AAR + Milton figures are in PDFs → #8). All gold facts pass `--validate` live.
 - Two candidate gold facts were dropped because their sentence names no unit ("sheltered more than 2,000 from Hurricane Irma", "We had room for 40,000."). The strict unit rule stays: it refuses unclear numbers, at the cost of these.
-- [ ] Fresh researcher + judge runs with current code on all three counties, scored against gold.
-- [ ] Gating: 0 false verifications on key metrics.
+- [x] Fresh runs, current code (2026-10-06, `7f538de`, judge 4 workers, Flash picker):
+
+| County | Facts | Verdicts (V / S / U) | Gold recall | False verified | Research | Judge | Unreadable sources |
+|---|---|---|---|---|---|---|---|
+| Harris 48201 | 20 | 0 / 14 / 6 | 4/6 (missed NRG capacity + peak) | **0** | 557 s | 280 s | 21/40 (9 PDF) |
+| Miami-Dade 12086 | 8 | 1 / 6 / 1 | 3/3 | **0** | 1020 s (hung call → hard stop) | 134 s | 18/25 (12 PDF) |
+| Lee 12071 | 16 | 2 / 7 / 7 | 1/1 | **0** | 931 s (time cap) | 151 s | 22/33 (8 PDF) |
+
+  All 3 verified facts were checked by hand: MD capacity 100,000 (Irma; WLRN ×2), Lee capacity 40,000 + sheltered 4,000 (Ian; WUSF / NACo quoting the county manager). Planted errors: 12/12, 0 false verifications, 0/4 false alarms.
+- [x] Gating: **0 false verifications** on all three counties and the planted set.
+- Fix after the batch: per-call timeout (120 s) on the researcher's model requests via `generate_content_config`; 408/504 added to retried codes.
+- Limits: recall on small, partly self-sourced gold sets (Lee: 1 fact). Biggest lever is PDFs (#8): about a third of unreadable sources, and Lee's best sources.
 
 ## Judge inputs
 Defaults in brackets accepted by Taya 2026-10-05, encoded in `research/policy.py`.

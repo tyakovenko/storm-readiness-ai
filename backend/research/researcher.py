@@ -82,14 +82,20 @@ class CallCap:
 
 # ADK doesn't retry 429/503 by default: one quota spike killed a cloud run (2026-10-05). 5 tries, 5 s -> 60 s.
 HARD_STOP_GRACE_S = 120
-RETRY = types.HttpRetryOptions(attempts=5, initial_delay=5, max_delay=60, exp_base=2, http_status_codes=[429, 503])
+# Per-call timeout (ms): with only the client retry options, one call still hung until the run's hard stop
+# (Miami-Dade run 2026-10-06). A timed-out call is retried like a 429.
+CALL_TIMEOUT_MS = 120_000
+RETRY = types.HttpRetryOptions(attempts=5, initial_delay=5, max_delay=60, exp_base=2,
+                               http_status_codes=[408, 429, 503, 504])
 
 
 def build_agent(session: ResearchSession, gaps: list[Gap], model: str, cap: CallCap) -> LlmAgent:
     from google.adk.models import Gemini
     return LlmAgent(name="county_researcher", model=Gemini(model=model, retry_options=RETRY),
                     instruction=_instruction(session.target, gaps, session.portals),
-                    tools=[google_search, *session.tools()], before_model_callback=cap)
+                    tools=[google_search, *session.tools()], before_model_callback=cap,
+                    generate_content_config=types.GenerateContentConfig(
+                        http_options=types.HttpOptions(timeout=CALL_TIMEOUT_MS)))
 
 
 async def run_research(target: Target, gaps: list[Gap], portals: dict, model: str,
