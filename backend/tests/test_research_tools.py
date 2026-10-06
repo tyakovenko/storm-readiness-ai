@@ -27,6 +27,11 @@ def test_html_to_text_skips_scripts_and_separates_cells():
     assert "| Shelters | 12" in text
 
 
+def test_leaked_escaped_markup_cleaned():
+    text = html_to_text("<div>&lt;p&gt;Red Cross had &amp;ldquo;6 shelters&amp;rdquo; open.&lt;/p&gt;</div>")
+    assert text == "Red Cross had \u201c6 shelters\u201d open."
+
+
 def test_json_to_text_arcgis_rows_and_field_kinds():
     raw = ('{"features": [{"attributes": {"OBJECTID": 5, "NAME": "Fair Park", "CAPACITY": 1200, '
            '"YEAR_BUILT": 1998, "LAT": 25.7}}]}')
@@ -48,7 +53,8 @@ class _Resp:
         self.headers["Content-Type"] = ctype
 
     def read(self, n=-1):
-        return self._b
+        out, self._b = self._b, b""  # like a real response: the body once, then EOF
+        return out
 
     def geturl(self):
         return self._url
@@ -209,3 +215,54 @@ def test_call_cap_answers_in_place_of_model():
     cap = CallCap(1)
     assert cap(None, None) is None
     assert "cap" in cap(None, None).content.parts[0].text and cap.hit
+
+
+def test_run_failure_saves_partial_draft(monkeypatch):
+    import asyncio
+    from research import researcher
+
+    class Boom:
+        def __init__(self, agent, app_name):
+            self.session_service = type("SS", (), {"create_session": staticmethod(
+                lambda **kw: asyncio.sleep(0, result=type("S", (), {"id": "s"})()))})()
+
+        def run_async(self, **kw):
+            async def gen():
+                raise RuntimeError("429 RESOURCE_EXHAUSTED")
+                yield  # noqa
+            return gen()
+    monkeypatch.setattr(researcher, "InMemoryRunner", Boom)
+    s = session()
+    s.read_source(URL)
+    s.submit_fact("evacuee_count", "people", URL, "AAR", "Harris County", value_ref=ref(s, URL, "1,314"), storm_id="AL022024")
+    d = asyncio.run(researcher.run_research(TARGET, [], {}, "gemini-3.8-flash", session=s))
+    assert len(d.facts) == 1 and d.run_log["partial"] and "429" in d.run_log["run_error"]
+
+
+def test_hung_run_hard_stops_with_partial_draft(monkeypatch):
+    import asyncio
+    from research import researcher
+    monkeypatch.setattr(researcher, "HARD_STOP_GRACE_S", 0)
+
+    class Hang:
+        def __init__(self, agent, app_name):
+            self.session_service = type("SS", (), {"create_session": staticmethod(
+                lambda **kw: asyncio.sleep(0, result=type("S", (), {"id": "s"})()))})()
+
+        def run_async(self, **kw):
+            async def gen():
+                await asyncio.sleep(3600)  # a model call that never returns
+                yield None
+            return gen()
+    monkeypatch.setattr(researcher, "InMemoryRunner", Hang)
+    d = asyncio.run(researcher.run_research(TARGET, [], {}, "gemini-3.8-flash", session=session(), max_seconds=1))
+    assert d.run_log["partial"] and "hard stop" in d.run_log["run_error"]
+
+
+def test_trickling_download_stopped(monkeypatch):
+    class Trickle(_Resp):
+        def read(self, n=-1):
+            return b"x"  # never EOF
+    monkeypatch.setattr(fetch, "TOTAL_TIMEOUT_S", 0.2)
+    monkeypatch.setattr(fetch.urllib.request, "urlopen", lambda req, timeout: Trickle(b"", "text/html"))
+    assert "exceeded" in fetch._get("https://x.gov/a").error

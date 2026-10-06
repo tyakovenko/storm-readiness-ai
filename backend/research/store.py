@@ -29,7 +29,7 @@ def _summary(d: DraftPack, source: str) -> dict:
     return {"run_id": d.run_id, "fips": d.target.fips, "county": d.target.county, "state": d.target.state,
             "hazard": d.target.hazard, "built_utc": d.built_utc, "facts": len(d.facts), "gaps": len(d.gaps),
             "reviewed": len(d.reviews), "verdicts": counts, "researcher_model": d.researcher_model,
-            "judge_model": d.judge_model, "partial": bool(d.run_log.get("cap_hit")), "stored": source}
+            "judge_model": d.judge_model, "partial": bool(d.run_log.get("partial", d.run_log.get("cap_hit"))), "stored": source}
 
 
 def list_drafts() -> list[dict]:

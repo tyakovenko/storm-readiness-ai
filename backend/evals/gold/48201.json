@@ -1,0 +1,39 @@
+{
+ "fips": "48201",
+ "county": "Harris County",
+ "status": "draft - awaiting Taya's review",
+ "built": "2026-10-05",
+ "note": "Facts are specs: the validator fetches source_url, finds the number written as value_raw, and builds the fact by reference (quote = its sentence). found_by marks gold facts first seen in a researcher draft (recall on those is biased upward).",
+ "facts": [
+  {"id": "g1", "metric": "shelter_capacity", "unit": "people", "value_raw": "10,000", "storm_id": "AL092017", "place": null,
+   "subject": "Harris County", "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6087944/", "found_by": "claude-manual"},
+  {"id": "g2", "metric": "evacuee_count", "unit": "people", "value_raw": "3,365", "storm_id": "AL092017", "place": null,
+   "subject": "NRG Center", "source_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6087944/", "found_by": "claude-manual"},
+  {"id": "g3", "metric": "shelter_capacity", "unit": "people", "value_raw": "10,000", "storm_id": "AL092017", "place": null,
+   "subject": "Harris County", "source_url": "https://www.texastribune.org/2018/02/12/houston-area-officials-approved-plan-handling-natural-disaster-then-ig/",
+   "found_by": "researcher-draft", "same_as": "g1"},
+  {"id": "g4", "metric": "evacuee_count", "unit": "people", "value_raw": "14,154", "storm_id": "AL092017", "place": null,
+   "subject": "Red Cross", "source_url": "https://www.texastribune.org/2018/02/12/houston-area-officials-approved-plan-handling-natural-disaster-then-ig/",
+   "found_by": "researcher-draft"},
+  {"id": "g5", "metric": "shelter_count", "unit": "shelters", "value_raw": "43", "storm_id": "AL092017", "place": null,
+   "subject": "Red Cross", "source_url": "https://www.texastribune.org/2018/02/12/houston-area-officials-approved-plan-handling-natural-disaster-then-ig/",
+   "found_by": "researcher-draft"},
+  {"id": "g6", "metric": "service_requests", "unit": "requests", "value_raw": "3,700", "storm_id": "AL022024", "place": null,
+   "subject": "Harris County Universal Services", "source_url": "https://hcus.harriscountytx.gov/Connect/harris-county-universal-services-expands-311-services-ahead-of-forecasted-above-normal-hurricane-season",
+   "found_by": "researcher-draft"},
+  {"id": "g7", "metric": "staging_sites", "unit": "sites", "value_raw": "two", "storm_id": "AL022024", "place": null,
+   "subject": "Precinct", "source_url": "https://cp4.harriscountytx.gov/Connect/Newsroom/beryl-response", "found_by": "claude-manual"}
+ ],
+ "pending_pdf": [
+  {"metric": "service_requests", "storm_id": "AL022024", "place": "Houston", "subject": "Houston 311",
+   "source_url": "https://houstontx.gov/council/committees/servicedelivery/20250226/2-26-25%20ARA%20Presentation%20to%20Service%20Delivery%20Committee.pdf",
+   "why": "PDF (issue #8); value not checkable with our fetcher yet"}
+ ],
+ "decoys": [
+  {"metric": "fema_pa_total", "value": 10700000, "storm_id": "AL022024",
+   "why": "$10.7M Harris County debris grant is for the April-June 2024 storms (derecho), not Beryl"},
+  {"metric": "staff_count", "value": 12000, "storm_id": "AL022024", "why": "CenterPoint utility workers, not county staff"},
+  {"metric": "evacuee_count", "value": 9000, "storm_id": "AL092017", "unless_subject": "George R. Brown",
+   "why": "one night at one shelter (George R. Brown); a decoy unless the fact names that shelter as its subject"}
+ ]
+}

@@ -27,6 +27,7 @@ CONTEXT_CHARS = 600          # passage around the quote given to the entailment 
 MAX_CANDIDATES = 3           # corroborating pages fetched per key fact
 MAX_PICK_LINES = 60          # lines of a candidate page shown when asking which number states the metric
 SYNDICATED_RATIO = 0.9       # share of the shorter sentence found in the other: at or above = a copy
+CALL_TIMEOUT_MS = 180_000    # per Gemini call; without it one call hung a re-judge for 7 h
 RETRIES = 4                  # on 429 / 503 only
 BACKOFF_S = 5                # 5, 10, 20, 40 s
 ENTAIL_LABELS = ("supports", "wrong_metric", "wrong_scope", "wrong_time", "not_enough")
@@ -117,7 +118,8 @@ class GeminiCalls:
     def __init__(self, model: str, cap: int = policy.MAX_GEMINI_CALLS):
         from google import genai
         self.model, self.cap, self.count = model, cap, 0
-        self.client = genai.Client()
+        from google.genai import types
+        self.client = genai.Client(http_options=types.HttpOptions(timeout=CALL_TIMEOUT_MS))
         self._sleep = time.sleep
 
     def _go(self, prompt: str, **cfg):
@@ -131,7 +133,8 @@ class GeminiCalls:
                                                            config=types.GenerateContentConfig(**cfg))
             except Exception as e:
                 # Quota (429) and overload (503) pass; anything else, or the last try, surfaces as UNCHECKED.
-                if attempt == RETRIES or not re.search(r"\b(429|503)\b|RESOURCE_EXHAUSTED|UNAVAILABLE", str(e)):
+                if attempt == RETRIES or not re.search(r"\b(429|503)\b|RESOURCE_EXHAUSTED|UNAVAILABLE|timed out|Timeout",
+                                                       f"{type(e).__name__} {e}"):
                     raise
                 wait = BACKOFF_S * 2 ** attempt
                 log.warning("judge call rate-limited (%s); retry %d in %d s", str(e)[:60], attempt + 1, wait)

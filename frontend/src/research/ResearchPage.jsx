@@ -116,9 +116,10 @@ export function ResearchRun({ hazard, fips, runId }) {
       <p className="mb-3 rounded bg-warn-bg px-3 py-2 text-[0.85rem] text-warn-text">
         Draft, not published. The county agent doesn't use these facts until a reviewer publishes them.
       </p>
-      {log.cap_hit && (
+      {(log.partial ?? log.cap_hit) && (
         <p className="mb-3 rounded bg-bad-bg px-3 py-2 text-[0.85rem] text-bad-text" role="alert">
-          Partial run: stopped at the {log.time_cap_hit ? `time cap (${fmt(log.time_cap_s)} s)` : `model-call cap (${fmt(log.model_call_cap)})`}.
+          Partial run: stopped {log.run_error ? `by an error (${log.run_error})`
+            : log.time_cap_hit ? `at the time cap (${fmt(log.time_cap_s)} s)` : `at the model-call cap (${fmt(log.model_call_cap)})`}.
           Items not reached are missing, not absent.
         </p>
       )}

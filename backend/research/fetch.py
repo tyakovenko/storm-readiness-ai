@@ -7,9 +7,11 @@ PDFs return an error until extraction keeps layout and tables intact (issue #8).
 
 from __future__ import annotations
 
+import html as _html
 import json
 import logging
 import re
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -24,7 +26,8 @@ log = logging.getLogger(__name__)
 USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) storm-readiness-research/0.1"
 # Browser-like: some hosts answer 406 to a narrower Accept list (Harris run 2026-10-05).
 ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8"
-TIMEOUT_S = 20
+TIMEOUT_S = 20        # per socket operation
+TOTAL_TIMEOUT_S = 60  # per download: a server trickling bytes passes every per-read timeout
 MAX_BYTES = 5_000_000
 # Less text = JS-rendered shell or an error page; checking it would fail every quote. A JSON query with
 # one record is legitimately short.
@@ -61,10 +64,15 @@ class _Text(HTMLParser):
             self.out.append(data)
 
 
+_LEAKED_TAG = re.compile(r"</?[a-zA-Z][a-zA-Z0-9]{0,10}(?:\s[^<>]{0,200})?/?>")
+
+
 def html_to_text(html: str) -> str:
     p = _Text()
     p.feed(html)
-    text = "".join(p.out)
+    # Some CMSs embed escaped article HTML as text ("&lt;p&gt;...&amp;ldquo;"); after one decode it shows up
+    # as literal "<p>" and "&ldquo;" (Texas Tribune). Strip and decode once more so quotes are clean text.
+    text = _html.unescape(_LEAKED_TAG.sub(" ", "".join(p.out)))
     text = re.sub(r"[ \t\r\f\v]+", " ", text)
     return re.sub(r"\s*\n\s*", "\n", text).strip()
 
@@ -101,7 +109,16 @@ def _get(url: str) -> Page:
         with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
             final, ctype = r.geturl(), (r.headers.get_content_type() or "").lower()
             charset = r.headers.get_content_charset() or "utf-8"
-            body = r.read(MAX_BYTES + 1)
+            chunks, size, t0 = [], 0, time.monotonic()
+            while size <= MAX_BYTES:
+                if time.monotonic() - t0 > TOTAL_TIMEOUT_S:
+                    return Page(url=url, error=f"download exceeded {TOTAL_TIMEOUT_S} s", retrieved=_now())
+                chunk = r.read(65536)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                size += len(chunk)
+            body = b"".join(chunks)
     except urllib.error.HTTPError as e:
         return Page(url=url, error=f"HTTP {e.code}", retrieved=_now())
     except Exception as e:  # DNS, TLS, timeout: reported on the fact as unchecked

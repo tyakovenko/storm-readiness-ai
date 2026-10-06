@@ -5,6 +5,7 @@ Runs offline as a job, never in chat (ADR research-offline-human-gate). Output i
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from datetime import datetime, timezone
@@ -79,8 +80,14 @@ class CallCap:
         return None
 
 
+# ADK doesn't retry 429/503 by default: one quota spike killed a cloud run (2026-10-05). 5 tries, 5 s -> 60 s.
+HARD_STOP_GRACE_S = 120
+RETRY = types.HttpRetryOptions(attempts=5, initial_delay=5, max_delay=60, exp_base=2, http_status_codes=[429, 503])
+
+
 def build_agent(session: ResearchSession, gaps: list[Gap], model: str, cap: CallCap) -> LlmAgent:
-    return LlmAgent(name="county_researcher", model=model,
+    from google.adk.models import Gemini
+    return LlmAgent(name="county_researcher", model=Gemini(model=model, retry_options=RETRY),
                     instruction=_instruction(session.target, gaps, session.portals),
                     tools=[google_search, *session.tools()], before_model_callback=cap)
 
@@ -96,20 +103,36 @@ async def run_research(target: Target, gaps: list[Gap], portals: dict, model: st
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     t0, summary, grounding = time.time(), "", []
     msg = types.Content(role="user", parts=[types.Part(text=f"Research {target.county} now.")])
-    time_cap_hit = False
-    async for ev in runner.run_async(user_id="research", session_id=adk_session.id, new_message=msg):
-        if time.time() - t0 > max_seconds:
-            # Stop here rather than be killed from outside: a killed run loses every fact found so far.
-            time_cap_hit = True
-            log.error("research run hit the time cap (%d s); draft is partial", max_seconds)
-            break
-        gm = getattr(ev, "grounding_metadata", None)
-        if gm and gm.grounding_chunks:
-            grounding += [c.web.uri for c in gm.grounding_chunks if c.web]
-        if ev.is_final_response() and ev.content and ev.content.parts:
-            summary = "".join(p.text or "" for p in ev.content.parts)
-    run_log = {"model_calls": cap.count, "model_call_cap": max_calls, "cap_hit": cap.hit or time_cap_hit,
-               "time_cap_hit": time_cap_hit, "time_cap_s": max_seconds,
+    time_cap_hit, run_error = False, None
+
+    async def consume():
+        nonlocal summary, time_cap_hit
+        async for ev in runner.run_async(user_id="research", session_id=adk_session.id, new_message=msg):
+            if time.time() - t0 > max_seconds:
+                # Stop here rather than be killed from outside: a killed run loses every fact found so far.
+                time_cap_hit = True
+                log.error("research run hit the time cap (%d s); draft is partial", max_seconds)
+                break
+            gm = getattr(ev, "grounding_metadata", None)
+            if gm and gm.grounding_chunks:
+                grounding.extend(c.web.uri for c in gm.grounding_chunks if c.web)
+            if ev.is_final_response() and ev.content and ev.content.parts:
+                summary = "".join(p.text or "" for p in ev.content.parts)
+
+    try:
+        # The in-loop check only runs between events; a hung model or tool call never yields one.
+        # wait_for is the hard stop (grace for the call in flight).
+        await asyncio.wait_for(consume(), timeout=max_seconds + HARD_STOP_GRACE_S)
+    except asyncio.TimeoutError:
+        time_cap_hit = True
+        run_error = f"hard stop after {max_seconds + HARD_STOP_GRACE_S} s (a call hung)"
+        log.error("research run: %s; saving a partial draft", run_error)
+    except Exception as e:  # model/API failure after retries: keep what was found, mark the draft partial
+        run_error = f"{type(e).__name__}: {str(e)[:300]}"
+        log.error("research run failed; saving a partial draft: %s", run_error)
+    run_log = {"model_calls": cap.count, "model_call_cap": max_calls, "cap_hit": cap.hit,
+               "partial": cap.hit or time_cap_hit or run_error is not None,  # items not reached are missing
+               "time_cap_hit": time_cap_hit, "time_cap_s": max_seconds, "run_error": run_error,
                "fetches": session.fetch.count, "fetch_cap": session.fetch.max_fetches,
                "tool_calls": dict(session.calls), "rejected_submissions": session.rejected,
                "fetch_errors": {u: p.error for u, p in session.fetch.cache.items() if p.error},

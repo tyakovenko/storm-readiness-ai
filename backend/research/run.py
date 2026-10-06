@@ -20,8 +20,9 @@ def _report(draft) -> str:
     counts: dict[str, int] = {}
     for r in draft.reviews:
         counts[r.verdict.value] = counts.get(r.verdict.value, 0) + 1
-    caps = [c for c, hit in (("MODEL-CALL CAP", log.get("cap_hit") and not log.get("time_cap_hit")),
-                             ("TIME CAP", log.get("time_cap_hit"))) if hit]
+    caps = [c for c, hit in (("MODEL-CALL CAP", log.get("cap_hit")),
+                             ("TIME CAP", log.get("time_cap_hit")),
+                             (f"RUN ERROR {log.get('run_error')}", log.get("run_error"))) if hit]
     return (f"{len(draft.facts)} facts, {len(draft.gaps)} gaps, {len(log.get('rejected_submissions', []))} rejected "
             f"submissions, {log.get('model_calls')} researcher calls, {log.get('fetches')} fetches "
             f"({len(log.get('fetch_errors', {}))} errors), {log.get('seconds')} s"
