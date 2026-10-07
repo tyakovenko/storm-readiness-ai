@@ -53,6 +53,14 @@ class StormAlert(_Strict):
     in_training_data: bool
     note: str
     source: str
+    live_feed: dict | None = None
+
+class GenerateScenarios(_Strict):
+    advisory_id: str
+    county: str
+    base_track: list[ForecastPoint]
+    scenarios: list[dict]
+    source: str
 
 
 class PastStorm(_Strict):
@@ -66,6 +74,7 @@ class PastStorm(_Strict):
     peak_customers_out: int
     peak_pct_customers: float
     outage_data_coverage: str
+    oni_anomaly: float
 
 
 class SimilarStorms(_Strict):
@@ -121,6 +130,25 @@ class Shelter(_Strict):
     lon: float | None
 
 
+class CriticalFacility(_Strict):
+    id: str
+    name: str
+    type: Literal["hospital", "fire_station", "police_station", "eoc"]
+    city: str
+    beds: int | None = None
+    generator: bool
+    in_surge_zone: bool
+    in_100yr_floodplain: bool
+    lat: float
+    lon: float
+
+
+class CensusTractsSummary(_Strict):
+    total_tracts: int
+    high_svi_tracts: int
+    surge_exposed_tracts: int
+
+
 class Assets(_Strict):
     county: str
     shelters_total: int
@@ -130,11 +158,31 @@ class Assets(_Strict):
     pet_friendly: int
     with_generator: int
     largest: list[Shelter]
+    critical_facilities_total: int
+    hospitals_total: int
+    hospitals_at_surge_risk: int
+    critical_facilities: list[CriticalFacility]
+    census_tracts: CensusTractsSummary
     gaps: list[dict]
     source: str
 
 
-class ShelterPlan(_Strict):
+class PlanApprovalResult(_Strict):
+    plan_id: str
+    agent_id: str
+    county: str
+    status: Literal["draft", "modified", "approved", "deployed", "rejected"]
+    author: str | None
+    approver: str | None
+    created_at: str
+    updated_at: str
+    approved_at: str | None
+    notes: str | None
+    allocations: dict
+    audit_trail: list[dict]
+
+
+class PlanShelters(BaseModel):
     advisory_id: str
     county: str
     exclude_surge_and_floodplain: bool
@@ -144,29 +192,40 @@ class ShelterPlan(_Strict):
     beds_with_pets: int
     beds_with_generator: int
     shelter_demand: str
+    water_gallons_needed: int
+    generators_kw_needed: int
+    personnel_needed: int
     method: str
     source: str
 
-
-class PlanDiff(_Strict):
+class DiffPlans(BaseModel):
     advisory_id: str
     county: str
     baseline: dict
     what_if: dict
     beds_before: int
     beds_after: int
+    water_gallons_before: int
+    water_gallons_after: int
+    generators_kw_before: int
+    generators_kw_after: int
+    personnel_before: int
+    personnel_after: int
     shelters_removed: list[str]
     source: str
 
 
 CONTRACTS = {
     "get_storm_alert": StormAlert,
+    "generate_scenarios": GenerateScenarios,
     "find_similar_storms": SimilarStorms,
     "estimate_impact": ImpactEstimate,
     "get_storm_impacts": StormImpacts,
     "query_assets": Assets,
-    "plan_shelters": ShelterPlan,
-    "diff_plans": PlanDiff,
+    "plan_shelters": PlanShelters,
+    "diff_plans": DiffPlans,
     "get_enso_context": EnsoContext,
     "retrieve_guidance": Guidance,
+    "save_plan": PlanApprovalResult,
+    "approve_plan": PlanApprovalResult,
 }

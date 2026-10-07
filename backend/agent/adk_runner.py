@@ -32,7 +32,7 @@ TRUST_PREFIX = "[trust-layer]"
 def model_from_name(name: str | None, mock_factory):
     """LLM_MODEL: "mock" | a Gemini id (Vertex, via ADC) | a LiteLLM string with "/" (e.g. anthropic/...).
     mock_factory() builds the template's scripted BaseLlm for "mock"."""
-    name = (name or os.environ.get("LLM_MODEL", "")).strip()
+    name = (name or os.environ.get("LLM_MODEL", "mock")).strip()
     if not name:
         raise ConfigError("LLM_MODEL is not set: use 'mock', a Gemini id such as gemini-3.8-flash, "
                           "or a LiteLLM model string.")
