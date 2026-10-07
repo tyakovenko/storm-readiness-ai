@@ -1,24 +1,15 @@
 """County centroids and storm-to-county geometry.
 
-Phase 3C of the real training-data ETL. Converts a Census county boundary
-file into (county_fips, county_lat, county_lon), and a Phase 3B
-ForecastSnapshot into per-county dist_to_track_nm / quadrant_right.
+Provides pure-math distance/bearing calculations as well as county centroid
+extraction from Census cartographic boundary shapefiles.
 
-Does not estimate county wind, build the other 11 XGBoost features, or join
-NRI/SVI/ONI/outage targets -- those are later phases.
-
-County source: the Census 2025 1:500,000 cartographic boundary county file
-(gs://uc3-storm-impact-intelligence-data/raw/census/counties/
-cb_2025_us_county_500k.{shp,shx,dbf,prj}), cached locally the same way
-dataset.py caches NRI/SVI (data/raw/..., gitignored). Its .prj confirms
-NAD83 geographic coordinates (plain lat/lon degrees, no reprojection
-needed), and its .dbf has a ready-to-use 5-char GEOID field.
-
-Centroid choice: a plain vertex-averaged or area-weighted centroid can land
-outside a county's land area entirely for concave or multi-part geometries
-(barrier islands, inlets, a mainland + offshore-island county like several
-in the Big Bend). We use Shapely's representative_point(), which is
-guaranteed to fall inside the polygon, instead of .centroid.
+Functions:
+- haversine_nm: Great-circle distance between two points in nautical miles.
+- bearing_deg: Compass bearing (0-360 deg) between two points.
+- destination_point: Dead-reckoning position given origin, bearing, and distance (used by scenario generator).
+- dist_to_track_nm: Distance from a county representative point to an ATCF forecast position.
+- quadrant_right: Identifies if a county is in the storm's forward-right semicircle.
+- load_county_centroids: Reads Census county shapefiles into representative points using Shapely.
 """
 
 from __future__ import annotations
@@ -27,8 +18,6 @@ import math
 from pathlib import Path
 
 import pandas as pd
-import shapefile  # pyshp
-from shapely.geometry import shape as shapely_shape
 
 from .atcf_forecast import ForecastSnapshot
 from .outage_target import normalize_fips
@@ -43,6 +32,9 @@ def load_county_centroids(shp_path: str | Path) -> pd.DataFrame:
     Expects a GEOID attribute field (5-char FIPS) -- the Census cb_*_county
     cartographic boundary files all have one.
     """
+    import shapefile  # pyshp
+    from shapely.geometry import shape as shapely_shape
+
     with shapefile.Reader(str(shp_path)) as reader:
         field_names = [f[0] for f in reader.fields[1:]]  # skip the deletion-flag field
         if "GEOID" not in field_names:
@@ -81,7 +73,7 @@ def destination_point(lat: float, lon: float, bearing_from_deg: float, distance_
     inverse of bearing_deg()+haversine_nm() -- same great-circle model,
     same EARTH_RADIUS_NM, same bearing convention.
 
-    Used only by scenario_generator.py to dead-reckon a synthetic track's
+    Used by scenario_generator.py to dead-reckon a synthetic track's
     forecast positions; real ATCF-derived forecasts already carry their own
     parsed positions and never call this.
     """
@@ -98,35 +90,16 @@ def destination_point(lat: float, lon: float, bearing_from_deg: float, distance_
 
 
 def dist_to_track_nm(county_lat: float, county_lon: float, snapshot: ForecastSnapshot) -> float:
-    """Distance from one county to the snapshot's forecast storm position.
-
-    This is the distance to that ONE selected point (the forecast valid at
-    or nearest impact_time, per Phase 3B's leakage-safe selection) -- not
-    the minimum distance to the whole forecast track. A storm that passes
-    closer to this county earlier or later in the same forecast is not
-    reflected here; that would require per-TAU minimum-distance logic,
-    which is a different (and not yet decided) feature definition.
-    """
+    """Distance from one county to the snapshot's forecast storm position (the one selected
+    point, not the minimum distance to the whole track)."""
     f = snapshot.forecast
     return haversine_nm(county_lat, county_lon, f.lat, f.lon)
 
 
 def quadrant_right(county_lat: float, county_lon: float, snapshot: ForecastSnapshot) -> int | None:
-    """1 if the county is in the storm's forward-right semicircle, 0 if
-    forward-left, None if the forecast has no DIR (heading unknown).
-
-    Northern-hemisphere hurricanes have their strongest winds on the
-    right-front side of motion (rotation + translation add there), hence
-    this specific binary split rather than plain north/south or left/right.
-
-    Convention: relative_bearing = (bearing_to_county - heading) mod 360.
-    Right semicircle = (0, 180) exclusive; dead-ahead (0) and dead-behind
-    (180) both resolve to "not right" (0) -- an arbitrary but deterministic
-    tie-break, since a point exactly on the track heading has no side.
-
-    Returns None rather than guessing when DIR is missing -- callers decide
-    the fallback (e.g. a schema default), this function does not invent one.
-    """
+    """1 if the county is in the storm's forward-right semicircle, 0 if forward-left, None if
+    the forecast has no heading (dir_deg). Northern-hemisphere hurricanes have their strongest
+    winds on the right-front side of motion (rotation + translation add there)."""
     dir_deg = snapshot.forecast.dir_deg
     if dir_deg is None:
         return None

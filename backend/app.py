@@ -135,8 +135,16 @@ def dallas_overview(trucks: int | None, closed: list[str]) -> dict:
 
 @app.post("/api/chat")
 def chat(body: ChatRequest, request: Request):
+    """The single-agent services' chat, and (AGENT_DOMAIN=multi) the landing page's chat before
+    any storm is open -- see agent/landing_router.py for why "multi" doesn't just run Dallas."""
     history = [h.model_dump() for h in body.history]
-    if DOMAIN in ("dallas", "multi"):
+    if DOMAIN == "multi":
+        from agent import landing_router, registry
+        routed = landing_router.route(body.message, registry.list_agents())
+        if routed["kind"] == "agent":
+            return registry.chat(routed["agent_id"], body.message, history, request.app.state.judge)
+        return landing_router.no_storm_selected_response(routed["agents"])
+    if DOMAIN == "dallas":
         from agent.dallas_adk import run_dallas_agent
         return run_dallas_agent(body.message, history, request.app.state.agent, request.app.state.judge)
     return run_agent(body.message, history, request.app.state.llm, request.app.state.judge)

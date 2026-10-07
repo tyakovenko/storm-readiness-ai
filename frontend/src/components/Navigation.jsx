@@ -14,7 +14,7 @@ export default function Navigation({ activePage, onNavigate, items = NAV_ITEMS, 
       {onHome && (
         <button type="button" onClick={onHome}
           className="inline-flex h-full cursor-pointer items-center whitespace-nowrap bg-transparent text-[0.85rem] font-semibold text-accent hover:underline">
-          ← All agents
+          ← Home
         </button>
       )}
       {title && <span className="whitespace-nowrap text-[0.9rem] font-bold text-navy">{title}</span>}
