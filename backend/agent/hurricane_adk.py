@@ -65,6 +65,10 @@ def _tools_for(ts: HurricaneToolset) -> list:
         forecast, with their real peak power outages."""
         return ts.run_tool("find_similar_storms", {})
 
+    def generate_scenarios() -> dict:
+        """Get the spread of possible storm tracks around the official forecast using an AR(1) error model."""
+        return ts.run_tool("generate_scenarios", {})
+
     def estimate_impact() -> dict:
         """Trained outage model estimate for this county: low/median/high % of customers out and customers
         out, top drivers, and the model's skill on storms it never saw."""
@@ -119,8 +123,16 @@ def _tools_for(ts: HurricaneToolset) -> list:
         """
         return ts.run_tool("retrieve_guidance", {"topic": topic})
 
-    return [get_storm_alert, find_similar_storms, estimate_impact, get_storm_impacts, query_assets, plan_shelters,
-            diff_plans, get_enso_context, retrieve_guidance]
+    def save_plan(notes: str = "", author: str = "Emergency Manager") -> dict:
+        """Save the current county resource deployment plan as a draft for review."""
+        return ts.run_tool("save_plan", {"notes": notes, "author": author})
+
+    def approve_plan(plan_id: str, approver: str = "Emergency Director", notes: str = "") -> dict:
+        """Formally approve a staged deployment plan and record digital sign-off."""
+        return ts.run_tool("approve_plan", {"plan_id": plan_id, "approver": approver, "notes": notes})
+
+    return [get_storm_alert, find_similar_storms, generate_scenarios, estimate_impact, get_storm_impacts, query_assets, plan_shelters,
+            diff_plans, get_enso_context, retrieve_guidance, save_plan, approve_plan]
 
 
 # ---- scripted mock (LLM_MODEL=mock): answers only from tool outputs ----

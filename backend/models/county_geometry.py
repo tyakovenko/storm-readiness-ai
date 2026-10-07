@@ -1,21 +1,52 @@
-"""Storm-to-county geometry: pure-math functions, adapted from xgboost-pred's
-backend/models/county_geometry.py.
+"""County centroids and storm-to-county geometry.
 
-Trimmed down from the source branch: that file's load_county_centroids() reads a Census
-shapefile via pyshp/shapely to build a nationwide (fips -> lat/lon) table for a multi-county
-training pipeline. This app already has each pack's own county centroid (hurricane/build_pack.py
--> pack.json's profile.centroid, from the same Census source), so the shapefile loader -- and the
-two new dependencies it needs -- isn't pulled in here. Only the geometry math, which has no
-dependency beyond the stdlib, is adapted.
+Provides pure-math distance/bearing calculations as well as county centroid
+extraction from Census cartographic boundary shapefiles.
+
+Functions:
+- haversine_nm: Great-circle distance between two points in nautical miles.
+- bearing_deg: Compass bearing (0-360 deg) between two points.
+- destination_point: Dead-reckoning position given origin, bearing, and distance (used by scenario generator).
+- dist_to_track_nm: Distance from a county representative point to an ATCF forecast position.
+- quadrant_right: Identifies if a county is in the storm's forward-right semicircle.
+- load_county_centroids: Reads Census county shapefiles into representative points using Shapely.
 """
 
 from __future__ import annotations
 
 import math
+from pathlib import Path
+
+import pandas as pd
 
 from .atcf_forecast import ForecastSnapshot
+from .outage_target import normalize_fips
 
 EARTH_RADIUS_NM = 3440.065  # mean Earth radius (6371.0088 km) in nautical miles
+
+
+def load_county_centroids(shp_path: str | Path) -> pd.DataFrame:
+    """Read a county boundary shapefile into one representative point per county.
+
+    Returns columns: county_fips (normalized), county_lat, county_lon.
+    Expects a GEOID attribute field (5-char FIPS) -- the Census cb_*_county
+    cartographic boundary files all have one.
+    """
+    import shapefile  # pyshp
+    from shapely.geometry import shape as shapely_shape
+
+    with shapefile.Reader(str(shp_path)) as reader:
+        field_names = [f[0] for f in reader.fields[1:]]  # skip the deletion-flag field
+        if "GEOID" not in field_names:
+            raise ValueError(f"Shapefile has no GEOID field; found {field_names}")
+
+        rows = []
+        for sr in reader.iterShapeRecords():
+            geoid = sr.record["GEOID"]
+            point = shapely_shape(sr.shape.__geo_interface__).representative_point()
+            rows.append({"county_fips": normalize_fips(geoid), "county_lat": point.y, "county_lon": point.x})
+
+    return pd.DataFrame(rows, columns=["county_fips", "county_lat", "county_lon"])
 
 
 def haversine_nm(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -34,6 +65,28 @@ def bearing_deg(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     x = math.sin(dlambda) * math.cos(phi2)
     y = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(dlambda)
     return (math.degrees(math.atan2(x, y)) + 360) % 360
+
+
+def destination_point(lat: float, lon: float, bearing_from_deg: float, distance_nm: float) -> tuple[float, float]:
+    """Forward geodesic: the point reached travelling distance_nm from
+    (lat, lon) along initial compass bearing_from_deg (0=N, 90=E). The
+    inverse of bearing_deg()+haversine_nm() -- same great-circle model,
+    same EARTH_RADIUS_NM, same bearing convention.
+
+    Used by scenario_generator.py to dead-reckon a synthetic track's
+    forecast positions; real ATCF-derived forecasts already carry their own
+    parsed positions and never call this.
+    """
+    delta = distance_nm / EARTH_RADIUS_NM
+    theta = math.radians(bearing_from_deg)
+    phi1, lambda1 = math.radians(lat), math.radians(lon)
+
+    phi2 = math.asin(math.sin(phi1) * math.cos(delta) + math.cos(phi1) * math.sin(delta) * math.cos(theta))
+    lambda2 = lambda1 + math.atan2(
+        math.sin(theta) * math.sin(delta) * math.cos(phi1),
+        math.cos(delta) - math.sin(phi1) * math.sin(phi2),
+    )
+    return math.degrees(phi2), (math.degrees(lambda2) + 540) % 360 - 180  # normalize lon to [-180, 180)
 
 
 def dist_to_track_nm(county_lat: float, county_lon: float, snapshot: ForecastSnapshot) -> float:

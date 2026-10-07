@@ -132,11 +132,17 @@ def test_static_county_lookup_integration():
     assert get_latest_oni_anomaly() is not None
 
 
-def test_tool_predict_impact_with_ml_toggle(monkeypatch):
+def test_tool_predict_impact_with_ml_toggle_falls_back_without_real_forecast_data(monkeypatch):
+    # Phase 3Q: pipeline.run_impact_pipeline() now requires genuine ATCF forecast
+    # data (storm track/intensity/heading) to build real features, and refuses to
+    # fabricate it from the demo's free-text-only stub_data.ADVISORY. So toggling
+    # USE_ML_IMPACT_MODEL on with only the stub advisory available must fall back
+    # to the same stub county data as the toggle-off path -- not silently use the
+    # old hardcoded Florida geometry this test used to exercise.
     from backend.agent.tools import run_tool
     monkeypatch.setenv("USE_ML_IMPACT_MODEL", "true")
     res = run_tool("predict_impact", {"county_fips": ["12075", "12029"]})
-    assert res["model_version"] == "xgboost-quantile-v1.0"
+    assert res["model_version"] == "stub-impact-v0"
     assert len(res["counties"]) == 2
     assert res["counties"][0]["fips"] == "12075"
     assert res["counties"][0]["risk_tier"] in {"green", "yellow", "orange", "red"}

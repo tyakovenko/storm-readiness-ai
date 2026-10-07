@@ -170,6 +170,25 @@ def agent_overview(agent_id: str, max_trucks: int | None = Query(None, ge=0),
         raise HTTPException(status_code=404, detail=f"Unknown agent {agent_id!r}")
 
 
+@app.get("/api/agents/{agent_id}/brief/{brief_type}")
+def agent_brief(agent_id: str, brief_type: str, request: Request):
+    from agent import registry
+    
+    if brief_type == "executive":
+        prompt = "Draft an executive brief: 1-2 sentence risk summary, peak outage estimate, and high-level shelter readiness. Include ONI context."
+    elif brief_type == "responder":
+        prompt = "Draft a first responder brief: detailed shelter count (open vs closed), evacuation capacity, generators, pet status, and specific resource commodity needs (water, generators). List largest shelters."
+    elif brief_type == "resident":
+        prompt = "Draft a resident brief: clear evacuation advice, safety guidelines for power outages and generators, and general shelter guidelines."
+    else:
+        raise HTTPException(status_code=400, detail="Invalid brief type. Choose from: executive, responder, resident.")
+
+    try:
+        return registry.chat(agent_id, prompt, [], request.app.state.judge)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Unknown agent {agent_id!r}")
+
+
 @app.post("/api/agents/{agent_id}/chat")
 def agent_chat(agent_id: str, body: ChatRequest, request: Request):
     from agent import registry
@@ -203,6 +222,128 @@ def get_staging(max_trucks: int | None = None):
     """Return resource staging allocations and shelter bed demand."""
     from agent.tools import solve_staging
     return solve_staging(max_trucks=max_trucks)
+
+
+# ---- Human-in-the-Loop plan approval routes (Gap 3) ----
+
+class PlanCreateRequest(BaseModel):
+    agent_id: str
+    county: str
+    inputs: dict = Field(default_factory=dict)
+    allocations: dict = Field(default_factory=dict)
+    author: str = "Emergency Manager"
+    notes: str = ""
+
+
+class PlanUpdateRequest(BaseModel):
+    status: str | None = None
+    approver: str | None = None
+    notes: str | None = None
+    inputs: dict | None = None
+    allocations: dict | None = None
+
+
+class PlanApproveRequest(BaseModel):
+    approver: str = "Incident Commander"
+    notes: str = "Approved for execution."
+
+
+@app.get("/api/plans")
+def list_plans(agent_id: str | None = Query(None), status: str | None = Query(None)):
+    from agent import plan_store
+    return plan_store.list_plans(agent_id=agent_id, status=status)
+
+
+@app.post("/api/plans")
+def create_plan_endpoint(body: PlanCreateRequest):
+    from agent import plan_store
+    return plan_store.create_plan(
+        agent_id=body.agent_id,
+        county=body.county,
+        inputs=body.inputs,
+        allocations=body.allocations,
+        author=body.author,
+        notes=body.notes,
+    )
+
+
+@app.get("/api/plans/{plan_id}")
+def get_plan_endpoint(plan_id: str):
+    from agent import plan_store
+    p = plan_store.get_plan(plan_id)
+    if not p:
+        raise HTTPException(status_code=404, detail=f"Plan not found: {plan_id}")
+    return p
+
+
+@app.patch("/api/plans/{plan_id}")
+def update_plan_endpoint(plan_id: str, body: PlanUpdateRequest):
+    from agent import plan_store
+    try:
+        return plan_store.update_plan(
+            plan_id=plan_id,
+            status=body.status,
+            approver=body.approver,
+            notes=body.notes,
+            new_inputs=body.inputs,
+            new_allocations=body.allocations,
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Plan not found: {plan_id}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.post("/api/plans/{plan_id}/approve")
+def approve_plan_endpoint(plan_id: str, body: PlanApproveRequest):
+    from agent import plan_store
+    try:
+        return plan_store.update_plan(
+            plan_id=plan_id,
+            status="approved",
+            approver=body.approver,
+            notes=body.notes,
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Plan not found: {plan_id}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+# ---- Live NOAA/NHC & NWS Active Feeds (Layer 1 Ingestion) ----
+
+@app.get("/api/live/status")
+def live_status():
+    """Operational status and connectivity of live NOAA NHC and NWS feed ingestion."""
+    from hurricane.live_feed import get_poller
+    return get_poller().poll()
+
+
+@app.get("/api/live/storms")
+def live_storms():
+    """Currently active tropical cyclones in Atlantic, Gulf, and East Pacific from NOAA NHC."""
+    from hurricane.live_feed import get_poller
+    return get_poller().get_active_storms()
+
+
+@app.get("/api/live/alerts")
+def live_alerts(fips: str | None = Query(None)):
+    """Active NWS tropical cyclone, hurricane, and storm surge watches and warnings."""
+    from hurricane.live_feed import get_poller
+    return get_poller().get_active_alerts(fips=fips)
+
+
+@app.get("/api/live/threat/{fips}")
+def live_threat(fips: str):
+    """Assess active NOAA storm and NWS alert threat level for a county."""
+    from hurricane import store
+    from hurricane.live_feed import get_poller
+    try:
+        p = store.pack(fips)
+        centroid = p["profile"]["centroid"]
+        return get_poller().assess_county_threat(fips, centroid["lat"], centroid["lon"])
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"County not found or threat assessment failed: {e}")
 
 
 # Production: serve the built React app from the same origin as /api (no CORS).
