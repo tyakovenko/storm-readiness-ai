@@ -90,6 +90,12 @@ class ImpactEstimate(_Strict):
     inputs: dict
     caveat: str
     source: str
+    # Phase 4: which engine produced this (the new local model bundle, or the older
+    # HURRICANE_MODEL_RUN+GCS path) and that bundle's own version/calibration provenance.
+    # Optional so a legacy-engine response (which doesn't set these) still validates.
+    model_version: str | None = None
+    engine: Literal["bundle", "legacy_gcs"] | None = None
+    calibration: dict | None = None
 
 
 class StormImpacts(_Strict):

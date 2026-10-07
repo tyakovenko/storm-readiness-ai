@@ -9,6 +9,7 @@ Forecast features are computed with the same functions that built the training t
 from __future__ import annotations
 
 import copy
+import os
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -16,6 +17,10 @@ import pandas as pd
 
 from hurricane import store
 from models.build_training_table import SEASONS, Storm, read_bytes, storm_county_features
+from models.county_storm_features import compute_county_storm_features
+from models.model_bundle import ModelBundleUnavailable, load_bundle
+from models.oni_by_date import oni_anomaly_for_date
+from models.replay_snapshot import snapshot_from_replay
 from models.schema import CountyFeatures
 
 from .hurricane_contracts import CONTRACTS
@@ -23,6 +28,15 @@ from .hurricane_contracts import CONTRACTS
 # Temporal split boundary of the kept model: models.train.train_and_save(train_end_year=2021) default,
 # as run by models.cloud_job. run.json records it from now on; this is the fallback for older runs.
 DEFAULT_TRAIN_END_YEAR = 2021
+
+# Phase 4: which impact engine estimate_impact() uses. "bundle" (default) is the new,
+# forecast-aware XGBoost model bundle (models/model_bundle.py) loaded locally from
+# models/artifacts/ -- no GCS/HURRICANE_MODEL_RUN needed. "legacy_gcs" is the original
+# HURRICANE_MODEL_RUN + GCS-loaded model with the position-only feature computation below,
+# kept intact and reachable for anyone still relying on that deployment path. The two are never
+# mixed: each uses its own matched feature computation, never the other's.
+IMPACT_ENGINE = os.getenv("HURRICANE_IMPACT_ENGINE", "bundle").strip().lower()
+DEFAULT_BUNDLE_NAME = "outage_xgb_real_v1"
 
 GUIDANCE_SOURCE = "NWS / NHC hurricane safety (weather.gov/safety/hurricane, nhc.noaa.gov/prepare)"
 GUIDANCE = [
@@ -158,6 +172,92 @@ class HurricaneToolset:
                 "source": "Training table: HURDAT2 best tracks + EAGLE-I outages"}
 
     def estimate_impact(self) -> dict:
+        if IMPACT_ENGINE == "legacy_gcs":
+            return self._estimate_impact_legacy()
+        return self._estimate_impact_bundle()
+
+    # ---- Phase 4: forecast-aware bundle engine (default) ----
+
+    def _dynamic_features_v2(self):
+        """The 6 forecast-dependent FEATURE_COLUMNS via the real wind-radius-or-decay pipeline
+        (county_storm_features.py), built from this pack's own replay.json advisory -- no raw
+        ATCF deck fetch needed (see models/replay_snapshot.py). Never fabricates a feature: a
+        county whose track geometry can't resolve one (e.g. no adjacent point for forward speed
+        or heading) comes back with that field None, and the caller decides what to do."""
+        replay = self._replay()
+        snapshot, adjacent = snapshot_from_replay(replay)
+        c = self.pack["profile"]["centroid"]
+        return compute_county_storm_features(c["lat"], c["lon"], snapshot, adjacent_point=adjacent), replay
+
+    def _oni_for_replay(self, replay: dict) -> tuple[float | None, str, int]:
+        """ONI anomaly for the replay's own closest-approach date (not "latest"/today's ONI,
+        which would be wrong for a historical replay) -- see models/oni_by_date.py."""
+        target_date = datetime.fromisoformat(replay["closest_approach_utc"])
+        return oni_anomaly_for_date(read_bytes("oni/oni.ascii.txt").decode(), target_date)
+
+    def _estimate_impact_bundle(self) -> dict:
+        try:
+            bundle = load_bundle(DEFAULT_BUNDLE_NAME)
+        except ModelBundleUnavailable as e:
+            return {"error": f"Impact model not available: {e}. Use find_similar_storms for history instead."}
+
+        try:
+            sf, replay = self._dynamic_features_v2()
+            oni_anomaly, oni_season, oni_year = self._oni_for_replay(replay)
+        except Exception as e:  # visible to the model and the user, never a silent stub
+            return {"error": f"Impact model not available: couldn't build forecast features for this county "
+                             f"({e}). Use find_similar_storms for history instead."}
+
+        missing = [name for name, v in (("forward_speed_kt", sf.forward_speed_kt),
+                                        ("quadrant_right", sf.quadrant_right),
+                                        ("oni_anomaly", oni_anomaly)) if v is None]
+        if missing:
+            return {"error": f"Impact model not available: this county's forecast/climate data couldn't resolve "
+                             f"{missing}. Use find_similar_storms for history instead."}
+
+        p = self.pack["profile"]
+        cf = CountyFeatures(fips=self.fips, name=self.county, state=self.pack["state"],
+                            max_wind_kt=sf.max_wind_kt, gust_wind_kt=sf.gust_wind_kt,
+                            dist_to_track_nm=sf.dist_to_track_nm, forward_speed_kt=sf.forward_speed_kt,
+                            quadrant_right=sf.quadrant_right, population=p["population"],
+                            customers_served=p["customers"], tree_canopy_pct=p["tree_canopy_pct"],
+                            nri_risk_score=p["nri_hurricane_risk_score"],
+                            nri_eal_building=p["nri_hurricane_eal_building_usd"], svi_overall=p["svi_overall"],
+                            oni_anomaly=oni_anomaly, lead_time_h=sf.lead_time_h)
+        try:
+            out = bundle.predict_one(cf)
+        except Exception as e:
+            return {"error": f"Impact model not available: prediction failed ({e}). "
+                             f"Use find_similar_storms for history instead."}
+
+        q, cust, cal = out["pct_customers_out"], p["customers"], out["calibration"]
+        caveat = ("Model trained on real historical tracks and NHC forecasts (leave-one-storm-out "
+                  "validated), with a stratified-conformal calibration applied; low/high are the "
+                  "calibrated range, not raw model quantiles.")
+        if cal.get("severe_uncertainty_caveat"):
+            caveat += " " + cal["severe_uncertainty_caveat"]
+
+        return {
+            "advisory_id": self._advisory_id(), "county": self.county, "fips": self.fips,
+            "risk_tier": out["risk_tier"],
+            "pct_customers_out": _rng(q["low"], q["median"], q["high"], "%"),
+            "customers_out": _rng(q["low"] * cust / 100, q["median"] * cust / 100, q["high"] * cust / 100,
+                                  "customers", 0),
+            "customers_served": cust, "why": out["why"], "model_run": out["model_bundle"],
+            "model_skill": bundle.skill_summary,
+            "inputs": {"forecast_wind_at_county_kt": sf.max_wind_kt, "forecast_closest_nm": sf.dist_to_track_nm,
+                      "forward_speed_kt": sf.forward_speed_kt, "right_of_track": bool(sf.quadrant_right),
+                      "lead_time_h_used_by_model": sf.lead_time_h, "oni_c": oni_anomaly,
+                      "wind_estimate_method": sf.wind_estimate_method,
+                      "forward_speed_source": sf.forward_speed_source},
+            "caveat": caveat, "source": bundle.source,
+            "model_version": out["model_version"], "engine": "bundle",
+            "calibration": cal,
+        }
+
+    # ---- legacy engine (HURRICANE_MODEL_RUN + GCS, original position-only features) ----
+
+    def _estimate_impact_legacy(self) -> dict:
         try:
             model, meta = store.model()
         except Exception as e:  # visible to the model and the user, never a silent stub
