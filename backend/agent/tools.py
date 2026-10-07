@@ -27,13 +27,63 @@ def get_enso_context() -> dict:
     return copy.deepcopy(data.ENSO)
 
 
-def predict_impact(county_fips: list[str] | None = None) -> dict:
+def _legacy_env_mode() -> str | None:
+    """Backward-compatible mode inference for callers that don't pass an
+    explicit `mode` (e.g. anything not yet updated to the new per-request
+    selector). Mirrors the pre-mode-param behavior exactly: a configured
+    LIVE_STORM_QUERY implied live mode, else USE_SCENARIO_MODEL implied
+    scenario mode. Only consulted when `mode` is omitted entirely -- once a
+    caller passes mode explicitly, these env vars no longer decide which
+    mode runs, only how live mode is configured (which storm/basin)."""
+    if os.getenv("LIVE_STORM_QUERY"):
+        return "live"
+    if os.getenv("USE_SCENARIO_MODEL", "false").lower() in {"true", "1", "yes"}:
+        return "scenario"
+    return None
+
+
+def predict_impact(
+    county_fips: list[str] | None = None,
+    lead_time_h: float | None = None,
+    mode: str | None = None,
+) -> dict:
+    """mode: "live" or "scenario", chosen per-request by the caller (e.g. the
+    frontend's Live Forecast / Scenario Demo selector) -- see
+    docs/data-contract.md. Omit to fall back to the legacy env-var-based
+    auto-detection (_legacy_env_mode()) for callers not yet updated.
+    """
     if os.getenv("USE_ML_IMPACT_MODEL", "false").lower() in {"true", "1", "yes"}:
-        try:
-            from backend.models.pipeline import run_impact_pipeline
-            return run_impact_pipeline(county_fips=county_fips, advisory=data.ADVISORY)
-        except Exception as e:
-            log.warning(f"ML impact model execution failed ({e}), falling back to stub data")
+        resolved_mode = mode if mode is not None else _legacy_env_mode()
+
+        if resolved_mode == "live":
+            storm_query = os.getenv("LIVE_STORM_QUERY")
+            if storm_query:
+                try:
+                    from models.pipeline import run_live_impact_pipeline
+                    basin = os.getenv("LIVE_STORM_BASIN", "AL")
+                    return run_live_impact_pipeline(
+                        storm_query, county_fips=county_fips, basin=basin,
+                        lead_time_h=lead_time_h if lead_time_h is not None else 72.0,
+                    )
+                except Exception as e:
+                    log.warning(f"Live ATCF impact model execution failed ({e}), falling back to stub data")
+            else:
+                log.info("mode=live requested but LIVE_STORM_QUERY is not configured; falling back to stub data")
+        elif resolved_mode == "scenario":
+            try:
+                from models.pipeline import run_scenario_impact_pipeline
+                return run_scenario_impact_pipeline(
+                    county_fips=county_fips,
+                    lead_time_h=lead_time_h if lead_time_h is not None else 72.0,
+                )
+            except Exception as e:
+                log.warning(f"Scenario impact model execution failed ({e}), falling back to stub data")
+        else:
+            try:
+                from backend.models.pipeline import run_impact_pipeline
+                return run_impact_pipeline(county_fips=county_fips, advisory=data.ADVISORY)
+            except Exception as e:
+                log.warning(f"ML impact model execution failed ({e}), falling back to stub data")
 
     rows = [c for c in data.COUNTIES if not county_fips or c["fips"] in county_fips]
     if county_fips and not rows:
@@ -50,6 +100,7 @@ def predict_impact(county_fips: list[str] | None = None) -> dict:
         "model_version": data.IMPACT_MODEL_VERSION,
         "counties": counties,
         "source": f"{data.STUB_SOURCE}; stands in for the XGBoost impact model",
+        "data_source": "stub_fallback",
     }
 
 

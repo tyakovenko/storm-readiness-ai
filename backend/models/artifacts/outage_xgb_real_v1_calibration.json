@@ -1,0 +1,257 @@
+{
+  "calibration_name": "outage_xgb_real_v1_calibration",
+  "base_model_artifact": "outage_xgb_real_v1.joblib",
+  "phase": "3P",
+  "created_at_utc": "2026-10-05T09:53:23.105795+00:00",
+  "approach": "stratified_conformal",
+  "alpha": 0.2,
+  "min_stratum_n": 20,
+  "Q_global": 1.473,
+  "Q_by_band": {
+    "0-5%": 0.0,
+    "5-20%": 1.453,
+    "20-40%": 7.042,
+    "40-100%": 14.295
+  },
+  "band_calibration_pool_n": {
+    "0-5%": 3300,
+    "5-20%": 808,
+    "20-40%": 403,
+    "40-100%": 231
+  },
+  "pred_bands": [
+    {
+      "label": "0-5%",
+      "lo": 0.0,
+      "hi": 5.0
+    },
+    {
+      "label": "5-20%",
+      "lo": 5.0,
+      "hi": 20.0
+    },
+    {
+      "label": "20-40%",
+      "lo": 20.0,
+      "hi": 40.0
+    },
+    {
+      "label": "40-100%",
+      "lo": 40.0,
+      "hi": 100.000000001
+    }
+  ],
+  "application_formula": "low_cal = clip(low - Q, 0, 100); high_cal = clip(high + Q, 0, 100); then sort so low_cal <= high_cal. For stratified_conformal, Q is Q_by_band[band(pred_med)] falling back to Q_global when that band's calibration pool was < min_stratum_n.",
+  "loso_validation_summary": {
+    "aggregate": {
+      "n": 4749,
+      "mae_median": 14.063,
+      "rmse_median": 25.634,
+      "coverage_pct": 80.2,
+      "mean_interval_width": 35.53
+    },
+    "by_storm": {
+      "FLORENCE": {
+        "n": 1143,
+        "mae_median": 10.913,
+        "rmse_median": 17.488,
+        "coverage_pct": 84.3,
+        "mean_interval_width": 49.027
+      },
+      "HELENE": {
+        "n": 957,
+        "mae_median": 22.695,
+        "rmse_median": 34.171,
+        "coverage_pct": 67.9,
+        "mean_interval_width": 40.201
+      },
+      "IAN": {
+        "n": 267,
+        "mae_median": 12.518,
+        "rmse_median": 22.5,
+        "coverage_pct": 79.8,
+        "mean_interval_width": 27.055
+      },
+      "IDALIA": {
+        "n": 924,
+        "mae_median": 11.636,
+        "rmse_median": 25.426,
+        "coverage_pct": 91.0,
+        "mean_interval_width": 38.361
+      },
+      "MICHAEL": {
+        "n": 1074,
+        "mae_median": 13.575,
+        "rmse_median": 26.981,
+        "coverage_pct": 76.2,
+        "mean_interval_width": 19.346
+      },
+      "MILTON": {
+        "n": 384,
+        "mae_median": 10.21,
+        "rmse_median": 19.046,
+        "coverage_pct": 83.9,
+        "mean_interval_width": 28.055
+      }
+    },
+    "by_horizon": {
+      "72": {
+        "n": 1583,
+        "mae_median": 14.008,
+        "rmse_median": 25.654,
+        "coverage_pct": 81.3,
+        "mean_interval_width": 34.977
+      },
+      "48": {
+        "n": 1583,
+        "mae_median": 13.937,
+        "rmse_median": 25.612,
+        "coverage_pct": 79.7,
+        "mean_interval_width": 35.048
+      },
+      "24": {
+        "n": 1583,
+        "mae_median": 14.245,
+        "rmse_median": 25.637,
+        "coverage_pct": 79.5,
+        "mean_interval_width": 36.564
+      }
+    },
+    "by_severity_band": {
+      "0-5%": {
+        "n": 3018,
+        "mae_median": 4.624,
+        "rmse_median": 9.764,
+        "coverage_pct": 93.5,
+        "mean_interval_width": 32.45
+      },
+      "5-20%": {
+        "n": 681,
+        "mae_median": 10.644,
+        "rmse_median": 13.33,
+        "coverage_pct": 86.8,
+        "mean_interval_width": 32.622
+      },
+      "20-40%": {
+        "n": 408,
+        "mae_median": 24.123,
+        "rmse_median": 26.95,
+        "coverage_pct": 53.7,
+        "mean_interval_width": 40.845
+      },
+      "40-100%": {
+        "n": 642,
+        "mae_median": 55.67,
+        "rmse_median": 61.339,
+        "coverage_pct": 27.3,
+        "mean_interval_width": 49.714
+      }
+    }
+  },
+  "loso_baseline_for_comparison": {
+    "aggregate": {
+      "n": 4749,
+      "mae_median": 14.063,
+      "rmse_median": 25.634,
+      "coverage_pct": 68.5,
+      "mean_interval_width": 33.03
+    },
+    "by_storm": {
+      "FLORENCE": {
+        "n": 1143,
+        "mae_median": 10.913,
+        "rmse_median": 17.488,
+        "coverage_pct": 55.4,
+        "mean_interval_width": 46.085
+      },
+      "HELENE": {
+        "n": 957,
+        "mae_median": 22.695,
+        "rmse_median": 34.171,
+        "coverage_pct": 57.4,
+        "mean_interval_width": 35.356
+      },
+      "IAN": {
+        "n": 267,
+        "mae_median": 12.518,
+        "rmse_median": 22.5,
+        "coverage_pct": 76.0,
+        "mean_interval_width": 24.589
+      },
+      "IDALIA": {
+        "n": 924,
+        "mae_median": 11.636,
+        "rmse_median": 25.426,
+        "coverage_pct": 83.4,
+        "mean_interval_width": 36.402
+      },
+      "MICHAEL": {
+        "n": 1074,
+        "mae_median": 13.575,
+        "rmse_median": 26.981,
+        "coverage_pct": 74.9,
+        "mean_interval_width": 19.061
+      },
+      "MILTON": {
+        "n": 384,
+        "mae_median": 10.21,
+        "rmse_median": 19.046,
+        "coverage_pct": 76.3,
+        "mean_interval_width": 25.205
+      }
+    },
+    "by_horizon": {
+      "72": {
+        "n": 1583,
+        "mae_median": 14.008,
+        "rmse_median": 25.654,
+        "coverage_pct": 70.2,
+        "mean_interval_width": 32.399
+      },
+      "48": {
+        "n": 1583,
+        "mae_median": 13.937,
+        "rmse_median": 25.612,
+        "coverage_pct": 67.9,
+        "mean_interval_width": 32.829
+      },
+      "24": {
+        "n": 1583,
+        "mae_median": 14.245,
+        "rmse_median": 25.637,
+        "coverage_pct": 67.4,
+        "mean_interval_width": 33.863
+      }
+    },
+    "by_severity_band": {
+      "0-5%": {
+        "n": 3018,
+        "mae_median": 4.624,
+        "rmse_median": 9.764,
+        "coverage_pct": 77.7,
+        "mean_interval_width": 30.912
+      },
+      "5-20%": {
+        "n": 681,
+        "mae_median": 10.644,
+        "rmse_median": 13.33,
+        "coverage_pct": 84.0,
+        "mean_interval_width": 30.308
+      },
+      "20-40%": {
+        "n": 408,
+        "mae_median": 24.123,
+        "rmse_median": 26.95,
+        "coverage_pct": 49.3,
+        "mean_interval_width": 35.826
+      },
+      "40-100%": {
+        "n": 642,
+        "mae_median": 55.67,
+        "rmse_median": 61.339,
+        "coverage_pct": 20.9,
+        "mean_interval_width": 44.099
+      }
+    }
+  }
+}

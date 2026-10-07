@@ -1,0 +1,207 @@
+{
+  "artifact_name": "outage_xgb_real_v1",
+  "model_version": "xgboost-quantile-real-v1.0",
+  "trained_at_utc": "2026-10-05T09:41:04.763571+00:00",
+  "training_dataset": {
+    "canonical_gcs_path": "gs://uc3-storm-impact-intelligence-data/processed/training/multi_storm_2018_2024/training_rows.csv",
+    "actual_load_path_used": "data/processed/multi_storm_2018_2024/training_rows.csv",
+    "n_storms": 6,
+    "storms": [
+      "FLORENCE",
+      "HELENE",
+      "IAN",
+      "IDALIA",
+      "MICHAEL",
+      "MILTON"
+    ],
+    "n_rows": 4749,
+    "n_unique_counties": 670
+  },
+  "feature_columns": [
+    "max_wind_kt",
+    "gust_wind_kt",
+    "dist_to_track_nm",
+    "forward_speed_kt",
+    "quadrant_right",
+    "population_log",
+    "customers_served_log",
+    "tree_canopy_pct",
+    "nri_risk_score",
+    "nri_eal_building_log",
+    "svi_overall",
+    "oni_anomaly",
+    "lead_time_h"
+  ],
+  "model_params": {
+    "alpha_low": 0.1,
+    "alpha_median": 0.5,
+    "alpha_high": 0.9,
+    "n_estimators": 120,
+    "max_depth": 4,
+    "learning_rate": 0.08,
+    "random_state": 42,
+    "objective": "reg:quantileerror",
+    "xgboost_version": "3.4.1"
+  },
+  "validation_strategy": "leave-one-storm-out (LOSO) across 6 real storms: Florence 2018, Michael 2018, Ian 2022, Idalia 2023, Helene 2024, Milton 2024",
+  "validation_summary": {
+    "aggregate": {
+      "n": 4749,
+      "mae_median": 14.063,
+      "rmse_median": 25.634,
+      "coverage_pct": 68.5,
+      "mean_interval_width": 33.03
+    },
+    "by_horizon": {
+      "72": {
+        "n": 1583,
+        "mae_median": 14.008,
+        "rmse_median": 25.654,
+        "coverage_pct": 70.2,
+        "mean_interval_width": 32.399
+      },
+      "48": {
+        "n": 1583,
+        "mae_median": 13.937,
+        "rmse_median": 25.612,
+        "coverage_pct": 67.9,
+        "mean_interval_width": 32.829
+      },
+      "24": {
+        "n": 1583,
+        "mae_median": 14.245,
+        "rmse_median": 25.637,
+        "coverage_pct": 67.4,
+        "mean_interval_width": 33.863
+      }
+    },
+    "by_severity_band": {
+      "0-5%": {
+        "n": 3018,
+        "mae_median": 4.624,
+        "rmse_median": 9.764,
+        "coverage_pct": 77.7,
+        "mean_interval_width": 30.912
+      },
+      "5-20%": {
+        "n": 681,
+        "mae_median": 10.644,
+        "rmse_median": 13.33,
+        "coverage_pct": 84.0,
+        "mean_interval_width": 30.308
+      },
+      "20-40%": {
+        "n": 408,
+        "mae_median": 24.123,
+        "rmse_median": 26.95,
+        "coverage_pct": 49.3,
+        "mean_interval_width": 35.826
+      },
+      "40-100%": {
+        "n": 642,
+        "mae_median": 55.67,
+        "rmse_median": 61.339,
+        "coverage_pct": 20.9,
+        "mean_interval_width": 44.099
+      }
+    },
+    "per_storm": {
+      "FLORENCE": {
+        "n": 1143,
+        "mae_median": 10.913,
+        "rmse_median": 17.488,
+        "coverage_pct": 55.4,
+        "mean_interval_width": 46.085
+      },
+      "HELENE": {
+        "n": 957,
+        "mae_median": 22.695,
+        "rmse_median": 34.171,
+        "coverage_pct": 57.4,
+        "mean_interval_width": 35.356
+      },
+      "IAN": {
+        "n": 267,
+        "mae_median": 12.518,
+        "rmse_median": 22.5,
+        "coverage_pct": 76.0,
+        "mean_interval_width": 24.589
+      },
+      "IDALIA": {
+        "n": 924,
+        "mae_median": 11.636,
+        "rmse_median": 25.426,
+        "coverage_pct": 83.4,
+        "mean_interval_width": 36.402
+      },
+      "MICHAEL": {
+        "n": 1074,
+        "mae_median": 13.575,
+        "rmse_median": 26.981,
+        "coverage_pct": 74.9,
+        "mean_interval_width": 19.061
+      },
+      "MILTON": {
+        "n": 384,
+        "mae_median": 10.21,
+        "rmse_median": 19.046,
+        "coverage_pct": 76.3,
+        "mean_interval_width": 25.205
+      }
+    },
+    "quantile_violations": {
+      "raw_q10_gt_q50": 20,
+      "raw_q50_gt_q90": 42,
+      "raw_total_rows": 4749,
+      "production_q10_gt_q50_after_enforcement": 0,
+      "production_q50_gt_q90_after_enforcement": 0
+    }
+  },
+  "feature_importance": {
+    "q10": {
+      "max_wind_kt": 0.3184,
+      "quadrant_right": 0.1605,
+      "nri_risk_score": 0.1133,
+      "forward_speed_kt": 0.0804,
+      "oni_anomaly": 0.078,
+      "dist_to_track_nm": 0.0593,
+      "svi_overall": 0.0528,
+      "population_log": 0.0476,
+      "customers_served_log": 0.0473,
+      "nri_eal_building_log": 0.0424,
+      "gust_wind_kt": 0.0,
+      "tree_canopy_pct": 0.0,
+      "lead_time_h": 0.0
+    },
+    "q50": {
+      "max_wind_kt": 0.2321,
+      "nri_risk_score": 0.1089,
+      "nri_eal_building_log": 0.0993,
+      "quadrant_right": 0.0968,
+      "customers_served_log": 0.0964,
+      "forward_speed_kt": 0.0904,
+      "population_log": 0.0834,
+      "svi_overall": 0.0807,
+      "oni_anomaly": 0.0577,
+      "dist_to_track_nm": 0.0543,
+      "gust_wind_kt": 0.0,
+      "tree_canopy_pct": 0.0,
+      "lead_time_h": 0.0
+    },
+    "q90": {
+      "max_wind_kt": 0.2377,
+      "quadrant_right": 0.2344,
+      "forward_speed_kt": 0.1182,
+      "dist_to_track_nm": 0.1086,
+      "population_log": 0.0692,
+      "customers_served_log": 0.0623,
+      "nri_risk_score": 0.0488,
+      "oni_anomaly": 0.0384,
+      "nri_eal_building_log": 0.0354,
+      "svi_overall": 0.033,
+      "lead_time_h": 0.014,
+      "gust_wind_kt": 0.0,
+      "tree_canopy_pct": 0.0
+    }
+  }
+}
