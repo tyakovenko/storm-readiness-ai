@@ -1,36 +1,68 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
-/* The app's design tokens as Tailwind theme values, so classes like bg-navy,
-   text-muted, border-line and text-risk-severe use one shared palette.
-   Tailwind also exposes each as a CSS variable (e.g. var(--color-risk-severe)). */
+/* Antigravity Sea & Ocean Design System with Dark & Light Themes */
 @theme {
-  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
 
-  --color-navy: #0f2744;
-  --color-accent: #2878b5;
-  --color-accent-dark: #1f5f91;
+  --color-ocean-dark: #06182c;
+  --color-navy: #0a2540;
+  --color-navy-light: #14385f;
+  
+  --color-accent: #0284c7;
+  --color-accent-dark: #0369a1;
+  --color-accent-light: #e0f2fe;
 
-  --color-canvas: #f5f8fa;
-  --color-surface: #ffffff;
-  --color-ink: #1a1d23;
-  --color-muted: #5b6472;
-  --color-line: #d7dee5;
+  --color-sea-cyan: #06b6d4;
+  --color-sea-teal: #0d9488;
+  --color-sea-foam: #f0fdfa;
 
-  --color-ok-bg: #e3f4e8;
-  --color-ok-text: #1b5e2f;
-  --color-warn-bg: #fff3d6;
-  --color-warn-text: #7a4b00;
-  --color-bad-bg: #fde4e4;
-  --color-bad-text: #8f1d1d;
+  --color-canvas: var(--bg-canvas, #f4f8fb);
+  --color-surface: var(--bg-surface, #ffffff);
+  --color-surface-subtle: var(--bg-surface-subtle, #f8fafc);
+  --color-ink: var(--text-ink, #0f172a);
+  --color-muted: var(--text-muted, #526071);
+  --color-line: var(--border-line, #e1ebf4);
+  --color-line-dark: #cbd5e1;
 
-  --color-risk-low: #2e7d32;
-  --color-risk-moderate: #c98a00;
-  --color-risk-high: #d9641e;
-  --color-risk-severe: #c62828;
-  --color-risk-low-bg: #e6f4ea;
-  --color-risk-moderate-bg: #fff2d9;
-  --color-risk-high-bg: #fde9db;
-  --color-risk-severe-bg: #fbe2e2;
+  --color-ok-bg: #ecfdf5;
+  --color-ok-text: #065f46;
+  --color-warn-bg: #fffbeb;
+  --color-warn-text: #92400e;
+  --color-bad-bg: #fef2f2;
+  --color-bad-text: #991b1b;
+
+  --color-risk-low: #059669;
+  --color-risk-moderate: #d97706;
+  --color-risk-high: #ea580c;
+  --color-risk-severe: #dc2626;
+  --color-risk-low-bg: #ecfdf5;
+  --color-risk-moderate-bg: #fffbeb;
+  --color-risk-high-bg: #fff7ed;
+  --color-risk-severe-bg: #fef2f2;
+}
+
+:root {
+  --bg-canvas: #f4f8fb;
+  --bg-surface: #ffffff;
+  --bg-surface-subtle: #f8fafc;
+  --text-ink: #0f172a;
+  --text-muted: #526071;
+  --border-line: #e1ebf4;
+  --header-bg: rgba(6, 24, 44, 0.94);
+  --nav-bg: rgba(255, 255, 255, 0.92);
+}
+
+.dark {
+  --bg-canvas: #050b14;
+  --bg-surface: #0b1524;
+  --bg-surface-subtle: #0f1e33;
+  --text-ink: #f8fafc;
+  --text-muted: #94a3b8;
+  --border-line: #17283e;
+  --color-navy: #f1f5f9;
+  --header-bg: rgba(3, 8, 16, 0.96);
+  --nav-bg: rgba(8, 17, 30, 0.94);
 }
 
 @layer base {
@@ -40,19 +72,97 @@
     height: 100%;
   }
   body {
-    @apply bg-canvas font-sans text-ink;
+    background-color: var(--bg-canvas);
+    color: var(--text-ink);
+    font-family: var(--font-sans);
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  .dark body {
+    background-image: radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.06) 0px, transparent 50%),
+                      radial-gradient(at 100% 100%, rgba(13, 148, 136, 0.05) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+  h1, h2, h3, h4, .font-heading {
+    font-family: var(--font-display);
   }
   button:disabled {
     @apply cursor-not-allowed opacity-55;
   }
   :is(button, input, summary, a):focus-visible {
-    @apply outline-2 outline-offset-2 outline-accent;
+    @apply outline-2 outline-offset-2 outline-accent ring-2 ring-sky-300/50;
   }
 }
 
-/* Leaflet renders tooltips outside React, so they can only be styled by their library class. */
+/* Glassmorphism, animations and effects */
+@layer utilities {
+  .glass-card {
+    background: var(--bg-surface);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid var(--border-line);
+  }
+  .dark .glass-card {
+    border-color: rgba(56, 189, 248, 0.18);
+    box-shadow: 0 0 25px -5px rgba(2, 132, 199, 0.08);
+  }
+  .glass-header {
+    background: var(--header-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .glass-nav {
+    background: var(--nav-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .sea-gradient {
+    background: linear-gradient(135deg, #0284c7 0%, #0d9488 100%);
+  }
+  .ocean-card-shadow {
+    box-shadow: 0 4px 20px -2px rgba(10, 37, 64, 0.06), 0 2px 6px -1px rgba(10, 37, 64, 0.04);
+  }
+  .dark .ocean-card-shadow {
+    box-shadow: 0 4px 25px -2px rgba(0, 0, 0, 0.4), 0 0 1px 1px rgba(56, 189, 248, 0.12);
+  }
+  .ocean-card-hover {
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .ocean-card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px -4px rgba(10, 37, 64, 0.12), 0 4px 12px -2px rgba(10, 37, 64, 0.06);
+    border-color: #38bdf8;
+  }
+  .dark .ocean-card-hover:hover {
+    box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.6), 0 0 15px rgba(56, 189, 248, 0.2);
+    border-color: #38bdf8;
+  }
+  
+  /* Animated radar sweep */
+  @keyframes radar-beam {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  .animate-radar {
+    animation: radar-beam 4s linear infinite;
+  }
+  
+  /* Map grid backdrop mask */
+  .map-grid-pattern {
+    background-size: 32px 32px;
+    background-image: 
+      linear-gradient(to right, rgba(2, 132, 199, 0.08) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(2, 132, 199, 0.08) 1px, transparent 1px);
+  }
+  .dark .map-grid-pattern {
+    background-image: 
+      linear-gradient(to right, rgba(56, 189, 248, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(56, 189, 248, 0.06) 1px, transparent 1px);
+  }
+}
+
+/* Leaflet tooltips styling */
 @layer components {
   .leaflet-tooltip.leaflet-tooltip-top {
-    @apply rounded border border-line px-2 py-1.5 font-sans shadow-[0_1px_3px_rgba(15,39,68,0.15)];
+    @apply rounded-lg border border-line px-2.5 py-1.5 font-sans shadow-lg bg-surface text-ink text-xs font-medium;
   }
 }

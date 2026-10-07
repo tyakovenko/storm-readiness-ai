@@ -1,4 +1,4 @@
-// Numbers exactly as the backend gives them (no rounding the trust layer would reject in chat).
+﻿// Numbers exactly as the backend gives them (no rounding the trust layer would reject in chat).
 export function fmt(v, digits) {
   if (v == null) return "—";
   const n = Number(v);
@@ -11,10 +11,10 @@ export function rangeText(r) {
   return `${fmt(r.low, 1)}–${fmt(r.high, 1)} (median ${fmt(r.median, 1)}, n=${r.n})`;
 }
 
-export const CARD = "rounded-md border border-line bg-surface px-4 py-3.5";
-export const LABEL = "text-[0.68rem] font-semibold uppercase tracking-[0.4px] text-muted";
-export const BIG = "text-2xl font-bold leading-[1.1] text-navy";
-export const NOTE = "text-[0.78rem] text-muted";
+export const CARD = "rounded-2xl border border-line bg-surface p-5 ocean-card-shadow ocean-card-hover";
+export const LABEL = "text-[0.7rem] font-bold uppercase tracking-[0.06em] text-accent";
+export const BIG = "text-2xl sm:text-[1.85rem] font-extrabold leading-tight text-navy font-heading";
+export const NOTE = "text-[0.82rem] text-muted leading-relaxed";
 
 export const SECTORS = {
   transport: "Streets & signals",

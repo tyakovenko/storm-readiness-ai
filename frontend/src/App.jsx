@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import Header from "./components/Header.jsx";
 import Navigation from "./components/Navigation.jsx";
 import AskAI from "./components/AskAI.jsx";
@@ -58,7 +58,7 @@ function SingleAgentApp() {
     <div className="flex min-h-screen flex-col bg-canvas">
       <Header onAskAIClick={() => setAskAIOpen((v) => !v)} askAIOpen={askAIOpen} />
       <Navigation activePage={activePage} onNavigate={setActivePage} />
-      <main className="flex-1 bg-canvas pt-[102px]">
+      <main className="flex-1 bg-canvas pt-[116px]">
         {overview || error ? <PageComponent overview={overview} overviewError={error} /> : <PageStatus title="Loading" />}
       </main>
       <AskAI open={askAIOpen} onClose={() => setAskAIOpen(false)} />
@@ -79,8 +79,7 @@ function MultiAgentApp() {
   const template = agent ? TEMPLATE_PAGES[agent.hazard] : null;
   const { overview, error } = useOverview(agentId, Boolean(template));
   const PageComponent = template ? (template.pages[page] ?? template.pages["storm-overview"]) : null;
-  // Shared by the home search box and any page's contextual "Ask AI" prompts: same panel, same
-  // backend call, just a different question handed in.
+
   function askWithQuestion(q) {
     setPendingQuestion(q);
     setAskAIOpen(true);
@@ -89,14 +88,19 @@ function MultiAgentApp() {
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
       <Header onAskAIClick={() => setAskAIOpen((v) => !v)} askAIOpen={askAIOpen} />
-      <Navigation
-        items={template?.nav ?? []}
-        activePage={page}
-        onNavigate={(p) => go(agentId, p)}
-        onHome={() => go(null)}
-        title={agent ? `${agent.county}${agent.state ? `, ${agent.state}` : ""}` : null}
-      />
-      <main className="flex-1 bg-canvas pt-[102px]">
+      {agent && (
+        <Navigation
+          items={template?.nav ?? []}
+          activePage={page}
+          onNavigate={(p) => go(agentId, p)}
+          onHome={() => go(null)}
+          title={`${agent.county}${agent.state ? `, ${agent.state}` : ""}`}
+          agents={agents ?? []}
+          currentAgentId={agentId}
+          onSelectAgent={(id) => go(id, page)}
+        />
+      )}
+      <main className={`flex-1 bg-canvas ${agent ? "pt-[116px]" : "pt-[64px]"}`}>
         {!agentId || !agent ? (
           agents || agentsError ? (
             <AgentLanding agents={agents} error={agentsError || (agentId && agents ? `Unknown agent ${agentId}` : "")}
@@ -112,9 +116,6 @@ function MultiAgentApp() {
           <PageStatus title={agent.name} />
         )}
       </main>
-      {/* key: a new agent starts a new conversation. hazard is null on the storm home page,
-          where no agent is open yet -- /api/chat now routes by name or says so (landing_router),
-          it no longer silently answers as the Dallas agent (Phase 5). */}
       <AskAI key={agentId ?? "none"} open={askAIOpen} onClose={() => setAskAIOpen(false)}
         agentId={agent ? agentId : null} hazard={agent?.hazard ?? null} agentName={agent?.name}
         pendingQuestion={pendingQuestion} onPendingSent={() => setPendingQuestion("")} />

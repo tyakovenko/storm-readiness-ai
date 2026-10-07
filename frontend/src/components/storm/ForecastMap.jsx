@@ -1,4 +1,4 @@
-import L from "leaflet";
+﻿import L from "leaflet";
 import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Tooltip, useMap } from "react-leaflet";
 import { useEffect, useMemo } from "react";
 import { getStormSeverityHex } from "../../utils/stormSeverity.js";
@@ -39,13 +39,12 @@ function ForecastPointTooltip({ point }) {
 }
 
 // Map legend, shared look with the staging and risk maps.
-export const LEGEND =
-  "absolute bottom-2.5 left-2.5 z-500 flex flex-col gap-1 rounded border border-line bg-white/92 px-2.5 py-1.5 text-[0.72rem] leading-[1.1] text-ink";
+export const LEGEND = "absolute bottom-3 left-3 z-500 flex flex-col gap-1.5 rounded-xl border border-sky-100 bg-white/95 backdrop-blur-md px-3.5 py-2.5 text-[0.75rem] font-medium leading-tight text-ink shadow-lg";
 export const LEGEND_ITEM = "inline-flex items-center gap-1.5 whitespace-nowrap";
 export const LEGEND_SWATCH = "size-2.5 shrink-0 rounded-full border-2";
 // isolate: Leaflet's internal z-indexes (up to 1000) stay inside the map box
 // instead of painting over the fixed header, sub-nav and Ask AI panel.
-export const MAP_FRAME = "relative isolate overflow-hidden rounded-md border border-line bg-surface";
+export const MAP_FRAME = "relative isolate overflow-hidden rounded-2xl border border-line bg-surface ocean-card-shadow";
 export const MAP_SIZE = "h-[420px] w-full max-[760px]:h-80";
 
 export default function ForecastMap({ track }) {
@@ -114,3 +113,4 @@ export default function ForecastMap({ track }) {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { PAGE, PageTitle } from "../components/Page.jsx";
+﻿import { PAGE, PageTitle } from "../components/Page.jsx";
 import SectionHeading from "../components/SectionHeading.jsx";
 import { CARD, LABEL, NOTE, fmt } from "../dallas/format.js";
 import CountyMap from "./CountyMap.jsx";
@@ -22,12 +22,12 @@ const OVERVIEW_ASK_PROMPTS = [
 ];
 
 // Phase 4: the forecast-aware model bundle genuinely supports 24h/48h/72h-lead-time predictions
-// (it was trained and validated at exactly those three horizons — see model_skill.tested_on),
+// (it was trained and validated at exactly those three horizons â€” see model_skill.tested_on),
 // but switching between them for a given county needs a second/third independent NHC advisory
 // *cycle* selected from the raw ATCF a-deck archive, not just this one baked replay track. That
 // archive is GCS-gated and isn't fetched by this app at request time, so there is only ever one
 // real horizon available per replay: this one. The control stays inert rather than faking a
-// switch — see backend/models/replay_snapshot.py for the exact limitation.
+// switch â€” see backend/models/replay_snapshot.py for the exact limitation.
 function HorizonControls({ activeLabel, leadTimeH }) {
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -43,7 +43,7 @@ function HorizonControls({ activeLabel, leadTimeH }) {
       ))}
       <span className={NOTE}>
         The outage model is validated at 24h/48h/72h lead times, but switching horizons for this county needs
-        the raw NHC advisory archive (not available without further data access) — this shows the one real
+        the raw NHC advisory archive (not available without further data access) â€” this shows the one real
         advisory this replay has.
       </span>
     </div>
@@ -61,17 +61,17 @@ function RiskFactorsSection({ alert, impact, profile, enso }) {
       {windMethod === "vmax_decay_fallback" && (
         <p className={`${NOTE} mb-2`}>
           Wind exposure below is a distance-decay estimate from peak storm intensity, not the forecast's own
-          wind-radius field (not available for this replay) — treat it as approximate.
+          wind-radius field (not available for this replay) â€” treat it as approximate.
         </p>
       )}
       <div className="mt-3.5 grid grid-cols-4 gap-3 max-[900px]:grid-cols-2">
         <Metric label="Wind exposure" value={`${fmt(windKt)} kt`}
-          note={`~${fmt(ktToMph(windKt))} mph • ${rightOfTrack ? "right (stronger) side" : "left (weaker) side"} of track`} />
+          note={`~${fmt(ktToMph(windKt))} mph â€¢ ${rightOfTrack ? "right (stronger) side" : "left (weaker) side"} of track`} />
         <Metric label="Storm proximity" value={`${fmt(distNm)} nm`} note="closest forecast distance to the county" />
-        <Metric label="Hurricane risk score" value={fmt(profile.nri_hurricane_risk_score, 1)} note="FEMA National Risk Index, 0–100" />
-        <Metric label="Social vulnerability" value={fmt(profile.svi_overall, 2)} note="CDC/ATSDR SVI, 0–1 (higher = more vulnerable)" />
+        <Metric label="Hurricane risk score" value={fmt(profile.nri_hurricane_risk_score, 1)} note="FEMA National Risk Index, 0â€“100" />
+        <Metric label="Social vulnerability" value={fmt(profile.svi_overall, 2)} note="CDC/ATSDR SVI, 0â€“1 (higher = more vulnerable)" />
         <Metric label="Electric customers served" value={fmt(profile.customers)} note="exposure base for the outage estimate" />
-        <Metric label="Tree canopy" value={`${fmt(profile.tree_canopy_pct, 1)}%`} note="USFS — more canopy, more wind-driven outages" />
+        <Metric label="Tree canopy" value={`${fmt(profile.tree_canopy_pct, 1)}%`} note="USFS â€” more canopy, more wind-driven outages" />
         <Metric label="Population" value={fmt(profile.population)} />
         <Metric label="Climate context" value={`${enso.phase} (${enso.strength})`} note={`ONI ${fmt(enso.oni_c, 2)}, ${enso.season} ${enso.year}`} />
       </div>
@@ -86,7 +86,7 @@ export default function HurricaneOverview({ overview, agent, onAsk }) {
 
   return (
     <section className={PAGE}>
-      <PageTitle>Storm Overview — {county}{agent?.state ? `, ${agent.state}` : ""}</PageTitle>
+      <PageTitle>Storm Overview â€” {county}{agent?.state ? `, ${agent.state}` : ""}</PageTitle>
       <StormContextHeader alert={alert} county={county} state={agent?.state} />
 
       <div className="grid grid-cols-6 gap-3 max-[900px]:grid-cols-2">
@@ -123,7 +123,7 @@ export default function HurricaneOverview({ overview, agent, onAsk }) {
                   </span>
                 </div>
                 <div className={NOTE}>
-                  {fmt(s.max_wind_kt_at_county)} kt at county • {fmt(s.dist_to_track_nm)} nm • {s.right_of_track ? "right" : "left"} side
+                  {fmt(s.max_wind_kt_at_county)} kt at county â€¢ {fmt(s.dist_to_track_nm)} nm â€¢ {s.right_of_track ? "right" : "left"} side
                 </div>
                 <div className="text-[0.88rem] font-semibold text-navy">
                   Peak {fmt(s.peak_customers_out)} customers out ({fmt(s.peak_pct_customers, 1)}%)
@@ -161,3 +161,4 @@ export default function HurricaneOverview({ overview, agent, onAsk }) {
     </section>
   );
 }
+

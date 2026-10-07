@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { chatUrl } from "../api.js";
 
 // All agent/trust logic lives in the backend. This panel only sends a
@@ -11,14 +11,14 @@ const EXAMPLES = [
   "We only have 6 trucks and Shelter 2 is closed. Re-plan.",
   "Were there similar storms before?",
   "What should residents do now?",
-  "How does El Niño affect this season?",
+  "How does El NiÃ±o affect this season?",
 ];
 const DALLAS_EXAMPLES = [
   "How should we prepare for this storm?",
   "What if we only have 30 trucks and Fair Park is closed?",
   "Has Dallas had a storm like this before?",
   "What happened during Winter Storm Uri?",
-  "Does El Niño matter this winter?",
+  "Does El NiÃ±o matter this winter?",
   "What should residents do if the power goes out?",
 ];
 // Mock-only: the scripted client misbehaves once so the trust layer has something to block.
@@ -29,7 +29,7 @@ const HURRICANE_EXAMPLES = [
   "Has this county had a storm like this before?",
   "What shelters do we have outside the surge zone?",
   "What if we include surge-zone shelters too?",
-  "Does El Niño matter this season?",
+  "Does El NiÃ±o matter this season?",
   "What should residents do to evacuate?",
 ];
 const HURRICANE_TRUST_DEMOS = ["Trust demo: outage estimate without its range"];
@@ -78,7 +78,7 @@ function CheckList({ checks }) {
     <ul className="my-1.5">
       {checks.map((c) => (
         <li key={c.name}>
-          <span aria-hidden="true">{c.passed === true ? "✔" : c.passed === false ? "✖" : "…"}</span>{" "}
+          <span aria-hidden="true">{c.passed === true ? "âœ”" : c.passed === false ? "âœ–" : "â€¦"}</span>{" "}
           <strong>{c.name}</strong>: {c.detail}
         </li>
       ))}
@@ -216,9 +216,9 @@ export default function AskAI({ open, onClose, agentId = null, hazard = null, ag
   return (
     <>
       {/* Backdrop and panel sit above the fixed header (z 100) and sub-nav (z 90). */}
-      {open && <div className="fixed inset-0 z-110 bg-[rgba(15,39,68,0.15)]" onClick={onClose} aria-hidden="true" />}
+      {open && <div className="fixed inset-0 z-110 bg-slate-900/40 backdrop-blur-xs" onClick={onClose} aria-hidden="true" />}
       <aside
-        className={`fixed right-0 top-0 z-120 flex h-screen w-[420px] max-w-full flex-col gap-3 overflow-y-auto border-l border-line bg-surface p-4 shadow-[-2px_0_8px_rgba(15,39,68,0.08)] transition-transform duration-[180ms] ease-[ease] max-[640px]:w-full ${
+        className={`fixed right-0 top-0 z-120 flex h-screen w-[480px] max-w-full flex-col gap-4 overflow-y-auto border-l border-sky-100 bg-surface p-5 shadow-2xl transition-transform duration-[180ms] ease-[ease] max-[640px]:w-full ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         aria-hidden={!open}
@@ -226,7 +226,7 @@ export default function AskAI({ open, onClose, agentId = null, hazard = null, ag
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="mb-1.5 text-[1.05rem] font-bold text-ink">Ask AI{agentName ? ` — ${agentName}` : ""}</h2>
+            <h2 className="mb-1.5 text-[1.05rem] font-bold text-ink">Ask AI{agentName ? ` â€” ${agentName}` : ""}</h2>
             {health && (
               <div className="mt-1 flex flex-wrap gap-1.5">
                 <span className={health.mock ? BADGE_WARN : BADGE_OK}>
@@ -256,7 +256,7 @@ export default function AskAI({ open, onClose, agentId = null, hazard = null, ag
               <div key={i} className="rounded-md border border-line bg-canvas px-3.5 py-3"><AgentReply result={m.result} /></div>
             ),
           )}
-          {loading && <p className="text-muted">Agent is working…</p>}
+          {loading && <p className="text-muted">Agent is workingâ€¦</p>}
           {error && <p className="rounded bg-bad-bg px-3 py-2 text-bad-text" role="alert">{error}</p>}
           <div ref={endRef} />
         </div>
@@ -303,3 +303,4 @@ export default function AskAI({ open, onClose, agentId = null, hazard = null, ag
     </>
   );
 }
+

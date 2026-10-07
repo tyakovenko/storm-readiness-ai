@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { PAGE, PageTitle } from "../components/Page.jsx";
 import SectionHeading from "../components/SectionHeading.jsx";
 import { CARD, LABEL, NOTE, fmt } from "../dallas/format.js";
@@ -7,9 +7,9 @@ import CountyMap from "./CountyMap.jsx";
 import { Metric, StormContextHeader, ImpactPanel, ktToMph, getForecastInputs, toRiskLocations } from "./shared.jsx";
 
 // Risk Map for one hurricane county: where impact is highest, why, what's exposed, and what to
-// prioritize — built on the same /api/agents/{id}/overview data as Storm Overview. The backend
+// prioritize â€” built on the same /api/agents/{id}/overview data as Storm Overview. The backend
 // predicts for exactly one county (the agent's own), so this page never draws a multi-county
-// choropleth or a ranked list of locations — see toRiskLocations() in shared.jsx for how the
+// choropleth or a ranked list of locations â€” see toRiskLocations() in shared.jsx for how the
 // single real prediction is kept in a shape a future multi-location API can extend without a
 // page redesign.
 const NO_PREDICTION_HEX = "#9aa3ae";
@@ -24,24 +24,24 @@ const ASK_PROMPTS = [
 function LayerControls({ layers, setLayers, hasTrack }) {
   const toggle = (k) => setLayers((l) => ({ ...l, [k]: !l[k] }));
   return (
-    <div className="mt-3.5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-md border border-line bg-surface px-4 py-2.5 text-[0.82rem]">
-      <span className={LABEL}>Layers</span>
-      <label className="inline-flex cursor-pointer items-center gap-1.5 font-semibold text-ink">
-        <input type="checkbox" checked={layers.risk} onChange={() => toggle("risk")} />
+    <div className="mt-4 flex flex-wrap items-center gap-x-6 gap-y-2.5 rounded-2xl border border-sky-100 bg-sky-50/60 px-5 py-3 text-[0.84rem] shadow-xs">
+      <span className="text-[0.7rem] font-bold uppercase tracking-wider text-accent">Map Layers</span>
+      <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-ink hover:text-accent transition-colors">
+        <input type="checkbox" className="size-4 accent-sky-600 rounded" checked={layers.risk} onChange={() => toggle("risk")} />
         County risk shading
       </label>
       {hasTrack && (
-        <label className="inline-flex cursor-pointer items-center gap-1.5 font-semibold text-ink">
-          <input type="checkbox" checked={layers.track} onChange={() => toggle("track")} />
-          Storm track
+        <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-ink hover:text-accent transition-colors">
+          <input type="checkbox" className="size-4 accent-sky-600 rounded" checked={layers.track} onChange={() => toggle("track")} />
+          Storm track & cone
         </label>
       )}
-      <label className="inline-flex cursor-pointer items-center gap-1.5 font-semibold text-ink">
-        <input type="checkbox" checked={layers.shelters} onChange={() => toggle("shelters")} />
-        Shelters
+      <label className="inline-flex cursor-pointer items-center gap-2 font-semibold text-ink hover:text-accent transition-colors">
+        <input type="checkbox" className="size-4 accent-sky-600 rounded" checked={layers.shelters} onChange={() => toggle("shelters")} />
+        FEMA shelters
       </label>
-      <label className="inline-flex cursor-pointer items-center gap-1.5 font-semibold text-ink">
-        <input type="checkbox" checked={layers.surgeOnly} disabled={!layers.shelters}
+      <label className={`inline-flex cursor-pointer items-center gap-2 font-semibold transition-colors ${layers.shelters ? "text-ink hover:text-accent" : "text-muted opacity-40"}`}>
+        <input type="checkbox" className="size-4 accent-sky-600 rounded" checked={layers.surgeOnly} disabled={!layers.shelters}
           onChange={() => toggle("surgeOnly")} />
         Surge/floodplain exposure only
       </label>
@@ -64,12 +64,12 @@ function LocationCard({ loc }) {
   const level = getRiskLevel(loc.risk_level);
   return (
     <div className={`${CARD} border-l-[3px] ${RISK_CLASSES[level].borderLeft}`}>
-      <div className={LABEL}>Selected county — the modeled risk area</div>
+      <div className={LABEL}>Selected county â€” the modeled risk area</div>
       <div className="text-[1.05rem] font-bold text-navy">{loc.name}</div>
       <div className="mt-1 text-[0.95rem] font-semibold text-navy">
-        {getRiskLabel(loc.risk_level)} • {fmt(loc.prediction_range.low)}–{fmt(loc.prediction_range.high)}% customers out
+        {getRiskLabel(loc.risk_level)} â€¢ {fmt(loc.prediction_range.low)}â€“{fmt(loc.prediction_range.high)}% customers out
       </div>
-      <div className={NOTE}>median {fmt(loc.customers_out.median)} customers • lead time {fmt(loc.forecast_horizon_h)} h</div>
+      <div className={NOTE}>median {fmt(loc.customers_out.median)} customers â€¢ lead time {fmt(loc.forecast_horizon_h)} h</div>
       <ul className="mt-2 list-disc pl-4 text-[0.8rem]">{loc.risk_drivers.slice(0, 3).map((w) => <li key={w}>{w}</li>)}</ul>
     </div>
   );
@@ -85,9 +85,9 @@ function ShelterDetail({ shelter, onBack }) {
       <div className="mt-2 text-[1.05rem] font-bold text-navy">{shelter.name}</div>
       {shelter.city && <div className={NOTE}>{shelter.city}</div>}
       <dl className="mt-2 grid grid-cols-2 gap-2 text-[0.82rem]">
-        <div><dt className={LABEL}>Evacuation beds</dt><dd>{shelter.evacuation_capacity ?? "—"}</dd></div>
-        <div><dt className={LABEL}>Post-impact beds</dt><dd>{shelter.post_impact_capacity ?? "—"}</dd></div>
-        <div><dt className={LABEL}>Pets</dt><dd>{shelter.pets ?? "—"}</dd></div>
+        <div><dt className={LABEL}>Evacuation beds</dt><dd>{shelter.evacuation_capacity ?? "â€”"}</dd></div>
+        <div><dt className={LABEL}>Post-impact beds</dt><dd>{shelter.post_impact_capacity ?? "â€”"}</dd></div>
+        <div><dt className={LABEL}>Pets</dt><dd>{shelter.pets ?? "â€”"}</dd></div>
         <div><dt className={LABEL}>ADA accessible</dt><dd>{shelter.ada ? "Yes" : "No"}</dd></div>
         <div><dt className={LABEL}>Generator</dt><dd>{shelter.generator ? "Yes" : "No"}</dd></div>
         <div><dt className={LABEL}>Exposure</dt>
@@ -117,7 +117,7 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
 
   return (
     <section className={PAGE}>
-      <PageTitle>Risk Map — {county}{agent?.state ? `, ${agent.state}` : ""}</PageTitle>
+      <PageTitle>Risk Map â€” {county}{agent?.state ? `, ${agent.state}` : ""}</PageTitle>
       <StormContextHeader alert={alert} county={county} state={agent?.state} />
       <p className="-mt-2 mb-4 text-[0.88rem] text-muted">
         Identify high-risk locations and understand the factors driving expected impacts.
@@ -126,7 +126,7 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
       <section>
         <SectionHeading title="Risk map" subtitle={
           impact.error
-            ? "No outage prediction is available — showing the county boundary, forecast track and shelters only."
+            ? "No outage prediction is available â€” showing the county boundary, forecast track and shelters only."
             : "Shaded by the model's predicted outage risk for this county. The backend predicts one county at a time, so this is not a multi-county choropleth."
         } />
         <LayerControls layers={layers} setLayers={setLayers} hasTrack={alert.forecast?.length > 0} />
@@ -145,7 +145,7 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
               <div className="flex flex-col gap-3">
                 {locations.map((loc) => <LocationCard key={loc.id} loc={loc} />)}
                 <p className={NOTE}>
-                  Only one location is modeled today — the selected county. Click a shelter on the map for its details.
+                  Only one location is modeled today â€” the selected county. Click a shelter on the map for its details.
                 </p>
               </div>
             )}
@@ -163,7 +163,7 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
         <div className="mt-3.5 grid grid-cols-2 gap-4 max-[900px]:grid-cols-1">
           <div>
             <div className={LABEL}>Model prediction drivers</div>
-            <p className={`${NOTE} mb-2`}>What the outage model used for this forecast — the only fields the model itself cites as inputs.</p>
+            <p className={`${NOTE} mb-2`}>What the outage model used for this forecast â€” the only fields the model itself cites as inputs.</p>
             {impact.error ? (
               <p className="rounded bg-bad-bg px-3 py-2 text-[0.85rem] text-bad-text">{impact.error}</p>
             ) : (
@@ -171,7 +171,7 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
                 {impact.inputs?.wind_estimate_method === "vmax_decay_fallback" && (
                   <p className={`${NOTE} mb-2`}>
                     Wind exposure is a distance-decay estimate from peak intensity, not this replay's own
-                    wind-radius field — treat it as approximate.
+                    wind-radius field â€” treat it as approximate.
                   </p>
                 )}
                 <div className="grid grid-cols-2 gap-3">
@@ -180,18 +180,18 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
                 </div>
                 <ul className="mt-2 list-disc pl-4 text-[0.85rem]">{impact.why.map((w) => <li key={w}>{w}</li>)}</ul>
                 {impact.model_version && (
-                  <p className={`${NOTE} mt-2`}>Model {impact.model_version} • calibration: {impact.calibration?.status}</p>
+                  <p className={`${NOTE} mt-2`}>Model {impact.model_version} â€¢ calibration: {impact.calibration?.status}</p>
                 )}
               </>
             )}
           </div>
           <div>
             <div className={LABEL}>Exposure & planning context</div>
-            <p className={`${NOTE} mb-2`}>County vulnerability and exposure — useful context, not claimed here as a causal driver.</p>
+            <p className={`${NOTE} mb-2`}>County vulnerability and exposure â€” useful context, not claimed here as a causal driver.</p>
             <div className="grid grid-cols-2 gap-3">
               <Metric label="Storm proximity" value={`${fmt(distNm)} nm`} note="closest forecast distance" />
-              <Metric label="Hurricane risk score" value={fmt(overview.profile.nri_hurricane_risk_score, 1)} note="FEMA NRI, 0–100" />
-              <Metric label="Social vulnerability" value={fmt(overview.profile.svi_overall, 2)} note="CDC/ATSDR SVI, 0–1" />
+              <Metric label="Hurricane risk score" value={fmt(overview.profile.nri_hurricane_risk_score, 1)} note="FEMA NRI, 0â€“100" />
+              <Metric label="Social vulnerability" value={fmt(overview.profile.svi_overall, 2)} note="CDC/ATSDR SVI, 0â€“1" />
               <Metric label="Tree canopy" value={`${fmt(overview.profile.tree_canopy_pct, 1)}%`} note="USFS" />
             </div>
           </div>
@@ -200,9 +200,9 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
 
       <section className="mt-6">
         <SectionHeading title="Exposed shelters & assets"
-          subtitle="FEMA shelters in a mapped surge zone or 100-year floodplain — exposure context, not a model-predicted outage risk" />
+          subtitle="FEMA shelters in a mapped surge zone or 100-year floodplain â€” exposure context, not a model-predicted outage risk" />
         <p className={`${NOTE} mt-2`}>
-          {fmt(exposedShelters.length)} of {fmt(assets.shelters_total)} shelters are in a surge zone or floodplain •{" "}
+          {fmt(exposedShelters.length)} of {fmt(assets.shelters_total)} shelters are in a surge zone or floodplain â€¢{" "}
           {fmt(assets.safe_shelters)} shelters ({fmt(assets.safe_evacuation_capacity)} beds) are outside both.
         </p>
         {exposedShelters.length === 0 ? (
@@ -216,7 +216,7 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
                   <div className="font-bold text-navy">{s.name}</div>
                   <div className={NOTE}>{s.city}</div>
                   <div className="mt-1 text-[0.8rem]">
-                    {fmt(s.evacuation_capacity)} beds •{" "}
+                    {fmt(s.evacuation_capacity)} beds â€¢{" "}
                     {[s.in_surge_zone && "surge zone", s.in_100yr_floodplain && "floodplain"].filter(Boolean).join(", ")}
                   </div>
                 </button>
@@ -251,3 +251,4 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
     </section>
   );
 }
+

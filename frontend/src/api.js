@@ -1,4 +1,4 @@
-// Backend data for the screens. The Ask AI panel calls /api/chat itself.
+﻿// Backend data for the screens. The Ask AI panel calls /api/chat itself.
 import { useEffect, useState } from "react";
 
 async function readJSON(r) {
@@ -8,8 +8,6 @@ async function readJSON(r) {
 
 // The same tool outputs the agent sees (advisory, impact, staging, assets...),
 // validated against backend/agent/contracts.py. No LLM involved.
-// params: { max_trucks, closed: [...], include_surge } for what-ifs; omitted = default plan.
-// agentId: multi-agent service (/api/agents/{id}/overview); null = the single-agent /api/overview.
 export function fetchOverview(params = {}, agentId = null) {
   const q = new URLSearchParams();
   if (params.max_trucks != null) q.set("max_trucks", params.max_trucks);
@@ -28,12 +26,23 @@ export function fetchHealth() {
   return fetch("/api/health").then(readJSON);
 }
 
+export function fetchLiveStatus() {
+  return fetch("/api/live/status").then(readJSON);
+}
+
+export function fetchLiveStorms() {
+  return fetch("/api/live/storms").then(readJSON);
+}
+
+export function fetchStaging(maxTrucks = null) {
+  const url = maxTrucks != null ? `/api/staging?max_trucks=${maxTrucks}` : "/api/staging";
+  return fetch(url).then(readJSON);
+}
+
 export function chatUrl(agentId) {
   return agentId ? `/api/agents/${encodeURIComponent(agentId)}/chat` : "/api/chat";
 }
 
-// Data is tagged with the agent it belongs to and only returned for that agent: on an agent switch
-// the old agent's data would otherwise render one frame in the new agent's pages (and crash them).
 export function useOverview(agentId = null, enabled = true) {
   const [state, setState] = useState({ id: undefined, overview: null, error: "" });
   useEffect(() => {
