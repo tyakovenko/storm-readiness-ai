@@ -1,49 +1,140 @@
-// Backend data for the screens. The Ask AI panel calls /api/chat itself.
+
+// API communication layer for StormReady AI.
+// Supports both single-agent and multi-agent modes.
+
 import { useEffect, useState } from "react";
 
-async function readJSON(r) {
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  return r.json();
+// Shared JSON response handler.
+async function readJSON(response) {
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  return response.json();
 }
 
-// The same tool outputs the agent sees (advisory, impact, staging, assets...),
-// validated against backend/agent/contracts.py. No LLM involved.
-// params: { max_trucks, closed: [...], include_surge } for what-ifs; omitted = default plan.
-// agentId: multi-agent service (/api/agents/{id}/overview); null = the single-agent /api/overview.
-export function fetchOverview(params = {}, agentId = null) {
-  const q = new URLSearchParams();
-  if (params.max_trucks != null) q.set("max_trucks", params.max_trucks);
-  for (const c of params.closed ?? []) q.append("closed", c);
-  if (params.include_surge) q.set("include_surge", "true");
-  const qs = q.toString();
-  const base = agentId ? `/api/agents/${encodeURIComponent(agentId)}/overview` : "/api/overview";
-  return fetch(qs ? `${base}?${qs}` : base).then(readJSON);
+// Fetch overview data for a storm agent.
+// Optional parameters support resource planning what-ifs.
+export function fetchOverview(
+  params = {},
+  agentId = null
+) {
+  const query = new URLSearchParams();
+
+  if (params.max_trucks != null) {
+    query.set("max_trucks", params.max_trucks);
+  }
+
+  for (const county of params.closed ?? []) {
+    query.append("closed", county);
+  }
+
+  if (params.include_surge) {
+    query.set("include_surge", "true");
+  }
+
+  const queryString = query.toString();
+
+  const baseUrl = agentId
+    ? `/api/agents/${encodeURIComponent(
+        agentId
+      )}/overview`
+    : "/api/overview";
+
+  const url = queryString
+    ? `${baseUrl}?${queryString}`
+    : baseUrl;
+
+  return fetch(url).then(readJSON);
 }
 
+// Fetch all available storm agents.
 export function fetchAgents() {
   return fetch("/api/agents").then(readJSON);
 }
 
+// Detect backend operating mode.
 export function fetchHealth() {
   return fetch("/api/health").then(readJSON);
 }
 
-export function chatUrl(agentId) {
-  return agentId ? `/api/agents/${encodeURIComponent(agentId)}/chat` : "/api/chat";
+// Fetch live storm monitoring status.
+export function fetchLiveStatus() {
+  return fetch("/api/live/status").then(readJSON);
 }
 
-// Data is tagged with the agent it belongs to and only returned for that agent: on an agent switch
-// the old agent's data would otherwise render one frame in the new agent's pages (and crash them).
-export function useOverview(agentId = null, enabled = true) {
-  const [state, setState] = useState({ id: undefined, overview: null, error: "" });
+// Return the correct AI chat endpoint.
+export function chatUrl(agentId) {
+  return agentId
+    ? `/api/agents/${encodeURIComponent(
+        agentId
+      )}/chat`
+    : "/api/chat";
+}
+
+// React hook for fetching agent overview data.
+// Prevents stale data from a previous agent
+// appearing when the selected agent changes.
+export function useOverview(
+  agentId = null,
+  enabled = true
+) {
+  const [state, setState] = useState({
+    id: undefined,
+    overview: null,
+    error: "",
+  });
+
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      return;
+    }
+
     let cancelled = false;
+
     fetchOverview({}, agentId)
-      .then((o) => !cancelled && setState({ id: agentId, overview: o, error: "" }))
-      .catch((e) => !cancelled && setState({ id: agentId, overview: null, error: `Can't load this agent's data (${e.message}).` }));
-    return () => { cancelled = true; };
+      .then((overview) => {
+        if (!cancelled) {
+          setState({
+            id: agentId,
+            overview,
+            error: "",
+          });
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setState({
+            id: agentId,
+            overview: null,
+            error: `Can't load this agent's data (${error.message}).`,
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [agentId, enabled]);
-  const current = state.id === agentId;
-  return { overview: current ? state.overview : null, error: current ? state.error : "" };
+
+  const isCurrentAgent = state.id === agentId;
+
+  return {
+    overview: isCurrentAgent
+      ? state.overview
+      : null,
+
+    error: isCurrentAgent
+      ? state.error
+      : "",
+  };
+}
+
+// Live Operations uses the existing NOAA cache and stub staging endpoints.
+export function fetchLiveStorms() {
+  return fetch("/api/live/storms").then(readJSON);
+}
+export function fetchStaging(maxTrucks = null) {
+  const query = maxTrucks == null ? "" : "?max_trucks=" + encodeURIComponent(maxTrucks);
+  return fetch("/api/staging" + query).then(readJSON);
 }

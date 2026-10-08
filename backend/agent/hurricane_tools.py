@@ -218,8 +218,8 @@ class HurricaneToolset:
                             + (0.25 if bool(s["right_of_track"]) != bool(f["quadrant_right"]) else 0)) / 3.25)
             ranked.append({k: s[k] for k in ("storm_id", "name", "year", "max_wind_kt_at_county", "dist_to_track_nm",
                                              "right_of_track", "peak_customers_out", "peak_pct_customers",
-                                             "outage_data_coverage", "oni_anomaly") if k in s}
-                          | {"similarity": round(float(max(0.0, 1 - dist)), 3)})
+                                             "outage_data_coverage") if k in s}
+                          | {"oni_anomaly": oni_s, "similarity": round(float(max(0.0, 1 - dist)), 3)})
         ranked.sort(key=lambda x: -x["similarity"])
         return {"advisory_id": self._advisory_id(), "county": self.county, "storms": ranked[:5],
                 "caveat": (f"{len(storms)} storms passed within 150 nm of {self.county} since 2014 (EAGLE-I era). "

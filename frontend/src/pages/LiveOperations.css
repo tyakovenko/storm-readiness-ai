@@ -1,0 +1,9 @@
+.live-operations { --color-surface-subtle: #f8fafc; }
+.live-operations .font-heading { font-family: inherit; }
+.live-operations .bg-surface-subtle { background-color: #f8fafc; }
+.live-operations .ocean-card-shadow { box-shadow: 0 4px 20px -2px rgba(10,37,64,.06), 0 2px 6px -1px rgba(10,37,64,.04); }
+@keyframes live-operations-radar { to { transform: rotate(360deg); } }
+.live-operations .animate-radar { animation: live-operations-radar 4s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .live-operations .animate-radar, .live-operations .animate-ping { animation: none; }
+}

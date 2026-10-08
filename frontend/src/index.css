@@ -52,6 +52,114 @@
 
 /* Leaflet renders tooltips outside React, so they can only be styled by their library class. */
 @layer components {
+  .landing-chat {
+    display: grid;
+    grid-template-rows: 0fr;
+    max-width: 1420px;
+    margin-inline: auto;
+    transition: grid-template-rows 500ms ease;
+  }
+  .landing-chat--expanded { grid-template-rows: 1fr; }
+  .landing-chat__clip { min-height: 0; overflow: hidden; }
+  .landing-chat__workspace {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    height: max(36rem, calc(100dvh - 6rem));
+    min-width: 0;
+    margin: 0 1.5rem;
+    padding: 1.25rem;
+    border: 1px solid #dce7f2;
+    border-radius: 1rem;
+    background: #f2f7fc;
+  }
+  .landing-chat__workspace > :not([aria-live]) { flex-shrink: 0; }
+  @media (min-width: 1024px) {
+    .landing-chat__workspace { margin-inline: 2.5rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .landing-chat, .landing-hero__content { transition: none; }
+  }
+  .landing-hero__live {
+    position: relative;
+    left: -170px;
+    top: -20px;
+  }
+  .landing-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: #f8fbfe;
+  }
+  .landing-hero__image {
+    position: absolute;
+    top: 0;
+    right: -150px;
+    bottom: 0;
+    width: 52%;
+    pointer-events: none;
+    -webkit-mask-image: linear-gradient(to right, transparent, #000 48%);
+    mask-image: linear-gradient(to right, transparent, #000 48%);
+  }
+  .landing-hero__image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 55% 48%;
+  }
+  .landing-hero::after {
+    content: "";
+    position: absolute;
+    inset: 55% 0 0;
+    background: linear-gradient(transparent, #f4f8fc);
+    pointer-events: none;
+  }
+  .landing-hero__content {
+    position: relative;
+    z-index: 1;
+    max-height: 1200px;
+    opacity: 1;
+    overflow: hidden;
+    padding-top: 1.25rem;
+    padding-bottom: 2.75rem;
+    transition: max-height 500ms ease, opacity 400ms ease, padding-top 500ms ease, padding-bottom 500ms ease;
+  }
+  /* The hero's search-focused content (headline, search bar, suggested questions, live
+     panel) collapses away as the inline landing chat expands to take its place -- see
+     .landing-chat below and AgentLanding's chatExpanded prop. */
+  .landing-hero__content--collapsed {
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    pointer-events: none;
+  }
+  .landing-dashboard {
+    position: relative;
+    z-index: 2;
+    
+    /* Floating container */
+    margin: 20px auto 40px;
+    width: calc(100% - 80px);
+    max-width: 1340px;
+    
+    /* Container appearance */
+    background: #FAFCFF;
+    border: 1px solid #dce7f2;
+    border-radius: 16px;
+    
+    /* Spacing inside */
+    padding: 24px 28px 32px;
+    
+    /* Subtle elevation */
+    box-shadow: 0 6px 24px rgba(15, 39, 68, 0.06);
+  }
+  @media (max-width: 1023px) {
+    .landing-hero__image { width: 60%; opacity: 0.35; }
+    .landing-hero__live { justify-content: flex-start; }
+    .landing-hero__content { padding-top: 1rem; }
+    .landing-dashboard { width: calc(100% - 32px); padding: 20px 16px; }
+  }
   .leaflet-tooltip.leaflet-tooltip-top {
     @apply rounded border border-line px-2 py-1.5 font-sans shadow-[0_1px_3px_rgba(15,39,68,0.15)];
   }
