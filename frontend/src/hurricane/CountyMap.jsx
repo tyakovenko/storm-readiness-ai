@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 import { CircleMarker, GeoJSON, MapContainer, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -17,14 +17,33 @@ function fmtTrackTime(iso) {
   })}Z`;
 }
 
+// Fits once per real geo/track change; stops re-fitting (and so yanking the view back) the moment
+// the user has manually zoomed or panned, so their interaction survives an incidental re-render
+// (e.g. a horizon switch that re-fetches the same county's track).
 function FitBounds({ geo, track }) {
   const map = useMap();
+  const userMoved = useRef(false);
   useEffect(() => {
+    const flag = () => { userMoved.current = true; };
+    map.on("zoomstart dragstart", flag);
+    return () => map.off("zoomstart dragstart", flag);
+  }, [map]);
+  useEffect(() => {
+    if (userMoved.current) return;
     const b = L.geoJSON(geo).getBounds();
     if (track?.length) track.forEach((p) => b.extend([p.lat, p.lon]));
     if (b.isValid()) map.fitBounds(b, { padding: [16, 16] });
   }, [geo, track, map]);
   return null;
+}
+
+// Initial paint, before FitBounds (above) adjusts it: the storm's own middle forecast point when
+// there is a track, so the first frame is already roughly the right region for whichever storm
+// this is -- never a fixed, storm-specific lat/lon (the old default was Florida-only).
+function initialView(track) {
+  if (!track?.length) return { center: [20, -60], zoom: 5 }; // generic mid-Atlantic, no track yet
+  const mid = track[Math.floor(track.length / 2)];
+  return { center: [mid.lat, mid.lon], zoom: 6 };
 }
 
 // fillColor/fillOpacity/riskLegend let the Risk Map page tint the county polygon itself by its
@@ -34,10 +53,11 @@ function FitBounds({ geo, track }) {
 export default function CountyMap({ geo, track, shelters, closed = [], height = "h-[420px]", trackLabel = "replay",
   fillColor = "#2878b5", fillOpacity = 0.08, riskLegend = null, onShelterClick = null, selectedShelterId = null }) {
   const shown = (shelters ?? []).filter((s) => s.lat != null && s.lon != null);
+  const { center, zoom } = initialView(track);
   return (
     <div>
       <div className={`${MAP_FRAME} ${height}`}>
-        <MapContainer center={[27, -82]} zoom={7} scrollWheelZoom={false} className="h-full w-full">
+        <MapContainer center={center} zoom={zoom} scrollWheelZoom={false} className="h-full w-full">
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap contributors" />
           <GeoJSON key={JSON.stringify(geo).length} data={geo} style={{ color: NAVY, weight: 2, fillColor, fillOpacity }} />
           {track?.length > 0 && (
@@ -64,25 +84,29 @@ export default function CountyMap({ geo, track, shelters, closed = [], height = 
           })}
           <FitBounds geo={geo} track={track} />
         </MapContainer>
-      </div>
-      <div className={LEGEND}>
-        {riskLegend && (
-          <span className={LEGEND_ITEM}>
-            <span className={LEGEND_SWATCH} style={{ background: riskLegend.color }} />
-            {riskLegend.label}
-          </span>
-        )}
-        {track?.length > 0 && (
-          <span className={LEGEND_ITEM}>
-            <span className={LEGEND_SWATCH} style={{ background: RISK_HEX.severe }} />
-            {TRACK_LABEL[trackLabel] ?? TRACK_LABEL.replay}
-          </span>
-        )}
-        <span className={LEGEND_ITEM}><span className={LEGEND_SWATCH} style={{ background: NAVY }} />Shelter</span>
-        <span className={LEGEND_ITEM}><span className={LEGEND_SWATCH} style={{ background: RISK_HEX.high }} />Shelter in surge zone / floodplain</span>
-        {closed.length > 0 && (
-          <span className={LEGEND_ITEM}><span className={LEGEND_SWATCH} style={{ background: GREY }} />Closed (what-if)</span>
-        )}
+        {/* Must be a child of MAP_FRAME (the `relative` box), not a sibling -- LEGEND is
+            `absolute`, so its containing block has to be this map frame or it positions
+            against whatever distant ancestor happens to be `relative` and overlaps other
+            page content instead of staying pinned inside the map. */}
+        <div className={LEGEND}>
+          {riskLegend && (
+            <span className={LEGEND_ITEM}>
+              <span className={LEGEND_SWATCH} style={{ background: riskLegend.color }} />
+              {riskLegend.label}
+            </span>
+          )}
+          {track?.length > 0 && (
+            <span className={LEGEND_ITEM}>
+              <span className={LEGEND_SWATCH} style={{ background: RISK_HEX.severe }} />
+              {TRACK_LABEL[trackLabel] ?? TRACK_LABEL.replay}
+            </span>
+          )}
+          <span className={LEGEND_ITEM}><span className={LEGEND_SWATCH} style={{ background: NAVY }} />Shelter</span>
+          <span className={LEGEND_ITEM}><span className={LEGEND_SWATCH} style={{ background: RISK_HEX.high }} />Shelter in surge zone / floodplain</span>
+          {closed.length > 0 && (
+            <span className={LEGEND_ITEM}><span className={LEGEND_SWATCH} style={{ background: GREY }} />Closed (what-if)</span>
+          )}
+        </div>
       </div>
     </div>
   );

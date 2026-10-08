@@ -85,6 +85,57 @@ class SimilarStorms(_Strict):
     source: str
 
 
+class CountyRiskSummary(_Strict):
+    """One county's real outage prediction within a storm-wide, multi-county view (Phase 1).
+    has_local_pack distinguishes a county with its own hurricane pack (shelters/assets/plan
+    tools -- Storm Overview and Resource Planner can show it) from one that only has this
+    model prediction (Risk Map only; never backed by invented shelter/resource data)."""
+    fips: str
+    name: str
+    state: str
+    risk_tier: RiskTier
+    pct_customers_out: ModelRange
+    customers_served: int
+    why: list[str]
+    has_local_pack: bool
+
+
+class StormShelterSummary(_Strict):
+    """A shelter merged into the storm-wide view from one target county's own pack (only
+    counties with has_local_pack=True on CountyRiskSummary contribute any). county_fips is
+    carried explicitly because this list spans more than one county, unlike Assets.largest."""
+    id: str
+    name: str
+    county_fips: str
+    city: str | None
+    evacuation_capacity: int | None
+    generator: bool
+    pets: str | None
+    in_surge_zone: bool
+    in_100yr_floodplain: bool
+    lat: float | None
+    lon: float | None
+
+
+class StormWideRiskView(_Strict):
+    """Storm-wide, multi-county Risk Map data for one existing hurricane pack's replayed storm,
+    at one real forecast horizon (ATCF TAU hours after the advisory's own issuance -- never a
+    separate advisory cycle or hours-before-landfall; see models/replay_track.py)."""
+    slug: str
+    storm_id: str
+    storm_name: str
+    kind: Literal["replay", "live", "scenario"]
+    home_county_fips: str
+    advisory_init_utc: str
+    horizon_h: int
+    available_horizons_h: list[int]
+    counties: list[CountyRiskSummary]
+    shelters: list[StormShelterSummary]
+    model_version: str
+    source: str
+    caveat: str
+
+
 class ImpactEstimate(_Strict):
     advisory_id: str
     county: str

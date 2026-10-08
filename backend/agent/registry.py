@@ -64,8 +64,20 @@ def chat(agent_id: str, question: str, history: list[dict], judge=None) -> dict:
     return run_county_agent(question, history, agent, ts, judge)
 
 
-def hurricane_overview(agent_id: str, closed: list[str], include_surge: bool) -> dict:
-    """Dashboard data for a hurricane county agent: the same tools the agent calls, no LLM."""
+def storm_overview(slug: str, horizon_h: int | None = None) -> dict:
+    """Storm-wide, multi-county Risk Map data for an existing hurricane pack's replayed storm
+    (Phase 1). Raises KeyError for an unknown slug, ValueError for an unsupported horizon_h."""
+    from . import storm_view
+    return storm_view.build_storm_overview(slug, horizon_h)
+
+
+def hurricane_overview(agent_id: str, closed: list[str], include_surge: bool, horizon_h: int | None = None) -> dict:
+    """Dashboard data for a hurricane county agent: the same tools the agent calls, no LLM.
+
+    horizon_h (Phase 2A): when the Risk Map's shared horizon selection is present, the outage
+    panel shows that same forecast-valid-time prediction instead of its default peak/closest-
+    approach snapshot, so Storm Overview and Risk Map agree for the same storm/county/horizon.
+    Raises ValueError (via storm_view) for a horizon this storm's advisory has no point at."""
     from hurricane import store
     kind, _, ts = get(agent_id)
     if kind != "hurricane":
@@ -74,10 +86,15 @@ def hurricane_overview(agent_id: str, closed: list[str], include_surge: bool) ->
     if closed:
         what_if["unavailable_shelters"] = closed
     plan = ts.run_tool("plan_shelters", what_if)
+    if horizon_h is not None:
+        from . import storm_view
+        impact = storm_view.county_impact_at_horizon(agent_id, horizon_h)
+    else:
+        impact = ts.run_tool("estimate_impact", {})
     return {
         "domain": "hurricane", "agent_id": agent_id, "county": ts.county, "fips": ts.fips,
         "alert": ts.run_tool("get_storm_alert", {}),
-        "impact": ts.run_tool("estimate_impact", {}),
+        "impact": impact,
         "similar": ts.run_tool("find_similar_storms", {}),
         "assets": ts.run_tool("query_assets", {}),
         "plan": plan,

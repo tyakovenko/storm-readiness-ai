@@ -13,7 +13,10 @@ function ChatIcon() {
   );
 }
 
-export default function Header({ onAskAIClick, askAIOpen }) {
+// showAskAI: false on the landing page -- it has its own inline search-to-chat experience there,
+// so the header's shortcut to the same conversation (as a side drawer) would be redundant. Every
+// other page (an open agent, Live Operations) keeps it, since that's their only way to ask AI.
+export default function Header({ onAskAIClick, askAIOpen, showAskAI = true }) {
   return (
     <header className="fixed inset-x-0 top-0 z-100 flex h-14 items-center justify-between gap-4 bg-navy px-5 text-white max-[520px]:px-3.5">
       <div className="flex min-w-0 items-center gap-3">
@@ -23,17 +26,19 @@ export default function Header({ onAskAIClick, askAIOpen }) {
           <span className="text-[0.72rem] font-normal text-white/65 max-[520px]:hidden">Storm Preparedness &amp; Response Intelligence</span>
         </div>
       </div>
-      <button
-        type="button"
-        className={`inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded border px-3.5 py-[7px] text-[0.85rem] font-semibold text-white hover:bg-accent-dark ${
-          askAIOpen ? "border-white/40 bg-accent-dark" : "border-transparent bg-accent"
-        }`}
-        onClick={onAskAIClick}
-        aria-expanded={askAIOpen}
-      >
-        <ChatIcon />
-        Ask AI
-      </button>
+      {showAskAI && (
+        <button
+          type="button"
+          className={`inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded border px-3.5 py-[7px] text-[0.85rem] font-semibold text-white hover:bg-accent-dark ${
+            askAIOpen ? "border-white/40 bg-accent-dark" : "border-transparent bg-accent"
+          }`}
+          onClick={onAskAIClick}
+          aria-expanded={askAIOpen}
+        >
+          <ChatIcon />
+          Ask AI
+        </button>
+      )}
     </header>
   );
 }

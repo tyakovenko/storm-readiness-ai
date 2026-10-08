@@ -38,25 +38,35 @@ export function Metric({ label, value, note }) {
   );
 }
 
-export function StormContextHeader({ alert, county, state }) {
+// title/note: optional overrides for callers that want a shorter identity line or a shorter
+// description (Storm Overview) -- left undefined, both default to the original full forms
+// (Risk Map's call), so that screen's header is byte-for-byte unchanged.
+export function StormContextHeader({ alert, county, state, title, note }) {
   const status = STATUS[alert.kind] ?? STATUS.replay;
+  const headerTitle = title ?? (
+    <>Hurricane {alert.storm_name} <span aria-hidden="true">→</span> {county}{state ? `, ${state}` : ""}</>
+  );
+  const noteText = note === undefined ? alert.note : note;
   return (
     <div className="mb-4 border-b border-line pb-4">
       <div className="flex flex-wrap items-center gap-2.5">
         <span className={`rounded px-2 py-[3px] text-[0.72rem] font-bold uppercase tracking-[0.3px] ${status.className}`}>
           {status.label}
         </span>
-        <h3 className="text-[1.3rem] font-bold text-navy">
-          Hurricane {alert.storm_name} <span aria-hidden="true">→</span> {county}{state ? `, ${state}` : ""}
-        </h3>
+        <h3 className="text-[1.3rem] font-bold text-navy">{headerTitle}</h3>
       </div>
       <p className="mt-1 text-[0.85rem] text-muted">{alert.headline.replace(/^REPLAY: /, "")}</p>
-      <p className="mt-1 text-[0.78rem] text-muted">{alert.note}</p>
+      {noteText && <p className="mt-1 text-[0.78rem] text-muted">{noteText}</p>}
     </div>
   );
 }
 
-export function ImpactPanel({ impact }) {
+// compact (Phase 2B): a smaller rendering for the Storm Overview "your county" card -- median
+// outage leads, then range and affected customers, caveats preserved; the model-skill/methodology
+// text that the full panel shows inline instead lives in Storm Overview's "Why this location is at
+// risk" section. The default (full) rendering is unchanged, so every other screen using this panel
+// (e.g. the single-county Risk Map tab) looks exactly as before.
+export function ImpactPanel({ impact, compact = false }) {
   if (impact.error) {
     return <p className="rounded bg-bad-bg px-3 py-2 text-[0.85rem] text-bad-text" role="alert">{impact.error}</p>;
   }
@@ -64,6 +74,11 @@ export function ImpactPanel({ impact }) {
   const p = impact.pct_customers_out;
   const c = impact.customers_out;
   const sk = impact.model_skill;
+  // Phase 2A: estimate_impact()'s default is the peak/closest-approach snapshot (fixed, not
+  // horizon-selectable); registry.hurricane_overview()'s horizon_h path (storm_view.
+  // county_impact_at_horizon) returns a specific forecast valid time instead -- label whichever
+  // one this actually is rather than always saying "(peak)" for both.
+  const validTimeLabel = impact.horizon_h != null ? `at +${impact.horizon_h}h` : "peak";
   // Phase 4: the skill fields present depend on which engine produced this (the new bundle's
   // metadata doesn't have a recall_hardest_hit_pct the way the legacy run did) -- shown
   // flexibly rather than assuming a fixed set of keys.
@@ -72,6 +87,34 @@ export function ImpactPanel({ impact }) {
     sk.coverage_pct != null && `${fmt(sk.coverage_pct)}% of outcomes inside the range`,
     sk.recall_hardest_hit_pct != null && `caught ${fmt(sk.recall_hardest_hit_pct)}% of hardest-hit counties (≥40% out)`,
   ].filter(Boolean).join("; ");
+  if (compact) {
+    return (
+      <div className={`rounded-md border border-line bg-surface px-3 py-2.5 border-l-[3px] ${RISK_CLASSES[level].borderLeft}`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className={`rounded px-2 py-[3px] text-[0.68rem] font-bold uppercase tracking-[0.4px] ${RISK_CLASSES[level].badge}`}>
+            {getRiskLabel(impact.risk_tier)}
+          </span>
+          {impact.model_version && (
+            <span className="rounded bg-[#e8ecf1] px-2 py-[2px] text-[0.68rem] font-semibold text-[#3b4452]">
+              Model {impact.model_version}
+            </span>
+          )}
+        </div>
+        <div className="mt-2">
+          <div className={LABEL}>Median predicted outage ({validTimeLabel})</div>
+          <div className={BIG}>{fmt(p.median)}%</div>
+          <div className={NOTE}>
+            range {fmt(p.low)}–{fmt(p.high)}% • {fmt(c.median)} of {fmt(impact.customers_served)} customers affected
+          </div>
+        </div>
+        {impact.calibration?.severe_uncertainty_caveat && (
+          <p className="mt-1.5 rounded bg-warn-bg px-2 py-1.5 text-[0.78rem] text-warn-text">
+            {impact.calibration.severe_uncertainty_caveat}
+          </p>
+        )}
+      </div>
+    );
+  }
   return (
     <div className={`${CARD} border-l-[3px] ${RISK_CLASSES[level].borderLeft}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -86,12 +129,12 @@ export function ImpactPanel({ impact }) {
       </div>
       <div className="mt-3 grid grid-cols-2 gap-4 max-[700px]:grid-cols-1">
         <div>
-          <div className={LABEL}>Customers without power (peak)</div>
+          <div className={LABEL}>Customers without power ({validTimeLabel})</div>
           <div className={BIG}>{fmt(c.low)}–{fmt(c.high)}</div>
           <div className={NOTE}>median {fmt(c.median)} of {fmt(impact.customers_served)} customers served</div>
         </div>
         <div>
-          <div className={LABEL}>Share of customers out (peak)</div>
+          <div className={LABEL}>Share of customers out ({validTimeLabel})</div>
           <div className={BIG}>{fmt(p.low)}–{fmt(p.high)}%</div>
           <div className={NOTE}>median {fmt(p.median)}%</div>
         </div>
