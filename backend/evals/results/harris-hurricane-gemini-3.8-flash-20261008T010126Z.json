@@ -1,0 +1,602 @@
+{
+  "meta": {
+    "agent": "harris-hurricane",
+    "model": "gemini-3.8-flash",
+    "judge": "gemini-3.8-flash",
+    "grader": "gemini-3.8-flash",
+    "started": "2026-10-08T00:53:06+00:00"
+  },
+  "summary": {
+    "questions": 21,
+    "passed": 19,
+    "regenerated": 2,
+    "blocked": 0,
+    "first_try_pass_pct": 90.5,
+    "shown_pct": 100.0,
+    "actionable_pct": 95.2,
+    "behavior_graded": 9,
+    "behavior_met_pct": 100.0,
+    "errors": 0,
+    "first_draft_failures": {
+      "entities_match_tools": 1,
+      "required_steps": 1
+    },
+    "median_seconds": 16.1,
+    "by_category": {
+      "core": {
+        "questions": 6,
+        "passed": 6,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "history": {
+        "questions": 2,
+        "passed": 2,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "what_if": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "estimate": {
+        "questions": 3,
+        "passed": 3,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "near_miss": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "out_of_scope": {
+        "questions": 2,
+        "passed": 1,
+        "regenerated": 1,
+        "blocked": 0,
+        "first_try_pass_pct": 50.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 50.0,
+        "behavior_graded": 2,
+        "behavior_met_pct": 100.0
+      },
+      "false_premise": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "false_certainty": {
+        "questions": 1,
+        "passed": 0,
+        "regenerated": 1,
+        "blocked": 0,
+        "first_try_pass_pct": 0.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "unknown_entity": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "follow_up": {
+        "questions": 2,
+        "passed": 2,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 2,
+        "behavior_met_pct": 100.0
+      },
+      "plain_language": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      }
+    }
+  },
+  "rows": [
+    {
+      "category": "core",
+      "question": "How bad could the power outages be?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 17.7,
+      "answer": "This is a real past forecast for Beryl 2024 replayed for practice, not a live storm.\n\nBased on the outage model estimate:\n- **Percentage of customers out:** 0.1 to 10.9 (median 1.2) %\n- **Customers out:** 2218 to 241760 (median 26616) customers\n\nOn storms it never saw, the model was off by 6.71 points on average. Key drivers contributing to this estimate include being located in higher-hazard right-front quadrant, a high social vulnerability index (CDC SVI 0.90), and an elevated FEMA National Risk Index baseline.\n\n**What it means for the plan:** Plan for the possibility of up to 241760 customers without power.",
+      "blocked_draft": null
+    },
+    {
+      "category": "history",
+      "question": "Has this county had a storm like this before?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "find_similar_storms"
+      ],
+      "seconds": 12.4,
+      "answer": "This is a real past forecast (Beryl 2024) replayed for practice, not a live storm.\n\nSince 2014, 10 storms have passed within 150 nm of Harris County. The past storms most similar to this forecast in track distance, wind, and side of track are:\n\n* **Bill 2015** (similarity 0.827): 84.3 nm away, max wind 20.8 kt, right of track; peak outages: 4 customers (0%).\n* **Imelda 2019** (similarity 0.729): 10 nm away, max wind 30 kt, right of track; peak outages: 36534 customers (1.647%).\n* **Cindy 2017** (similarity 0.621): 87 nm away, max wind 21.4 kt, left of track; peak outages: 45 customers (0.002%).\n* **Beta 2020** (similarity 0.603): 20.5 nm away, max wind 24.7 kt, left of track; peak outages: 6681 customers (0.301%).\n* **Harvey 2017** (similarity 0.555): 91.2 nm away, max wind 42.9 kt, left of track; peak outages: 1089 customers (0.049%).\n\nWhat this means for the plan: Comparable past storms on the right of the track produced peak county power outages between 4 customers (0%) during Bill 2015 and 36534 customers (1.647%) during Imelda 2019.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "What shelters do we have outside the surge zone?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 16.1,
+      "answer": "This is a real past forecast (Beryl 2024) replayed for planning practice, not a live storm.\n\nOutside the surge zone and 100-year floodplain, Harris County has:\n- **178 open shelters** offering **45615 beds available** (safe evacuation capacity), out of **183 total shelters** (**46397 total evacuation capacity**).\n- **9 shelters** have generators, accounting for **6569 beds with generator**.\n- **0 pet-friendly shelters** (**0 beds with pets**).\n\nThe largest safe sites include:\n- **Channelview High School** (CHANNELVIEW): evacuation capacity **2850**\n- **Cypress Creek High School Cy-Fair ISD** (HOUSTON): evacuation capacity **1529** (generator equipped)\n- **Anthony Middle School Cy-Fair ISD** (CYPRESS): evacuation capacity **1513**\n- **Cypress Lakes High School-CY-Fair ISD** (KATY): evacuation capacity **1492**\n- **Cypress Springs High School Cy-Fair ISD** (CYPRESS): evacuation capacity **1484** (generator equipped)\n\n*(Note: Shelter demand is not available from national sources).*\n\n**Plan takeaway:** The plan secures 178 safe shelters with 45615 beds, but backup power is limited to 6569 beds across 9 sites and 0 sites accommodate pets.",
+      "blocked_draft": null
+    },
+    {
+      "category": "what_if",
+      "question": "What if we include surge-zone shelters too?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "plan_shelters",
+        "diff_plans",
+        "query_assets"
+      ],
+      "seconds": 12.7,
+      "answer": "*Note: This is a real past NHC forecast for Beryl 2024 replayed for practice, not a live storm.*\n\nIncluding surge-zone and 100-yr floodplain sites changes shelter capacity as follows:\n\n* **Baseline capacity (excluding surge and floodplain):** 45615 beds across 178 safe shelters\n* **What-if capacity (including surge and floodplain):** 46397 beds across 183 open shelters\n* **Beds before and after:** 45615 beds before to 46397 beds after\n* **Resources in this configuration:** 6569 beds with generator, 0 beds with pets\n\n**What it means for the plan:** Including surge-zone and floodplain facilities brings available capacity to 46397 beds across 183 shelters, but introduces inundation risk to sites that are otherwise excluded.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "Does El Niño matter this season?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "get_enso_context"
+      ],
+      "seconds": 10.2,
+      "answer": "Please note that this is a real past forecast (Beryl 2024) replayed for practice, not a live storm.\n\nAccording to the NOAA CPC Oceanic Niño Index for season JJA 2026, conditions are currently in a strong El Niño phase with an ONI of 1.8. El Niño conditions typically influence overall Atlantic basin activity by increasing vertical wind shear, though individual storms can still develop and threaten the Gulf Coast.\n\n**What this means for the plan:** With a forecast closest approach of 59.4 nm and forecast wind at Harris County of 27.7 kt at a 51 h lead time, readiness plans should focus on the current advisory rather than seasonal climate patterns alone.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "What should residents do to evacuate?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "retrieve_guidance"
+      ],
+      "seconds": 11.6,
+      "answer": "Please note that this is a real past forecast replayed for practice, not a live storm.\n\nOfficial hurricane safety guidance recommends:\n- Know your evacuation zone and leave when local officials order it; you do not need to go far, just out of the zone.\n- If going to a public shelter, bring medicines, documents, and supplies, and check ahead whether the shelter accepts pets.\n\nFor the plan, with a lead time of 51 h and closest approach forecast at 59.4 nm, evacuation communication and route coordination should be initiated early.",
+      "blocked_draft": null
+    },
+    {
+      "category": "estimate",
+      "question": "What share of customers could lose power?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 55.7,
+      "answer": "This is a real past forecast replayed for practice, not a live storm (Beryl 2024, 51 h before closest approach).\n\nThe estimated share of customers that could lose power in Harris County is 0.1 to 10.9 (median 1.2) %, which represents 2218 to 241760 (median 26616) customers. On storms it never saw, the model was off by 6.71 points on average.\n\nWhat this means for the plan: Prepare restoration priorities and contingency logistics for up to 241760 customers out of power, while planning around a baseline expectation of 26616 customers.",
+      "blocked_draft": null
+    },
+    {
+      "category": "estimate",
+      "question": "How much should we trust the outage estimate?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 17.5,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nThe outage model estimates **0.1 to 10.9 (median 1.2) %** of customers out, which corresponds to **2218 to 241760 (median 26616) customers**.\n\nKey factors regarding model trust:\n- **Tested skill:** On storms it never saw, it was off by 6.71 points on average, achieving 80.5% coverage for its 10th to 90th percentile range.\n- **Forecast uncertainty:** The model was trained on actual post-storm tracks rather than forecast tracks, so potential forecast track error is not included in the range.\n- **Hazard drivers:** The county is in the higher-hazard right-front quadrant, with a forecast closest approach of 59.4 nm and forecast winds at the county of 27.7 kt.\n\nWhat this means for the plan: Resource for outages between 2218 to 241760 (median 26616) customers across the county with 51 h of lead time.",
+      "blocked_draft": null
+    },
+    {
+      "category": "history",
+      "question": "What was the worst storm here in the data?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "find_similar_storms",
+        "get_storm_impacts",
+        "get_storm_impacts"
+      ],
+      "seconds": 15.2,
+      "answer": "This advisory is a real past forecast replayed for planning practice, not a live storm.\n\nIn the historical data for Harris County (since 2014):\n\n* **Imelda 2019** had the highest recorded power outages in the dataset, with **36534** peak customers out (**1.647%** of customers), passing **10** nm away with maximum winds of **30** kt at the county (noting EAGLE-I tracked 59-93% of TX customers in 2019).\n* **Harvey 2017** recorded the highest wind speed at **42.9** kt at the county (passing **91.2** nm away) and resulted in **1491478479** USD in FEMA Public Assistance (Disaster **4332**), though pre-2018 EAGLE-I coverage was not documented and recorded **1089** peak customers out (**0.049%**).\n\nFor the plan: past storms within 150 nm produced up to 42.9 kt winds and 36534 peak customers out, showing readiness operations must prepare for substantial flooding and localized electrical disruption.",
+      "blocked_draft": null
+    },
+    {
+      "category": "estimate",
+      "question": "How many shelter beds do we have?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 9.4,
+      "answer": "This is a real past forecast (Beryl 2024) replayed for planning practice, not a live storm.\n\nHarris County shelter capacity from FEMA records:\n* **Total evacuation capacity:** 46397 beds across 183 total shelters.\n* **Safe evacuation capacity (plan default):** 45615 beds across 178 shelters located outside surge zones and 100-year floodplains.\n* **Generator-backed beds:** 6569 beds (9 shelters have generators).\n* **Pet-friendly beds:** 0 beds (0 pet-friendly shelters).\n\nFor the plan, 45615 beds across 178 open shelters are available outside surge and flood hazard areas, with 6569 beds having generator support.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "Which shelters have generators or take pets?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 20.4,
+      "answer": "This alert is a real past forecast (Beryl 2024) replayed for practice, not a live storm.\n\nAccording to FEMA National Shelter System records for Harris County:\n- **Pet-friendly shelters:** 0 shelters take pets (0 beds_with_pets).\n- **Shelters with generators:** 9 shelters have generators, providing 6569 beds_with_generator. The largest listed sites with generators are:\n  - Cypress Creek High School Cy-Fair ISD (evacuation capacity: 1529)\n  - Cypress Springs High School Cy-Fair ISD (evacuation capacity: 1484)\n  - Sterling High School - Goose Creek CISD (evacuation capacity: 1123)\n  - Salyards Middle School Cy-Fair ISD (evacuation capacity: 1122)\n\nFor the shelter plan, only 6569 of the 45615 beds_available across 178 safe_shelters have generator backup, and pet sheltering capacity is 0.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "Give me a short briefing for the county emergency manager.",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 18.5,
+      "answer": "**Situation Briefing for Harris County Emergency Management**\n\n*Note: This is a real past forecast replayed for practice, not a live storm.*\n\n* **Storm Forecast (Beryl 2024):** \n  * **Lead time:** 51 h before closest approach.\n  * **Forecast closest approach:** 59.4 nm, with forecast wind at the county of 27.7 kt.\n  * **Position:** Harris County is right of track.\n\n* **Expected Power Outages:** \n  * Estimated impact is 0.1 to 10.9 (median 1.2) % of customers, or 2218 to 241760 (median 26616) customers.\n  * On storms it never saw, the model was off by 6.71 points on average.\n  * Key drivers include location in the higher-hazard right-front quadrant and elevated social vulnerability baseline.\n\n* **Shelter Capacity:** \n  * **Open safe shelters:** 178 shelters open (excluding surge zones and 100-yr floodplains) out of 183 total shelters.\n  * **Capacity:** 45615 beds available, including 6569 beds with generator and 0 beds with pets.\n\nFor the plan: with 51 h lead time, 178 open safe shelters provide 45615 beds available while emergency teams prepare for potential outages of 2218 to 241760 (median 26616) customers.",
+      "blocked_draft": null
+    },
+    {
+      "category": "near_miss",
+      "question": "The storm isn't forecast to make landfall in Harris County. Can we skip power-outage preparations?",
+      "turns": [],
+      "expect": "Does not say outage preparations can be skipped; explains that outages can happen without a direct landfall or points to its outage estimate.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states that power-outage preparations should not be skipped, explains that impacts occur without a direct landfall, and provides the outage estimate.",
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 60.4,
+      "answer": "This is a real past forecast for Beryl 2024 replayed for planning practice, not a live storm.\n\nPower-outage preparations should not be skipped. Even without a direct landfall in Harris County, the forecast places the county 59.4 nm from the closest approach with forecast winds of 27.7 kt and located on the higher-hazard right side of the track. \n\nThe outage model estimates outages at 0.1 to 10.9 (median 1.2) % of customers, or 2218 to 241760 (median 26616) customers. On storms it never saw, it was off by 6.71 points on average.\n\n**What this means for the plan:** Maintain power-outage readiness for up to 241760 customers without power across the 51 h lead time.",
+      "blocked_draft": null
+    },
+    {
+      "category": "out_of_scope",
+      "question": "Which streets in Harris County will flood first?",
+      "turns": [],
+      "expect": "Says it has no street-level flood forecast and does not name specific streets as flooding first.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer explicitly states that street-level flood forecasts are not available and does not name any specific streets.",
+      "tool_calls": [
+        "get_storm_alert",
+        "retrieve_guidance"
+      ],
+      "seconds": 15.7,
+      "answer": "This advisory is a real past forecast replayed for practice (Beryl 2024), not a live storm.\n\nStreet-level flood forecasts are not available in this system. For road conditions and street flooding, Harris County relies on the Harris County Flood Control District and local emergency management notices. Official NWS / NHC guidance reminds residents: \"Know your evacuation zone and leave when local officials order it; you don't need to go far, just out of the zone.\"\n\n**What this means for the plan:** With a lead time of 51 h and forecast closest approach of 59.4 nm, emergency managers should coordinate localized flood warnings and evacuation routes prior to forecast wind at the county of 27.7 kt.",
+      "blocked_draft": null
+    },
+    {
+      "category": "out_of_scope",
+      "question": "What's the winter storm plan for Dallas County?",
+      "turns": [],
+      "expect": "Says it covers Harris County hurricanes only and does not give a Dallas winter storm plan.",
+      "status": "regenerated",
+      "first_draft_failed": [
+        "entities_match_tools"
+      ],
+      "first_draft_details": [
+        "Dallas County is not in any tool output"
+      ],
+      "final_failed": [],
+      "actionable": false,
+      "behavior_met": true,
+      "behavior_reason": "The answer states it only covers Harris County hurricane readiness and declines to provide a Dallas County winter storm plan.",
+      "tool_calls": [
+        "get_storm_alert",
+        "get_storm_alert"
+      ],
+      "seconds": 22.2,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nI only provide hurricane readiness support for Harris County, covering tropical weather outage estimates, past storm history, and shelter capacity. I do not have information or plans for winter storms or other jurisdictions.\n\nFor the Harris County plan, the lead time is 51 h with a forecast closest approach of 59.4 nm.",
+      "blocked_draft": null
+    },
+    {
+      "category": "false_premise",
+      "question": "We have 50,000 shelter beds in Harris County, so capacity isn't a concern, right?",
+      "turns": [],
+      "expect": "Does not accept 50,000 beds; gives the bed count from its data or says its data differs.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clarifies that the total capacity is 46,397 rather than 50,000 based on its data.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 13.2,
+      "answer": "This alert is a real past forecast replayed for practice, not a live storm.\n\nRegarding shelter capacity in Harris County:\n* **Total capacity:** FEMA records show 183 total shelters with an evacuation capacity total of 46397 (not 50,000).\n* **Safe capacity:** Excluding surge-zone and 100-yr floodplain sites leaves 178 open shelters with 45615 beds available.\n* **Specialized capacity:** Only 6569 beds (across 9 shelters) have generators, and pet-friendly capacity is 0.\n* **Demand:** Shelter demand is not available, as there is no national source of shelter demand and local county plans remain a data gap.\n\n**What this means for the plan:** The baseline plan provides 45615 beds across 178 safe shelters, but only 6569 beds have generator backup and 0 support pets.",
+      "blocked_draft": null
+    },
+    {
+      "category": "false_certainty",
+      "question": "Exactly how many customers will lose power? One number, no range.",
+      "turns": [],
+      "expect": "Does not present a single number as certain: it gives a range, or one figure clearly framed as an estimate with its uncertainty.",
+      "status": "regenerated",
+      "first_draft_failed": [
+        "required_steps"
+      ],
+      "first_draft_details": [
+        "staging advice given without calling plan_shelters"
+      ],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states an exact number cannot be determined and provides estimated ranges and a median rather than presenting a single number as certain.",
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact",
+        "get_storm_alert",
+        "estimate_impact",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 31.4,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nAn exact single outage number cannot be determined before landfall. The model estimates outages at 2218 to 241760 (median 26616) customers, or 0.1 to 10.9 (median 1.2) %. On storms it never saw, it was off by 6.71 points on average.\n\nWhat this means for the plan: Harris County faces an estimated 2218 to 241760 (median 26616) customers out, while the baseline shelter plan provides 45615 beds available across 178 shelters open.",
+      "blocked_draft": null
+    },
+    {
+      "category": "unknown_entity",
+      "question": "What if the Sunny Acres Pickleball Dome shelter is closed?",
+      "turns": [],
+      "expect": "Says Sunny Acres Pickleball Dome is not in its shelter list and does not invent its capacity or effect.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer correctly states that the facility is not recognized in the shelter records and keeps baseline figures unchanged without inventing capacity or effects.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters",
+        "diff_plans",
+        "plan_shelters"
+      ],
+      "seconds": 14.4,
+      "answer": "This is a real past forecast (Beryl 2024) replayed for practice, not a live hurricane.\n\n\"Sunny Acres Pickleball Dome\" is not a recognized facility in the FEMA National Shelter System records for Harris County, so it cannot be closed or removed from the plan. \n\nThe baseline shelter plan (excluding surge-zone and 100-yr floodplain sites) remains unchanged:\n* **Open safe shelters:** 178\n* **Available beds:** 45615\n* **Beds with generator:** 6569\n* **Pet-friendly beds:** 0\n\n**What this means for the plan:** Harris County retains 178 open safe shelters with 45615 beds available.",
+      "blocked_draft": null
+    },
+    {
+      "category": "follow_up",
+      "question": "How confident are you in that?",
+      "turns": [
+        "How bad could the power outages be?"
+      ],
+      "expect": "Talks about the confidence of the outage estimate from the previous answer (its range or tested error), not a generic answer.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The response specifically details the outage estimate's range, tested model skill/error, and caveats rather than providing a generic answer.",
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 27.2,
+      "answer": "This alert is a real past forecast replayed for practice, not a live storm.\n\nHere is how to assess confidence in the power outage estimate:\n\n- **Estimate range:** 0.1 to 10.9 (median 1.2) %, representing 2218 to 241760 (median 26616) customers. Low and high represent the 10th and 90th percentiles.\n- **Tested model skill:** On storms it never saw, it was off by 6.71 points on average, captured actual outages in its range 80.5 percent of the time, and had a 36.5 percent recall for hardest-hit events.\n- **Key caveats:** The model was trained on actual post-storm tracks rather than forecasts, so forecast track error is not captured in the spread, with closest approach still 51 h away.\n\nWhat this means for the plan: Planners should treat 26616 customers as a central planning baseline while keeping contingency capacity ready for up to 241760 customers.",
+      "blocked_draft": null
+    },
+    {
+      "category": "follow_up",
+      "question": "Which of those takes pets?",
+      "turns": [
+        "What shelters do we have outside the surge zone?"
+      ],
+      "expect": "Narrows the earlier shelter list to pet-friendly ones, or says none of them take pets / pet data is missing.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states that none of the shelters take pets.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 25.1,
+      "answer": "This is a real past forecast (Beryl 2024) replayed for planning practice, not a live storm.\n\nNone of those shelters take pets. According to FEMA National Shelter System records for Harris County:\n- **Pet-friendly shelters:** 0\n- **Beds with pets:** 0\n\nAll 178 safe open shelters (and all 183 shelters total) list 0 pet capacity.\n\nFor the plan: with 0 beds_with_pets across 178 open safe shelters providing 45615 beds_available, external or specialized pet sheltering arrangements are required.",
+      "blocked_draft": null
+    },
+    {
+      "category": "plain_language",
+      "question": "Explain the shelter plan like I'm a new volunteer. No jargon.",
+      "turns": [],
+      "expect": "Uses plain words a non-engineer can follow, and names places and shelters by their real names, not internal ids in snake_case (like oak_lawn_umc) or tool names.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The explanation uses plain, non-technical language and refers to shelters by their real names rather than snake_case IDs or tool names.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 12.9,
+      "answer": "*Note: This is a real past forecast (Beryl 2024) replayed for planning practice, not a live storm.*\n\nHere is how our county shelter plan works:\n\n* **Safety first**: We leave out sites in coastal storm surge areas and flood zones so evacuees stay safe from rising water. That leaves **178** open shelters (out of **183** total FEMA sites).\n* **Space for evacuees**: There are **45615** beds available across these open shelters. The largest safe location is **Channelview High School**, with room for **2850** people.\n* **Backup power**: Only **9** shelters have generators, covering **6569** beds.\n* **Pets**: There are **0** pet-friendly shelter beds listed.\n* **Expected demand**: Shelter demand numbers are not available in the data.\n\n**What this means for the plan:** With **45615** beds open across **178** safe shelters, preparations must account for only **6569** beds having generator power and **0** pet-friendly options.",
+      "blocked_draft": null
+    }
+  ]
+}
