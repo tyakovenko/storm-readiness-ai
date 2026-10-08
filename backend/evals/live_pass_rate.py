@@ -155,12 +155,13 @@ class Grader:
 
     def __init__(self, model: str):
         self.model = model
-        if model.startswith("gemini"):
+        self._vertex = model.startswith("gemini") and "/" not in model  # "gemini/..." is LiteLLM (API key)
+        if self._vertex:
             from google import genai
             self._client = genai.Client()
 
     def _ask(self, prompt: str) -> str:
-        if self.model.startswith("gemini"):
+        if self._vertex:
             from google.genai import types
             resp = self._client.models.generate_content(
                 model=self.model, contents=prompt,

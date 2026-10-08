@@ -1,0 +1,91 @@
+{
+  "meta": {
+    "agent": "dallas-winter",
+    "model": "gemini/gemini-3.5-flash",
+    "judge": "gemini/gemini-3.5-flash",
+    "grader": "gemini/gemini-3.5-flash",
+    "started": "2026-10-08T16:45:28+00:00"
+  },
+  "summary": {
+    "questions": 2,
+    "passed": 2,
+    "regenerated": 0,
+    "blocked": 0,
+    "first_try_pass_pct": 100.0,
+    "shown_pct": 100.0,
+    "actionable_pct": null,
+    "behavior_graded": 0,
+    "behavior_met_pct": null,
+    "errors": 0,
+    "first_draft_failures": {},
+    "median_seconds": 21.85,
+    "by_category": {
+      "core": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": null,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "what_if": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": null,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      }
+    }
+  },
+  "rows": [
+    {
+      "category": "core",
+      "question": "How should we prepare for this storm?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": null,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "plan_response",
+        "estimate_demand"
+      ],
+      "seconds": 21.7,
+      "answer": "This is a planning scenario, not a real alert.\n\nTo prepare for this storm under the default response plan, we will allocate 50 available sanding trucks across council districts based on their share of past winter transport requests:\n* District 2: 7 trucks\n* District 14: 7 trucks\n* District 6: 5 trucks\n* District 13: 4 trucks\n* District 1: 4 trucks\n* District 7: 3 trucks\n* District 3: 3 trucks\n* District 4: 3 trucks\n* District 8: 3 trucks\n* District 9: 3 trucks\n* District 10: 2 trucks\n* District 11: 2 trucks\n* District 12: 2 trucks\n* District 5: 2 trucks\n\nWe have 1640 known shelter beds across open sites, which include fair_park, fair_park_tower, austin_street, and oak_lawn_umc (with fair_park_tower having an unknown capacity). This plan has 0 shelter shortfall at median demand and 0 at high demand.\n\nExpected demand estimates for this storm include:\n* Shelter guests per day: 950 to 1314 (median 1200, from 3 past storms)\n* Storm-driven 311 transport requests: 23 to 303 (median 204, from 3 past storms)\n* Peak power outages: 3037 to 8777 (median 5907, from 2 past storms) customers out\n\nThis means our plan has 1640 shelter beds to cover the high estimate of 1314 guests per day, with 7 trucks each for District 2 and District 14.",
+      "blocked_draft": null
+    },
+    {
+      "category": "what_if",
+      "question": "What if we only have 30 trucks and Fair Park is closed?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": null,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "plan_response",
+        "diff_plans"
+      ],
+      "seconds": 22.0,
+      "answer": "This is a planning scenario, not a real alert.\n\nIf we only have 30 trucks and Fair Park is closed, the plan changes as follows:\n\n**Shelter Capacity and Demand**\n* **Closed shelters**: `fair_park` and `fair_park_tower`\n* **Open shelters**: `austin_street` and `oak_lawn_umc`\n* **Available beds**: 440 (down from 1640 in the baseline plan)\n* **Estimated shelter demand**: 950 to 1314 (median 1200, from 3 past storms)\n* **Shelter shortfall at median demand**: 760 (up from 0 in the baseline plan)\n\n**Sanding Truck Allocation changes by Council District:**\n* **District 2**: 4 trucks (change of -3 from 7)\n* **District 14**: 4 trucks (change of -3 from 7)\n* **District 6**: 3 trucks (change of -2 from 5)\n* **District 1**: 2 trucks (change of -2 from 4)\n* **District 13**: 2 trucks (change of -2 from 4)\n* **District 3**: 2 trucks (change of -1 from 3)\n* **District 4**: 2 trucks (change of -1 from 3)\n* **District 7**: 2 trucks (change of -1 from 3)\n* **District 8**: 2 trucks (change of -1 from 3)\n* **District 9**: 2 trucks (change of -1 from 3)\n* **District 5**: 1 truck (change of -1 from 2)\n* **District 11**: 1 truck (change of -1 from 2)\n* **District 12**: 1 truck (change of -1 from 2)\n\nFor the plan, this reduces available trucks to 30, closes fair_park and fair_park_tower, and creates a shelter shortfall of 760 beds at median demand.",
+      "blocked_draft": null
+    }
+  ]
+}
