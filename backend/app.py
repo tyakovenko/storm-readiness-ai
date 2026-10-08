@@ -160,14 +160,30 @@ def agents():
 
 @app.get("/api/agents/{agent_id}/overview")
 def agent_overview(agent_id: str, max_trucks: int | None = Query(None, ge=0),
-                   closed: list[str] = Query(default_factory=list), include_surge: bool = False):
+                   closed: list[str] = Query(default_factory=list), include_surge: bool = False,
+                   horizon_h: int | None = Query(None)):
     from agent import registry
     if agent_id == registry.DALLAS["id"]:
         return dallas_overview(max_trucks, closed)
     try:
-        return registry.hurricane_overview(agent_id, closed, include_surge)
+        return registry.hurricane_overview(agent_id, closed, include_surge, horizon_h)
     except KeyError:
         raise HTTPException(status_code=404, detail=f"Unknown agent {agent_id!r}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.get("/api/storms/{slug}/overview")
+def storm_overview(slug: str, horizon_h: int | None = Query(None)):
+    """Storm-wide, multi-county Risk Map data (Phase 1) -- the existing hurricane pack's own
+    replayed storm, extended to its real neighboring counties, at a real forecast horizon."""
+    from agent import registry
+    try:
+        return registry.storm_overview(slug, horizon_h)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"Unknown storm {slug!r}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @app.get("/api/agents/{agent_id}/brief/{brief_type}")

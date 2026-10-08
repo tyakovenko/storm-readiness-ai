@@ -14,6 +14,7 @@ import DallasPlanner from "./dallas/DallasPlanner.jsx";
 import HurricaneOverview from "./hurricane/HurricaneOverview.jsx";
 import HurricaneRiskMap from "./hurricane/HurricaneRiskMap.jsx";
 import HurricaneShelters from "./hurricane/HurricaneShelters.jsx";
+import StormShell from "./hurricane/StormShell.jsx";
 
 import AgentLanding from "./AgentLanding.jsx";
 import LiveOperations from "./pages/LiveOperations.jsx";
@@ -101,22 +102,50 @@ const TEMPLATE_PAGES = {
   },
 };
 
-// Hash-based routing remains unchanged.
-function parseHash() {
-  if (/^#\/live-operations\/?$/.test(window.location.hash)) return { agentId: null, page: "live-operations" };
-  const match = window.location.hash.match(
-    /^#\/agents\/([^/]+)(?:\/([^/]+))?/
-  );
+// Phase 1: the storm-wide hurricane experience's three tabs (replaces the single-county
+// "Shelter Planning" tab's nav entry -- Resource Planner is the same screen, reused unchanged).
+const STORM_NAV = [
+  { id: "storm-overview", label: "Storm Overview" },
+  { id: "risk-map", label: "Risk Map" },
+  { id: "resource-planner", label: "Resource Planner" },
+];
 
-  return match
-    ? {
-        agentId: decodeURIComponent(match[1]),
-        page: match[2] ?? "storm-overview",
-      }
-    : {
-        agentId: null,
-        page: null,
-      };
+// Hash-based routing. #/storms/{slug}/{page}?county=&horizon= is new (Phase 1): one storm's
+// multi-county experience, with the selected county and forecast horizon carried in the URL so
+// they persist across tab navigation and page reloads. #/agents/{id}/{page} and #/live-operations
+// are unchanged -- existing deep links to a single county agent (or Dallas) keep working exactly
+// as before.
+function parseHash() {
+  if (/^#\/live-operations\/?$/.test(window.location.hash)) {
+    return { kind: "live-operations", agentId: null, page: "live-operations", slug: null, county: null, horizon: null };
+  }
+
+  const stormMatch = window.location.hash.match(/^#\/storms\/([^/?]+)(?:\/([^/?]+))?(?:\?(.*))?/);
+  if (stormMatch) {
+    const params = new URLSearchParams(stormMatch[3] ?? "");
+    const horizonRaw = params.get("horizon");
+    const countyRaw = params.get("county");
+    return {
+      kind: "storm",
+      agentId: null,
+      slug: decodeURIComponent(stormMatch[1]),
+      page: stormMatch[2] ?? "storm-overview",
+      county: countyRaw ? decodeURIComponent(countyRaw) : null,
+      horizon: horizonRaw ? Number(horizonRaw) : null,
+    };
+  }
+
+  const match = window.location.hash.match(/^#\/agents\/([^/]+)(?:\/([^/]+))?/);
+  if (match) {
+    return {
+      kind: "agent",
+      agentId: decodeURIComponent(match[1]),
+      page: match[2] ?? "storm-overview",
+      slug: null, county: null, horizon: null,
+    };
+  }
+
+  return { kind: "home", agentId: null, page: null, slug: null, county: null, horizon: null };
 }
 
 function useHashRoute() {
@@ -146,6 +175,19 @@ function go(agentId, page) {
         page ?? "storm-overview"
       }`
     : "#/";
+}
+
+// Phase 1: navigate within the storm-wide experience, preserving (or changing) the selected
+// county/horizon. Always writes both the destination page and the current county/horizon into
+// the URL, so switching tabs never loses or silently resets either (requirement: storm, county
+// and horizon stay consistent across all three screens; never silently fall back to the home
+// county).
+function goStorm(slug, page, { county, horizon } = {}) {
+  const params = new URLSearchParams();
+  if (county) params.set("county", county);
+  if (horizon != null) params.set("horizon", String(horizon));
+  const qs = params.toString();
+  window.location.hash = `#/storms/${encodeURIComponent(slug)}/${page ?? "storm-overview"}${qs ? `?${qs}` : ""}`;
 }
 
 // Existing single-agent application.
@@ -207,7 +249,7 @@ function SingleAgentApp() {
 
 // Multi-agent application.
 function MultiAgentApp() {
-  const { agentId, page } = useHashRoute();
+  const { kind, agentId, page, slug, county, horizon } = useHashRoute();
 
   const [agents, setAgents] = useState(null);
   const [agentsError, setAgentsError] = useState("");
@@ -247,6 +289,12 @@ function MultiAgentApp() {
       template.pages["storm-overview"]
     : null;
 
+  // Phase 1: the storm-wide experience's own agent metadata lookup (reuses the same /api/agents
+  // list -- no new catalog). stormAgent is null while agents is still loading, or if slug is
+  // unknown; StormShell reports that itself rather than App.jsx guessing at a loading/error UI.
+  const isStorm = kind === "storm";
+  const stormAgent = isStorm ? agents?.find((item) => item.id === slug) ?? null : null;
+
   // Shared Ask AI handler.
   // Landing searches use the same conversation in a normal-flow workspace.
   function askWithQuestion(question, mode = "panel") {
@@ -261,8 +309,20 @@ function MultiAgentApp() {
     setAskAIOpen((previous) => askAIMode !== "panel" || !previous);
   }
 
-  const isLiveOperations = page === "live-operations";
-  const isLandingPage = !isLiveOperations && (!agentId || !agent);
+  // Hurricane cards open the new storm-wide experience by default; Dallas keeps opening its
+  // existing single-agent screens exactly as before.
+  function openAgent(id) {
+    const target = agents?.find((a) => a.id === id);
+    if (target?.hazard === "hurricane") goStorm(id, "storm-overview");
+    else go(id);
+  }
+
+  const isLiveOperations = kind === "live-operations";
+  const isLandingPage = kind === "home" || (kind === "agent" && !agent);
+
+  const chatAgentId = isStorm ? (stormAgent ? slug : null) : agent ? agentId : null;
+  const chatHazard = isStorm ? "hurricane" : agent?.hazard ?? null;
+  const chatAgentName = isStorm ? stormAgent?.name : agent?.name;
 
   return (
     <div
@@ -292,16 +352,24 @@ function MultiAgentApp() {
           }`}
         />
       )}
+      {isStorm && stormAgent && (
+        <Navigation
+          items={STORM_NAV}
+          activePage={page}
+          onNavigate={(nextPage) => goStorm(slug, nextPage, { county, horizon })}
+          onHome={() => go(null)}
+        />
+      )}
 
       {/* All page backgrounds are light blue. */}
       <main
         className={`flex-1 ${
-          agent ? "pt-[102px]" : "pt-14"
+          agent || (isStorm && stormAgent) ? "pt-[102px]" : "pt-14"
         }`}
         style={MAIN_STYLE}
       >
         {isLiveOperations ? (
-          <LiveOperations agents={agents} error={agentsError} onOpen={(id) => go(id)} onBack={() => go(null)} />
+          <LiveOperations agents={agents} error={agentsError} onOpen={openAgent} onBack={() => go(null)} />
         ) : isLandingPage ? (
           agents || agentsError ? (
             <AgentLanding
@@ -312,7 +380,7 @@ function MultiAgentApp() {
                   ? `Unknown agent ${agentId}`
                   : "")
               }
-              onOpen={(id) => go(id)}
+              onOpen={openAgent}
               onAsk={(question) =>
                 askWithQuestion(question, "inline")
               }
@@ -324,6 +392,19 @@ function MultiAgentApp() {
           ) : (
             <PageStatus title="Loading agents" />
           )
+        ) : isStorm ? (
+          <StormShell
+            agents={agents}
+            slug={slug}
+            page={page}
+            county={county}
+            horizon={horizon}
+            onNavigate={(nextPage) => goStorm(slug, nextPage, { county, horizon })}
+            onSelectCounty={(fips) => goStorm(slug, page, { county: fips, horizon })}
+            onSelectHorizon={(h) => goStorm(slug, page, { county, horizon: h })}
+            onOpenCountyDetail={(fips) => goStorm(slug, "storm-overview", { county: fips, horizon })}
+            onAsk={askWithQuestion}
+          />
         ) : overview || error ? (
           error ? (
             <PageStatus
@@ -348,7 +429,7 @@ function MultiAgentApp() {
       {/* Single Ask AI instance.
           A new agent resets the conversation. */}
       <AskAI
-        key={agentId ?? "none"}
+        key={chatAgentId ?? "none"}
         open={askAIOpen && (!isLiveOperations || askAIMode !== "inline")}
         onClose={() => {
           setAskAIOpen(false);
@@ -359,9 +440,9 @@ function MultiAgentApp() {
         }}
         fullScreen={askAIMode === "full"}
         inlineHost={isLandingPage && askAIMode === "inline" ? landingChatHost : null}
-        agentId={agent ? agentId : null}
-        hazard={agent?.hazard ?? null}
-        agentName={agent?.name}
+        agentId={chatAgentId}
+        hazard={chatHazard}
+        agentName={chatAgentName}
         pendingQuestion={pendingQuestion}
         onPendingSent={() =>
           setPendingQuestion("")

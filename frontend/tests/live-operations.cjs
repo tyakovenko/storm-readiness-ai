@@ -73,7 +73,9 @@ const os = require('node:os');
     assert.equal(await page.getByRole('region',{name:'Operational County Scenarios'}).count(),0);
     await page.getByRole('button',{name:/Back to Overview/}).click();
     await scenarios.getByRole('button',{name:/Harris County.*Open Operations Dashboard/}).click();
-    await page.waitForURL('**/#/agents/harris-hurricane/storm-overview');
+    // Phase 1: hurricane cards now open the storm-wide experience by default, not the single-
+    // county agent route (which still exists and still works -- see the direct #/agents/... goto below).
+    await page.waitForURL('**/#/storms/harris-hurricane/storm-overview');
     await page.getByRole('navigation').getByText('Harris County, TX',{exact:true}).waitFor();
     assert.ok(overviewRequests > 0);
     await page.goto('http://127.0.0.1:5175/#/live-operations');
