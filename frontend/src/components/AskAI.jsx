@@ -56,10 +56,64 @@ const DETAILS = "border-t border-line py-1.5 text-[0.85rem]";
 const SUMMARY = "cursor-pointer font-semibold text-accent";
 const ANSWER = "my-2 whitespace-pre-wrap leading-normal";
 
-// LLMs emit **bold** even when told not to; render just that, no markdown library.
+// The models answer in light markdown: headings, * / - bullets (nested by indent), numbered
+// lists, **bold** and `code`. Render that subset; anything else stays plain text. No library.
+function Inline({ text }) {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") && part.length > 4 ? <strong key={i}>{part.slice(2, -2)}</strong>
+      : part.startsWith("`") && part.endsWith("`") && part.length > 2 ? <code key={i} className="text-[0.85em]">{part.slice(1, -1)}</code>
+        : part,
+  );
+}
+
+const HEADING_RE = /^#{1,6}\s+(.*)$/;
+const LIST_RE = /^(\s*)([*-]|\d+[.)])\s+(.*)$/;
+
+// Lines -> blocks: heading, list (items with depth and number, if any), paragraph.
+function toBlocks(text) {
+  const blocks = [];
+  for (const line of text.split("\n")) {
+    const heading = line.trim().match(HEADING_RE);
+    const item = line.match(LIST_RE);
+    const last = blocks[blocks.length - 1];
+    if (heading) {
+      blocks.push({ type: "heading", text: heading[1] });
+    } else if (item) {
+      const entry = { depth: Math.min(Math.floor(item[1].replace(/\t/g, "  ").length / 2), 3),
+        marker: /\d/.test(item[2]) ? item[2] : null, text: item[3] };
+      if (last?.type === "list") last.items.push(entry);
+      else blocks.push({ type: "list", items: [entry] });
+    } else if (!line.trim()) {
+      blocks.push({ type: "break" });
+    } else if (last?.type === "paragraph") {
+      last.lines.push(line.trim());
+    } else {
+      blocks.push({ type: "paragraph", lines: [line.trim()] });
+    }
+  }
+  return blocks.filter((b) => b.type !== "break");
+}
+
 function AnswerText({ text }) {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? <strong key={i}>{part.slice(2, -2)}</strong> : part,
+  return (
+    <div className="my-2 flex flex-col gap-2 leading-normal">
+      {toBlocks(text).map((b, i) => {
+        if (b.type === "heading") return <p key={i} className="mt-1 font-bold text-ink"><Inline text={b.text} /></p>;
+        if (b.type === "paragraph") {
+          return <p key={i}>{b.lines.map((l, j) => <span key={j}>{j > 0 && <br />}<Inline text={l} /></span>)}</p>;
+        }
+        return (
+          <ul key={i} className="flex flex-col gap-1">
+            {b.items.map((it, j) => (
+              <li key={j} className="flex gap-1.5" style={{ marginLeft: `${it.depth * 1.1}rem` }}>
+                <span aria-hidden="true" className="shrink-0 text-muted">{it.marker ?? (it.depth ? "◦" : "•")}</span>
+                <span><Inline text={it.text} /></span>
+              </li>
+            ))}
+          </ul>
+        );
+      })}
+    </div>
   );
 }
 
@@ -83,7 +137,7 @@ function AgentReply({ result }) {
     <div>
       <span className={status.className}>{status.label}</span>
       {result.answer ? (
-        <p className={ANSWER}><AnswerText text={result.answer} /></p>
+        <AnswerText text={result.answer} />
       ) : (
         <p className={`${ANSWER} text-muted`}>This answer was blocked, so it is not shown. See the trust checks below.</p>
       )}
