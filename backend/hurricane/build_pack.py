@@ -53,6 +53,56 @@ COUNTIES = {
               "zone_re": r"\b(MIAMI-)?DADE\b", "replay": "AL112017", "slug": "miami-dade-hurricane"},
     "12071": {"name": "Lee County", "state": "FL", "state_name": "FLORIDA", "nss": {"LEE"},
               "zone_re": r"\bLEE\b", "replay": "AL092022", "slug": "lee-hurricane"},
+    "12123": {"name": "Taylor County", "state": "FL", "state_name": "FLORIDA", "nss": {"TAYLOR"},
+              "zone_re": r"\bTAYLOR\b", "replay": "AL102023", "slug": "taylor-hurricane"},
+}
+
+CRITICAL_FACILITIES = {
+    "12071": [
+        {"id": "hosp-12071-01", "name": "Lee Memorial Hospital", "type": "hospital", "city": "Fort Myers", "beds": 414, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 26.637, "lon": -81.868},
+        {"id": "hosp-12071-02", "name": "Cape Coral Hospital", "type": "hospital", "city": "Cape Coral", "beds": 291, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 26.621, "lon": -81.974},
+        {"id": "hosp-12071-03", "name": "HealthPark Medical Center", "type": "hospital", "city": "Fort Myers", "beds": 270, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 26.517, "lon": -81.898},
+        {"id": "hosp-12071-04", "name": "Gulf Coast Medical Center", "type": "hospital", "city": "Fort Myers", "beds": 624, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 26.545, "lon": -81.854},
+        {"id": "hosp-12071-05", "name": "Lehigh Regional Medical Center", "type": "hospital", "city": "Lehigh Acres", "beds": 88, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 26.622, "lon": -81.638},
+        {"id": "eoc-12071-01", "name": "Lee County Emergency Operations Center", "type": "eoc", "city": "Fort Myers", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 26.532, "lon": -81.867},
+        {"id": "fire-12071-01", "name": "Fort Myers Fire Department Station 1", "type": "fire_station", "city": "Fort Myers", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 26.643, "lon": -81.871},
+        {"id": "fire-12071-02", "name": "Cape Coral Fire Department Station 1", "type": "fire_station", "city": "Cape Coral", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 26.568, "lon": -81.942},
+        {"id": "pol-12071-01", "name": "Lee County Sheriff's Office Central", "type": "police_station", "city": "Fort Myers", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 26.534, "lon": -81.865},
+    ],
+    "48201": [
+        {"id": "hosp-48201-01", "name": "Houston Methodist Hospital", "type": "hospital", "city": "Houston", "beds": 907, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 29.711, "lon": -95.399},
+        {"id": "hosp-48201-02", "name": "Memorial Hermann - TMC", "type": "hospital", "city": "Houston", "beds": 1082, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 29.713, "lon": -95.397},
+        {"id": "hosp-48201-03", "name": "Ben Taub Hospital", "type": "hospital", "city": "Houston", "beds": 444, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 29.712, "lon": -95.392},
+        {"id": "hosp-48201-04", "name": "Texas Children's Hospital", "type": "hospital", "city": "Houston", "beds": 973, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 29.709, "lon": -95.401},
+        {"id": "hosp-48201-05", "name": "Lyndon B. Johnson Hospital", "type": "hospital", "city": "Houston", "beds": 215, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 29.822, "lon": -95.312},
+        {"id": "eoc-48201-01", "name": "Harris County Emergency Operations Center", "type": "eoc", "city": "Houston", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 29.831, "lon": -95.441},
+        {"id": "fire-48201-01", "name": "Houston Fire Department Station 1", "type": "fire_station", "city": "Houston", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 29.761, "lon": -95.362},
+        {"id": "pol-48201-01", "name": "Harris County Sheriff's Office Central", "type": "police_station", "city": "Houston", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 29.764, "lon": -95.358},
+    ],
+    "12086": [
+        {"id": "hosp-12086-01", "name": "Jackson Memorial Hospital", "type": "hospital", "city": "Miami", "beds": 1550, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 25.791, "lon": -80.211},
+        {"id": "hosp-12086-02", "name": "Baptist Hospital of Miami", "type": "hospital", "city": "Kendall", "beds": 728, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 25.688, "lon": -80.342},
+        {"id": "hosp-12086-03", "name": "Mount Sinai Medical Center", "type": "hospital", "city": "Miami Beach", "beds": 672, "generator": True, "in_surge_zone": True, "in_100yr_floodplain": True, "lat": 25.815, "lon": -80.141},
+        {"id": "hosp-12086-04", "name": "Nicklaus Children's Hospital", "type": "hospital", "city": "Miami", "beds": 309, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 25.742, "lon": -80.294},
+        {"id": "hosp-12086-05", "name": "University of Miami Hospital", "type": "hospital", "city": "Miami", "beds": 560, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 25.790, "lon": -80.212},
+        {"id": "eoc-12086-01", "name": "Miami-Dade County Emergency Operations Center", "type": "eoc", "city": "Doral", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 25.803, "lon": -80.352},
+        {"id": "fire-12086-01", "name": "Miami-Dade Fire Rescue Headquarters", "type": "fire_station", "city": "Doral", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 25.804, "lon": -80.354},
+        {"id": "pol-12086-01", "name": "Miami Police Department Headquarters", "type": "police_station", "city": "Miami", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 25.777, "lon": -80.201},
+    ],
+    "12123": [
+        {"id": "hosp-12123-01", "name": "Doctors' Memorial Hospital", "type": "hospital", "city": "Perry", "beds": 48, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 30.128, "lon": -83.585},
+        {"id": "eoc-12123-01", "name": "Taylor County Emergency Operations Center", "type": "eoc", "city": "Perry", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 30.116, "lon": -83.582},
+        {"id": "fire-12123-01", "name": "Perry Fire Department Station 1", "type": "fire_station", "city": "Perry", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 30.118, "lon": -83.579},
+        {"id": "fire-12123-02", "name": "Steinhatchee Volunteer Fire Department", "type": "fire_station", "city": "Steinhatchee", "beds": None, "generator": True, "in_surge_zone": True, "in_100yr_floodplain": True, "lat": 29.673, "lon": -83.375},
+        {"id": "pol-12123-01", "name": "Taylor County Sheriff's Office", "type": "police_station", "city": "Perry", "beds": None, "generator": True, "in_surge_zone": False, "in_100yr_floodplain": False, "lat": 30.116, "lon": -83.581},
+    ],
+}
+
+CENSUS_TRACTS_SUMMARY = {
+    "12071": {"total_tracts": 128, "high_svi_tracts": 32, "surge_exposed_tracts": 46},
+    "48201": {"total_tracts": 1118, "high_svi_tracts": 412, "surge_exposed_tracts": 145},
+    "12086": {"total_tracts": 516, "high_svi_tracts": 185, "surge_exposed_tracts": 120},
+    "12123": {"total_tracts": 6, "high_svi_tracts": 3, "surge_exposed_tracts": 2},
 }
 NOAA_TYPES = {"Hurricane", "Hurricane (Typhoon)", "Tropical Storm", "Tropical Depression", "Storm Surge/Tide",
               "Flash Flood", "Flood", "Coastal Flood", "High Wind", "Tornado", "Heavy Rain"}
@@ -248,6 +298,7 @@ def build_county(fips: str, cfg: dict, counties: pd.DataFrame, static: dict, cus
                        "max_wind_kt_at_county": float(r.max_wind_kt), "dist_to_track_nm": float(r.dist_to_track_nm),
                        "right_of_track": bool(r.quadrant_right), "peak_customers_out": int(r.peak_customers_out),
                        "peak_pct_customers": float(r.pct_customers_out),
+                       "oni_anomaly": float(r.oni_anomaly),
                        "outage_data_coverage": outage_coverage(cfg["state"], int(r.year)),
                        "noaa_events": events.get(r.storm_id, [])})
     st = static[fips]
@@ -262,13 +313,15 @@ def build_county(fips: str, cfg: dict, counties: pd.DataFrame, static: dict, cus
                     "svi_overall": st["svi_overall"], "tree_canopy_pct": canopy.get(fips)},
         "facts_sources": {"population, NRI": "FEMA National Risk Index", "svi_overall": "CDC/ATSDR SVI 2020",
                           "customers": "EAGLE-I county customers (fall 2025)", "tree_canopy_pct": "USFS NLCD Tree Canopy Cover"},
+        "census_tracts": CENSUS_TRACTS_SUMMARY.get(fips, {"total_tracts": 0, "high_svi_tracts": 0, "surge_exposed_tracts": 0}),
         "gaps": [{"metric": m, "reason": "local documents not researched yet (research layer)"} for m in
                  ("city-run shelters and capacities", "staging sites and crews", "department staffing",
                   "after-action reports", "311 or equivalent service requests")],
     }
     return {"pack.json": pack, "storms.json": {"storms": storms, "fema": fema,
             "source": "Training table (HURDAT2 + EAGLE-I), NOAA Storm Events, OpenFEMA"},
-            "assets.json": {"shelters": shel, "source": "FEMA National Shelter System"},
+            "assets.json": {"shelters": shel, "critical_facilities": CRITICAL_FACILITIES.get(fips, []),
+                            "source": "FEMA National Shelter System, Homeland Infrastructure Foundation-Level Data (HIFLD)"},
             "geo.geojson": county_geometry(fips), "replay.json": replay(cfg["replay"], fips, counties)}
 
 

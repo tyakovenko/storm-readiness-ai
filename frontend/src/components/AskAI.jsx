@@ -33,10 +33,20 @@ const HURRICANE_EXAMPLES = [
   "What should residents do to evacuate?",
 ];
 const HURRICANE_TRUST_DEMOS = ["Trust demo: outage estimate without its range"];
+// Shown on the home page before any scenario is open. Phase 5: this used to silently fall back
+// to the Dallas winter-storm banner/examples, which misrepresented what "Ask AI" would actually
+// answer with for an unrelated hurricane question -- see backend/agent/landing_router.py.
+const NONE_EXAMPLES = [
+  "Which scenarios are available?",
+  "Tell me about the Dallas winter storm scenario",
+  "Tell me about Hurricane Beryl in Harris County",
+  "Which areas are highest risk?",
+];
 const BANNER = {
   winter: "Past-storm numbers are real (NOAA, Dallas 311, EAGLE-I, FEMA, city records). The storm is a planning scenario, not a forecast; estimates are ranges from past storms.",
   hurricane: "Past-storm numbers are real (HURDAT2, EAGLE-I outages, NOAA, FEMA). The storm is a replay of a real past NHC forecast; outage ranges come from a trained model with its tested error shown.",
   stub: "Demo data only. Every number comes from stub tools, not a real forecast.",
+  none: "No storm or county is selected yet. Name one (e.g. \"Dallas\" or \"Hurricane Beryl in Harris County\") or open it from the home page to get an area-specific answer.",
 };
 
 const BADGE = "inline-block rounded-full px-2.5 py-[3px] text-xs font-semibold";
@@ -182,7 +192,10 @@ function AgentReply({ result }) {
 }
 
 // agentId/hazard/agentName come from the multi-agent app; the single-agent app passes none.
-export default function AskAI({ open, onClose, agentId = null, hazard = null, agentName = null, disabled = false }) {
+// pendingQuestion/onPendingSent let the storm home page's search box hand off a question to this
+// same panel instead of a second chat implementation.
+export default function AskAI({ open, onClose, agentId = null, hazard = null, agentName = null, disabled = false,
+  pendingQuestion = "", onPendingSent }) {
   const [health, setHealth] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -210,6 +223,14 @@ export default function AskAI({ open, onClose, agentId = null, hazard = null, ag
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (open && pendingQuestion) {
+      send(pendingQuestion);
+      onPendingSent?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, pendingQuestion]);
 
   async function send(text) {
     const question = text.trim();
@@ -239,9 +260,11 @@ export default function AskAI({ open, onClose, agentId = null, hazard = null, ag
   }
 
   // Which template answers: the open agent's hazard (multi), else the single service's domain.
-  const kind = hazard ?? (health?.domain === "dallas" ? "winter" : "stub");
-  const base = { winter: DALLAS_EXAMPLES, hurricane: HURRICANE_EXAMPLES }[kind] ?? EXAMPLES;
-  const demos = { winter: DALLAS_TRUST_DEMOS, hurricane: HURRICANE_TRUST_DEMOS }[kind] ?? TRUST_DEMOS;
+  // Phase 5: on the multi-agent home page with no agent open yet, hazard is passed as null and
+  // health.domain is "multi" -- that's "none", not a silent fallback to Dallas's "winter".
+  const kind = hazard ?? (health?.domain === "multi" ? "none" : health?.domain === "dallas" ? "winter" : "stub");
+  const base = { winter: DALLAS_EXAMPLES, hurricane: HURRICANE_EXAMPLES, none: NONE_EXAMPLES }[kind] ?? EXAMPLES;
+  const demos = { winter: DALLAS_TRUST_DEMOS, hurricane: HURRICANE_TRUST_DEMOS, none: [] }[kind] ?? TRUST_DEMOS;
   const examples = disabled ? [] : health?.mock ? [...base, ...demos] : base;
 
   return (

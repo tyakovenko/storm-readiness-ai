@@ -7,6 +7,7 @@ import ResourcePlanner from "./pages/ResourcePlanner.jsx";
 import DallasOverview from "./dallas/DallasOverview.jsx";
 import DallasPlanner from "./dallas/DallasPlanner.jsx";
 import HurricaneOverview from "./hurricane/HurricaneOverview.jsx";
+import HurricaneRiskMap from "./hurricane/HurricaneRiskMap.jsx";
 import HurricaneShelters from "./hurricane/HurricaneShelters.jsx";
 import AgentLanding from "./AgentLanding.jsx";
 import { fetchAgents, fetchHealth, useOverview } from "./api.js";
@@ -22,8 +23,9 @@ const TEMPLATE_PAGES = {
     pages: { "storm-overview": DallasOverview, "resource-planner": DallasPlanner },
   },
   hurricane: {
-    nav: [{ id: "storm-overview", label: "Storm Overview" }, { id: "shelters", label: "Shelters" }],
-    pages: { "storm-overview": HurricaneOverview, shelters: HurricaneShelters },
+    nav: [{ id: "storm-overview", label: "Storm Overview" }, { id: "risk-map", label: "Risk Map" },
+      { id: "shelters", label: "Shelter Planning" }],
+    pages: { "storm-overview": HurricaneOverview, "risk-map": HurricaneRiskMap, shelters: HurricaneShelters },
   },
 };
 
@@ -69,6 +71,7 @@ function MultiAgentApp() {
   const [agents, setAgents] = useState(null);
   const [agentsError, setAgentsError] = useState("");
   const [askAIOpen, setAskAIOpen] = useState(false);
+  const [pendingQuestion, setPendingQuestion] = useState("");
   useEffect(() => {
     fetchAgents().then(setAgents).catch((e) => setAgentsError(`Can't list agents (${e.message}).`));
   }, []);
@@ -76,6 +79,12 @@ function MultiAgentApp() {
   const template = agent ? TEMPLATE_PAGES[agent.hazard] : null;
   const { overview, error } = useOverview(agentId, Boolean(template));
   const PageComponent = template ? (template.pages[page] ?? template.pages["storm-overview"]) : null;
+  // Shared by the home search box and any page's contextual "Ask AI" prompts: same panel, same
+  // backend call, just a different question handed in.
+  function askWithQuestion(q) {
+    setPendingQuestion(q);
+    setAskAIOpen(true);
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-canvas">
@@ -91,20 +100,24 @@ function MultiAgentApp() {
         {!agentId || !agent ? (
           agents || agentsError ? (
             <AgentLanding agents={agents} error={agentsError || (agentId && agents ? `Unknown agent ${agentId}` : "")}
-              onOpen={(id) => go(id)} />
+              onOpen={(id) => go(id)} onAsk={askWithQuestion} />
           ) : (
             <PageStatus title="Loading agents" />
           )
         ) : overview || error ? (
           error ? <PageStatus title={agent.name} error={error} />
-            : <PageComponent key={agentId} overview={overview} agentId={agentId} overviewError={error} />
+            : <PageComponent key={agentId} overview={overview} agentId={agentId} agent={agent} overviewError={error}
+                onAsk={askWithQuestion} />
         ) : (
           <PageStatus title={agent.name} />
         )}
       </main>
-      {/* key: a new agent starts a new conversation */}
+      {/* key: a new agent starts a new conversation. hazard is null on the storm home page,
+          where no agent is open yet -- /api/chat now routes by name or says so (landing_router),
+          it no longer silently answers as the Dallas agent (Phase 5). */}
       <AskAI key={agentId ?? "none"} open={askAIOpen} onClose={() => setAskAIOpen(false)}
-        agentId={agent ? agentId : null} hazard={agent?.hazard} agentName={agent?.name} disabled={!agent} />
+        agentId={agent ? agentId : null} hazard={agent?.hazard ?? null} agentName={agent?.name}
+        pendingQuestion={pendingQuestion} onPendingSent={() => setPendingQuestion("")} />
     </div>
   );
 }

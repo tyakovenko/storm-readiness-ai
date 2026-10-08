@@ -77,6 +77,16 @@ class CountyImpact(_Strict):
         description="Peak % of customers without power over the storm window: EAGLE-I max(sum) / MCC")
     customers_served: int = Field(ge=0, description="MCC modeled county customers")
     why: list[str] = Field(min_length=1, description="Top drivers in plain words (feature importance)")
+    calibration_status: str | None = Field(
+        default=None,
+        description="Phase 3P post-hoc interval calibration applied to this county's interval, if any "
+                     "(e.g. 'stratified_conformal', 'stratified_conformal_global_fallback'); null for the "
+                     "stub/legacy path, which has no calibration step")
+    severe_uncertainty_caveat: str | None = Field(
+        default=None,
+        description="Set when this county's predicted band has known poor validation coverage "
+                     "(see Phase 3P/3Q) -- the interval should be read as experimental, not reliable, "
+                     "uncertainty for that county")
 
 
 class Impact(_Strict):
@@ -84,6 +94,19 @@ class Impact(_Strict):
     model_version: str
     counties: list[CountyImpact]
     source: str
+    data_source: Literal["real_atcf_model", "scenario_model", "stub_fallback"] | None = Field(
+        default=None,
+        description="Whether this result came from the real ATCF-driven feature pipeline + trained "
+                     "XGBoost model, a deterministic synthetic demo scenario run through that same "
+                     "real model (scenario_generator.py), or the stub fallback (no active/requested "
+                     "storm, network failure, malformed feed, or no USE_ML_IMPACT_MODEL mode enabled). "
+                     "null for callers that predate this field (e.g. QuantileOutageModel.predict() used directly)")
+    forecast_cycle_utc: str | None = Field(
+        default=None, description="ATCF forecast cycle init time used for this prediction, if available")
+    forecast_valid_time_utc: str | None = Field(
+        default=None, description="Forecast valid time (cycle + tau) used as the impact-time proxy, if available")
+    requested_lead_time_h: float | None = Field(
+        default=None, description="Lead time (hours before the forecast impact-time proxy) this prediction targets")
 
 
 class Allocation(_Strict):

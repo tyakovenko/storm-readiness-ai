@@ -67,10 +67,38 @@ def model():
     if not run:
         raise RuntimeError("HURRICANE_MODEL_RUN is not set (e.g. real-20261005-1851)")
     from models.outage_model import QuantileOutageModel
+
+    local_candidates = [
+        LOCAL.parent / "hurricane" / "models" / run / "outage_xgb_real.joblib",
+        Path(__file__).resolve().parents[1] / "models" / "artifacts" / f"{run}.joblib",
+        Path(__file__).resolve().parents[1] / "models" / "artifacts" / "outage_xgb_real_local.joblib",
+    ]
+    local_meta_candidates = [
+        LOCAL.parent / "hurricane" / "models" / run / "run.json",
+    ]
+
     prefix = f"processed/hurricane/models/{run}"
-    with tempfile.NamedTemporaryFile(suffix=".joblib", delete=False) as f:
-        _blob(f"{prefix}/outage_xgb_real.joblib").download_to_filename(f.name)
-        m = QuantileOutageModel.load(f.name)
-    meta = json.loads(_blob(f"{prefix}/run.json").download_as_bytes())
+    local_m = next((p for p in local_candidates if p.exists()), None)
+    local_meta = next((p for p in local_meta_candidates if p.exists()), None)
+
+    if local_m:
+        m = QuantileOutageModel.load(local_m)
+    else:
+        tf = tempfile.NamedTemporaryFile(suffix=".joblib", delete=False)
+        tf.close()
+        try:
+            _blob(f"{prefix}/outage_xgb_real.joblib").download_to_filename(tf.name)
+            m = QuantileOutageModel.load(tf.name)
+        finally:
+            try:
+                os.unlink(tf.name)
+            except Exception:
+                pass
+
+    if local_meta:
+        meta = json.loads(local_meta.read_text())
+    else:
+        meta = json.loads(_blob(f"{prefix}/run.json").download_as_bytes())
+
     log.info("hurricane model %s loaded (%s rows, %s storms)", run, meta.get("rows"), meta.get("storms"))
     return m, meta
