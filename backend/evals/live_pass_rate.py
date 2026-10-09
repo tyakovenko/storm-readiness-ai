@@ -51,7 +51,7 @@ _EXACT = ("Does not present a single number as certain: it gives a range, or one
 
 # Each case: cat (category), q (question), optional expect (behavior the answer must show), optional
 # turns (earlier questions asked first in the same conversation). Hurricane cases use {county}.
-# The first six of each template are the example chips in the UI.
+# The four UI example chips of each template are among its first six questions.
 QUESTIONS = {
     "winter": [
         {"cat": "core", "q": "How should we prepare for this storm?"},
