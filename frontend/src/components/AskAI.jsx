@@ -21,11 +21,7 @@ const EXAMPLES = [
 
   "We only have 6 trucks and Shelter 2 is closed. Re-plan.",
 
-  "Were there similar storms before?",
-
   "What should residents do now?",
-
-  "How does El Niño affect this season?",
 
 ];
 
@@ -36,10 +32,6 @@ const DALLAS_EXAMPLES = [
   "What if we only have 30 trucks and Fair Park is closed?",
 
   "Has Dallas had a storm like this before?",
-
-  "What happened during Winter Storm Uri?",
-
-  "Does El Niño matter this winter?",
 
   "What should residents do if the power goes out?",
 
@@ -58,10 +50,6 @@ const HURRICANE_EXAMPLES = [
   "Has this county had a storm like this before?",
 
   "What shelters do we have outside the surge zone?",
-
-  "What if we include surge-zone shelters too?",
-
-  "Does El Niño matter this season?",
 
   "What should residents do to evacuate?",
 
