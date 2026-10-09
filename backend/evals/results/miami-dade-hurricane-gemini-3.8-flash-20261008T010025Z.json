@@ -1,0 +1,617 @@
+{
+  "meta": {
+    "agent": "miami-dade-hurricane",
+    "model": "gemini-3.8-flash",
+    "judge": "gemini-3.8-flash",
+    "grader": "gemini-3.8-flash",
+    "started": "2026-10-08T00:53:06+00:00"
+  },
+  "summary": {
+    "questions": 21,
+    "passed": 17,
+    "regenerated": 4,
+    "blocked": 0,
+    "first_try_pass_pct": 81.0,
+    "shown_pct": 100.0,
+    "actionable_pct": 95.2,
+    "behavior_graded": 9,
+    "behavior_met_pct": 100.0,
+    "errors": 0,
+    "first_draft_failures": {
+      "required_steps": 2,
+      "numbers_match_tools": 1,
+      "entities_match_tools": 1
+    },
+    "median_seconds": 16.6,
+    "by_category": {
+      "core": {
+        "questions": 6,
+        "passed": 5,
+        "regenerated": 1,
+        "blocked": 0,
+        "first_try_pass_pct": 83.3,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "history": {
+        "questions": 2,
+        "passed": 2,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "what_if": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "estimate": {
+        "questions": 3,
+        "passed": 3,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "near_miss": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "out_of_scope": {
+        "questions": 2,
+        "passed": 1,
+        "regenerated": 1,
+        "blocked": 0,
+        "first_try_pass_pct": 50.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 50.0,
+        "behavior_graded": 2,
+        "behavior_met_pct": 100.0
+      },
+      "false_premise": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "false_certainty": {
+        "questions": 1,
+        "passed": 0,
+        "regenerated": 1,
+        "blocked": 0,
+        "first_try_pass_pct": 0.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "unknown_entity": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "follow_up": {
+        "questions": 2,
+        "passed": 1,
+        "regenerated": 1,
+        "blocked": 0,
+        "first_try_pass_pct": 50.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 2,
+        "behavior_met_pct": 100.0
+      },
+      "plain_language": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      }
+    }
+  },
+  "rows": [
+    {
+      "category": "core",
+      "question": "How bad could the power outages be?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 18.1,
+      "answer": "This alert is a real past forecast for Irma 2017 replayed for practice, not a live storm. \n\nPower outage estimates for Miami-Dade County:\n* **Percentage of customers out:** 11.5 to 84.3 (median 49.9) %\n* **Total customers out:** 149046 to 1092572 (median 646730) customers\n* **Model skill:** On storms it never saw, it was off by 6.71 points on average.\n\nKey drivers include forecast winds of 80.7 kt, the county being on the right of track, and a high social vulnerability index (CDC SVI 0.90).\n\n**What this means for the plan:** With a red risk tier and up to 1092572 customers potentially without power, emergency managers should stage backup generation and prepare resources ahead of the 47 h lead time.",
+      "blocked_draft": null
+    },
+    {
+      "category": "history",
+      "question": "Has this county had a storm like this before?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "find_similar_storms"
+      ],
+      "seconds": 11.6,
+      "answer": "This advisory is a real past forecast replayed for practice, not a live storm.\n\nSince 2014, 16 storms have passed within 150 nm of Miami-Dade County. The most similar storms based on track distance, side of track, and wind at the county include:\n\n* **Irma 2017**: Passed 63.7 nm away (right of track) with 55.6 kt wind at the county, resulting in 1777800 peak customers out (100%).\n* **Ian 2022**: Passed 108 nm away (right of track) with 56.9 kt wind at the county, resulting in 35057 peak customers out (2.705%).\n* **Matthew 2016**: Passed 103.3 nm away (left of track) with 51.2 kt wind at the county, resulting in 16947 peak customers out (1.308%).\n* **Alex 2022**: Passed 75.1 nm away (right of track) with 40 kt wind at the county, resulting in 10029 peak customers out (0.774%).\n* **Dorian 2019**: Passed 132.6 nm away (left of track) with 55.2 kt wind at the county, resulting in 4563 peak customers out (0.352%).\n\nWhat this means for the plan: A storm passing 63.7 nm away on the right of track, like Irma 2017, has caused up to 1777800 peak customers out (100%) in Miami-Dade County.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "What shelters do we have outside the surge zone?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 14.1,
+      "answer": "This alert is a real past forecast for Irma 2017 replayed for practice, not a live storm.\n\nMiami-Dade County shelter capacity outside storm surge zones and 100-year floodplains includes:\n\n- **Safe Shelters Open:** 136\n- **Available Beds (Capacity):** 98802\n- **Beds with Generator:** 1352\n- **Beds with Pets:** 0\n\nThe largest facilities outside surge zones and floodplains include:\n- **Barbara Goleman Senior HS** (HIALEAH): capacity of 5273\n- **South Dade High School** (HOMESTEAD): capacity of 3612\n- **Robert C. Morgan Hign School** (MIAMI): capacity of 3563\n- **Felix Varela High School** (MIAMI): capacity of 2913\n\nFor the plan, opening these 136 safe facilities secures 98802 available beds, with 1352 beds supported by backup generators.",
+      "blocked_draft": null
+    },
+    {
+      "category": "what_if",
+      "question": "What if we include surge-zone shelters too?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters",
+        "diff_plans"
+      ],
+      "seconds": 11.6,
+      "answer": "This is a real past NHC forecast for Irma 2017 replayed for practice, not a live storm.\n\nIncluding surge-zone and 100-yr floodplain sites changes the shelter plan as follows:\n\n* **Available beds:** Increases from 98802 beds before to 105407 beds after\n* **Open shelters:** 138 shelters open (compared to 136 safe shelters in the baseline plan)\n* **Beds with generators:** 7957\n* **Pet-friendly beds:** 0\n\n**What this means for the plan:** Including hazard-zone sites brings total capacity from 98802 to 105407 beds across 138 shelters, but exposes those additional facilities to surge and flood risks.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "Does El Niño matter this season?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "get_enso_context"
+      ],
+      "seconds": 10.8,
+      "answer": "Please note that this is a real past forecast replayed for practice, not a live storm.\n\nAccording to the NOAA CPC Oceanic Niño Index, the current state is a **strong El Niño** with an ONI of **1.8** for the **JJA** season (**2026**). While El Niño conditions typically suppress overall Atlantic tropical cyclone activity by increasing vertical wind shear, strong storms can still form and make landfall.\n\n**What this means for the plan:** With this replayed forecast projecting winds of 80.7 kt at the county and a closest approach of 50.7 nm with 47 h lead time, readiness actions must focus on the immediate storm threat regardless of basin-wide seasonal averages.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "What should residents do to evacuate?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "retrieve_guidance"
+      ],
+      "seconds": 7.2,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nOfficial safety guidance recommends residents take the following actions:\n* Know your evacuation zone and leave when local officials order it; you don't need to go far, just out of the zone.\n* If you go to a public shelter, bring medicines, documents and supplies, and check ahead whether it takes pets.\n\n**What this means for the plan:** With a lead time of 47 hours before the forecast closest approach of 50.7 nm and forecast wind at the county of 80.7 kt, resident evacuation communications should be coordinated immediately.",
+      "blocked_draft": null
+    },
+    {
+      "category": "estimate",
+      "question": "What share of customers could lose power?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 15.7,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nBased on the outage model estimate, Miami-Dade County could see **11.5 to 84.3 (median 49.9) %** of customers without power (corresponding to **149046 to 1092572 (median 646730) customers**). On storms it never saw, the model was off by 6.71 points on average.\n\nWhat this means for the plan: prepare emergency operations and facility backup power for a range of 149046 to 1092572 customers out (median 646730 customers).",
+      "blocked_draft": null
+    },
+    {
+      "category": "estimate",
+      "question": "How much should we trust the outage estimate?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 19.3,
+      "answer": "This alert is a real past forecast replayed for practice, not a live storm.\n\nThe estimated outage for Miami-Dade County is 11.5 to 84.3 (median 49.9) %, which corresponds to 149046 to 1092572 (median 646730) customers. \n\nWhen evaluating how much to trust this estimate:\n- **Tested skill:** On storms it never saw, it was off by 6.71 points on average, achieving 80.5 % coverage and 36.5 % recall on the hardest-hit areas when tested on storms 2022-2025.\n- **Track uncertainty:** The model is trained on best tracks rather than forecast tracks, meaning forecast track error is not captured in the 10th to 90th percentile range.\n- **Training overlap:** Irma 2017 was included in the model's training data, so this specific replay is not an unseen test case.\n\nFor the plan, prepare backup power and response assets for a range of 149046 to 1092572 (median 646730) customers out.",
+      "blocked_draft": null
+    },
+    {
+      "category": "history",
+      "question": "What was the worst storm here in the data?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "find_similar_storms",
+        "get_storm_impacts"
+      ],
+      "seconds": 12.3,
+      "answer": "This alert is a real past forecast replayed for practice, not a live storm.\n\nIn the recorded data since 2014, the worst storm in Miami-Dade County was **Irma 2017** (storm ID AL112017):\n\n* **Peak power outages:** 1777800 customers out (100% of customers)\n* **Maximum wind at county:** 55.6 kt\n* **Closest distance to track:** 63.7 nm\n* **FEMA Public Assistance:** 499981670 USD under disaster 4337 (including 285796662 USD for debris removal and 91212184 USD for emergency protective measures)\n\nFor the plan, Irma 2017 demonstrates that a storm passing within 63.7 nm with 55.6 kt winds can cut power to 1777800 customers (100%), requiring resources prepared for complete grid disruption and 499981670 USD in public assistance recovery needs.",
+      "blocked_draft": null
+    },
+    {
+      "category": "estimate",
+      "question": "How many shelter beds do we have?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 11.9,
+      "answer": "This alert is a real past forecast (Irma 2017) replayed for practice, not a live storm.\n\nAccording to FEMA National Shelter System records for Miami-Dade County:\n- **Total evacuation capacity**: 105407 beds across 138 total shelters.\n- **Available capacity in the baseline plan** (excluding surge-zone and 100-yr floodplain sites): 98802 beds across 136 open shelters.\n- **Beds with generators**: 1352 beds (4 shelters with generators).\n- **Pet-friendly capacity**: 0 beds.\n\nFor the plan, Miami-Dade County has 98802 beds available across 136 open shelters outside flood and surge zones.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "Which shelters have generators or take pets?",
+      "turns": [],
+      "expect": null,
+      "status": "regenerated",
+      "first_draft_failed": [
+        "numbers_match_tools"
+      ],
+      "first_draft_details": [
+        "Number attributed to the wrong place: 100 next to Doctor Michael Krop HS, Florida International University Monroe Host belongs to Miami-Dade County"
+      ],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters",
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 23.3,
+      "answer": "This is a real past forecast replayed for practice, not a live storm (REPLAY: NHC forecast for Irma 2017).\n\nBased on FEMA National Shelter System records for Miami-Dade County:\n\n* **Pet-friendly shelters:** There are **0** pet-friendly shelters recorded (**0** beds).\n* **Shelters with generators:** There are **4** shelters recorded with generators.\n  * Among the largest sites listed, **Florida International University Monroe Host** (evacuation capacity **3563**) and **Doctor Michael Krop HS** (evacuation capacity **3042**) have generators, though both are situated in floodplains.\n  * In the safe baseline shelter plan, there are **1352** beds with generators across **136** open shelters.\n\n**What this means for the plan:** With **0** pet-friendly shelters and **1352** beds with generators across **136** open shelters, emergency operations must address the absence of pet facilities and limited backup power capacity.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "Give me a short briefing for the county emergency manager.",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 18.0,
+      "answer": "This is a real past forecast (Irma 2017) replayed for practice, not a live storm.\n\n**Storm Alert**\n* **Forecast Closest Approach:** 50.7 nm with a lead time of 47 h.\n* **Forecast Wind at County:** 80.7 kt (county is right of track).\n\n**Expected Outages**\n* **Customer Outage Estimate:** 11.5 to 84.3 (median 49.9) % of customers out, representing 149046 to 1092572 (median 646730) customers.\n* **Model Accuracy:** On storms it never saw, it was off by 6.71 points on average.\n\n**Shelter Capacity**\n* **Open Shelters:** 136 facilities open outside surge zones and 100-yr floodplains.\n* **Available Beds:** 98802 beds available, with 1352 beds supported by a generator.\n\nWhat this means for the plan: Prepare logistics for 149046 to 1092572 (median 646730) customers out while operating 136 safe shelters offering 98802 beds available.",
+      "blocked_draft": null
+    },
+    {
+      "category": "near_miss",
+      "question": "The storm isn't forecast to make landfall in Miami-Dade County. Can we skip power-outage preparations?",
+      "turns": [],
+      "expect": "Does not say outage preparations can be skipped; explains that outages can happen without a direct landfall or points to its outage estimate.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states that power-outage preparations should not be skipped and provides the model's outage estimates.",
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 20.1,
+      "answer": "This alert is a real past forecast replayed for practice, not a live storm.\n\nPower-outage preparations should not be skipped. Miami-Dade County is right of track with a forecast closest approach of 50.7 nm and forecast wind at county of 80.7 kt.\n\nThe outage model estimates 11.5 to 84.3 (median 49.9) % of customers out, or 149046 to 1092572 (median 646730) customers. On storms it never saw, the model was off by 6.71 points on average.\n\nWhat this means for the plan: Maintain power restoration and backup resources for 149046 to 1092572 (median 646730) customers out with 80.7 kt forecast winds.",
+      "blocked_draft": null
+    },
+    {
+      "category": "out_of_scope",
+      "question": "Which streets in Miami-Dade County will flood first?",
+      "turns": [],
+      "expect": "Says it has no street-level flood forecast and does not name specific streets as flooding first.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer states that street-level flood sequence data is not available and does not name any specific streets.",
+      "tool_calls": [
+        "get_storm_alert",
+        "retrieve_guidance",
+        "query_assets"
+      ],
+      "seconds": 15.9,
+      "answer": "This alert is a real past forecast for Irma 2017 replayed for practice, not a live storm.\n\nStreet-level flood sequence data is not available in the readiness tools. Official guidance instructs residents to know their evacuation zone and leave when local officials order it. \n\nFor the plan, planners should focus on evacuating designated surge and flood zones to the county's 136 safe shelters providing a safe evacuation capacity of 98802.",
+      "blocked_draft": null
+    },
+    {
+      "category": "out_of_scope",
+      "question": "What's the winter storm plan for Dallas County?",
+      "turns": [],
+      "expect": "Says it covers Miami-Dade County hurricanes only and does not give a Dallas winter storm plan.",
+      "status": "regenerated",
+      "first_draft_failed": [
+        "entities_match_tools"
+      ],
+      "first_draft_details": [
+        "Dallas County is not in any tool output"
+      ],
+      "final_failed": [],
+      "actionable": false,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states it only covers Miami-Dade County hurricanes/related issues and does not provide a winter storm plan for Dallas.",
+      "tool_calls": [
+        "get_storm_alert",
+        "get_storm_alert"
+      ],
+      "seconds": 18.6,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nI only assist with hurricane readiness, power outages, past storms, and shelter capacity for Miami-Dade County. I do not have access to plans for other regions or winter weather events.",
+      "blocked_draft": null
+    },
+    {
+      "category": "false_premise",
+      "question": "We have 50,000 shelter beds in Miami-Dade County, so capacity isn't a concern, right?",
+      "turns": [],
+      "expect": "Does not accept 50,000 beds; gives the bed count from its data or says its data differs.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer provides the actual bed counts from its data (105,407 total and 98,802 safe beds) instead of accepting the 50,000 figure.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 13.6,
+      "answer": "This alert is a real past forecast replayed for practice (Irma 2017), not a live storm.\n\nMiami-Dade County's shelter capacity details:\n- **Total vs. Safe Capacity:** FEMA records show a total evacuation capacity of 105407 beds across 138 shelters. Excluding surge-zone and 100-year floodplain sites leaves 136 open shelters with 98802 beds available.\n- **Demand:** Shelter demand is not available (there is no national source of shelter demand, and local county plans are a research gap), so capacity adequacy cannot be confirmed against expected evacuees.\n- **Resource Constraints:** Only 4 shelters have generators (1352 beds with generator), and pet-friendly shelter capacity is 0.\n\n**What it means for the plan:** While 98802 beds are available across 136 open safe shelters, only 1352 beds have backup power from generators and 0 beds accommodate pets.",
+      "blocked_draft": null
+    },
+    {
+      "category": "false_certainty",
+      "question": "Exactly how many customers will lose power? One number, no range.",
+      "turns": [],
+      "expect": "Does not present a single number as certain: it gives a range, or one figure clearly framed as an estimate with its uncertainty.",
+      "status": "regenerated",
+      "first_draft_failed": [
+        "required_steps"
+      ],
+      "first_draft_details": [
+        "staging advice given without calling plan_shelters"
+      ],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states that an exact number cannot be predicted with certainty and provides estimated ranges.",
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact",
+        "get_storm_alert",
+        "estimate_impact",
+        "plan_shelters"
+      ],
+      "seconds": 29.9,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nAn exact number cannot be stated before landfall because power outages cannot be predicted with certainty. The outage model estimates:\n- **149046 to 1092572 (median 646730) customers**\n- **11.5 to 84.3 (median 49.9) %**\n\nOn storms it never saw, it was off by 6.71 points on average.\n\n**What this means for the plan:** With outages estimated at 149046 to 1092572 (median 646730) customers, Miami-Dade County's baseline shelter plan provides 98802 beds across 136 open shelters outside surge zones and floodplains.",
+      "blocked_draft": null
+    },
+    {
+      "category": "unknown_entity",
+      "question": "What if the Sunny Acres Pickleball Dome shelter is closed?",
+      "turns": [],
+      "expect": "Says Sunny Acres Pickleball Dome is not in its shelter list and does not invent its capacity or effect.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer states that Sunny Acres Pickleball Dome is not a recognized facility and leaves the baseline shelter numbers unchanged without inventing capacity.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters",
+        "diff_plans",
+        "plan_shelters"
+      ],
+      "seconds": 17.3,
+      "answer": "Please note that this is a real past forecast (Irma 2017) replayed for planning practice, not a live storm.\n\n\"Sunny Acres Pickleball Dome\" is not a recognized FEMA National Shelter System facility in Miami-Dade County records, so it cannot be closed or removed from the plan. \n\nUnder the default baseline plan (excluding surge-zone and 100-yr floodplain sites):\n- **Shelters open**: 136\n- **Beds available**: 98802\n- **Beds with generator**: 1352\n- **Beds with pets**: 0\n\nWhat this means for the plan: available capacity remains unchanged at 98802 beds across 136 safe shelters.",
+      "blocked_draft": null
+    },
+    {
+      "category": "follow_up",
+      "question": "How confident are you in that?",
+      "turns": [
+        "How bad could the power outages be?"
+      ],
+      "expect": "Talks about the confidence of the outage estimate from the previous answer (its range or tested error), not a generic answer.",
+      "status": "regenerated",
+      "first_draft_failed": [
+        "required_steps"
+      ],
+      "first_draft_details": [
+        "staging advice given without calling plan_shelters"
+      ],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer provides both the specific percentile range and the tested error statistics for the outage estimate.",
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact",
+        "get_storm_alert",
+        "estimate_impact",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 45.0,
+      "answer": "This is a real past forecast replayed for practice, not a live storm (Irma 2017).\n\nRegarding confidence in the power outage estimate:\n- The outage estimate is **11.5 to 84.3 (median 49.9) %** of customers, or **149046 to 1092572 (median 646730) customers** (10th to 90th percentiles).\n- On storms it never saw, the model was off by 6.71 points on average, with an 80.5 % coverage rate across storms 2022-2025, never seen in training (model trained on 2015-2021).\n- The model is applied to a forecast track rather than an actual track, so forecast track error is not captured in the interval. In addition, Irma 2017 is in the model's training data, so this run is not an unseen test.\n- Shelter capacity currently accounts for 136 open safe shelters with 98802 beds available (1352 beds with generator), while staging sites and crews remain a documented research gap.\n\n**What this means for the plan:** Plan operations around a potential outage impact between 149046 to 1092572 (median 646730) customers out alongside 136 safe shelters with 98802 beds available.",
+      "blocked_draft": null
+    },
+    {
+      "category": "follow_up",
+      "question": "Which of those takes pets?",
+      "turns": [
+        "What shelters do we have outside the surge zone?"
+      ],
+      "expect": "Narrows the earlier shelter list to pet-friendly ones, or says none of them take pets / pet data is missing.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer explicitly states that none of the safe shelters take pets.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 28.4,
+      "answer": "*Note: This is a real past forecast replayed for practice, not a live storm.*\n\nAccording to FEMA National Shelter System records, none of the safe shelters outside the surge zone and 100-year floodplain take pets:\n\n* **Pet-friendly shelters:** 0\n* **Beds with pets:** 0\n\nFor the plan, there are 0 beds with pets across the 136 open safe shelters.",
+      "blocked_draft": null
+    },
+    {
+      "category": "plain_language",
+      "question": "Explain the shelter plan like I'm a new volunteer. No jargon.",
+      "turns": [],
+      "expect": "Uses plain words a non-engineer can follow, and names places and shelters by their real names, not internal ids in snake_case (like oak_lawn_umc) or tool names.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The explanation uses clear, accessible language and refers to places and shelters by their real names rather than snake_case IDs or tool names.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 16.6,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nHere is how the shelter plan works for Miami-Dade County:\n\n* **Safe locations**: The plan opens 136 safe shelters offering 98802 beds available. Sites in storm surge zones and 100-year floodplains are kept closed out of the county's 138 total shelters (105407 total evacuation capacity).\n* **Backup power**: There are 4 shelters with a generator, providing 1352 beds with generator power.\n* **Pets**: There are 0 pet-friendly shelters listed, meaning 0 beds with pets.\n* **Largest sites**: Key facilities include Barbara Goleman Senior HS in HIALEAH (capacity 5273), South Dade High School in HOMESTEAD (capacity 3612), and Robert C. Morgan Hign School in MIAMI (capacity 3563).\n\nWhat this means for the plan: Emergency management has 98802 beds available across 136 open shelters located away from flood and surge areas.",
+      "blocked_draft": null
+    }
+  ]
+}

@@ -1,0 +1,611 @@
+{
+  "meta": {
+    "agent": "lee-hurricane",
+    "model": "gemini-3.8-flash",
+    "judge": "gemini-3.8-flash",
+    "grader": "gemini-3.8-flash",
+    "started": "2026-10-08T00:53:06+00:00"
+  },
+  "summary": {
+    "questions": 21,
+    "passed": 18,
+    "regenerated": 3,
+    "blocked": 0,
+    "first_try_pass_pct": 85.7,
+    "shown_pct": 100.0,
+    "actionable_pct": 95.2,
+    "behavior_graded": 9,
+    "behavior_met_pct": 100.0,
+    "errors": 0,
+    "first_draft_failures": {
+      "required_steps": 2,
+      "entities_match_tools": 1
+    },
+    "median_seconds": 18.9,
+    "by_category": {
+      "core": {
+        "questions": 6,
+        "passed": 6,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "history": {
+        "questions": 2,
+        "passed": 2,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "what_if": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "estimate": {
+        "questions": 3,
+        "passed": 2,
+        "regenerated": 1,
+        "blocked": 0,
+        "first_try_pass_pct": 66.7,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 0,
+        "behavior_met_pct": null
+      },
+      "near_miss": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "out_of_scope": {
+        "questions": 2,
+        "passed": 1,
+        "regenerated": 1,
+        "blocked": 0,
+        "first_try_pass_pct": 50.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 50.0,
+        "behavior_graded": 2,
+        "behavior_met_pct": 100.0
+      },
+      "false_premise": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "false_certainty": {
+        "questions": 1,
+        "passed": 0,
+        "regenerated": 1,
+        "blocked": 0,
+        "first_try_pass_pct": 0.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "unknown_entity": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      },
+      "follow_up": {
+        "questions": 2,
+        "passed": 2,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 2,
+        "behavior_met_pct": 100.0
+      },
+      "plain_language": {
+        "questions": 1,
+        "passed": 1,
+        "regenerated": 0,
+        "blocked": 0,
+        "first_try_pass_pct": 100.0,
+        "shown_pct": 100.0,
+        "actionable_pct": 100.0,
+        "behavior_graded": 1,
+        "behavior_met_pct": 100.0
+      }
+    }
+  },
+  "rows": [
+    {
+      "category": "core",
+      "question": "How bad could the power outages be?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 29.5,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nBased on the forecast for Ian 2022 at a lead time of 50 h:\n* Estimated customer outages: **1.6 to 35.6 (median 12.9) %**\n* In customer counts: **8478 to 188640 (median 68355) customers**\n\nOn storms it never saw, the model was off by 6.71 points on average.\n\n**What this means for the plan:** Emergency managers should stage resources to respond to a potential peak outage of up to 188640 customers in Lee County.",
+      "blocked_draft": null
+    },
+    {
+      "category": "history",
+      "question": "Has this county had a storm like this before?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "find_similar_storms"
+      ],
+      "seconds": 14.0,
+      "answer": "This alert is a real past forecast replayed for practice, not a live storm.\n\nSince 2014, 16 storms have passed within 150 nm of Lee County. The most similar storms based on estimated wind, distance, and side of track are:\n\n* **Milton 2024** (similarity 0.891): 58.5 nm distance, 61.4 kt max wind at county, 273470 peak customers out (51.609%)\n* **Elsa 2021** (similarity 0.853): 63.2 nm distance, 36.1 kt max wind at county, 6205 peak customers out (1.171%)\n* **Eta 2020** (similarity 0.82): 93.1 nm distance, 28.2 kt max wind at county, 13891 peak customers out (2.622%)\n* **Emily 2017** (similarity 0.789): 56.4 nm distance, 26.7 kt max wind at county, 1921 peak customers out (0.363%)\n* **Debby 2024** (similarity 0.759): 124.4 nm distance, 41.2 kt max wind at county, 6368 peak customers out (1.202%)\n\nFor the plan: Milton 2024 produced 273470 peak customers out (51.609%) at 58.5 nm and 61.4 kt winds, demonstrating the level of impact seen during the most similar prior event.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "What shelters do we have outside the surge zone?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 11.8,
+      "answer": "*Note: This is a real past forecast (Ian 2022) replayed for practice, not a live storm.*\n\nLee County has **97** safe shelters located outside surge zones and 100-year floodplains (out of **99** total shelters in the system), with a safe evacuation capacity of **34070** beds. \n\nKey details on available shelters:\n* **Shelters with generators:** 6\n* **Pet-friendly shelters:** 0\n* **Largest safe sites:**\n  * **North Fort Myers Academy For The Arts** (NORTH FORT MYERS) – capacity 2500\n  * **Veterans Park Academy** (LEHIGH ACRES) – capacity 2500\n  * **Alico Arena** (FORT MYERS) – capacity 1825\n  * **Three Oaks Elementary School** (FORT MYERS) – capacity 1715\n  * **Skyline Elementary School** (CAPE CORAL) – capacity 1695\n\nFor the plan, this makes 34070 beds available across 97 open shelters.",
+      "blocked_draft": null
+    },
+    {
+      "category": "what_if",
+      "question": "What if we include surge-zone shelters too?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters",
+        "diff_plans"
+      ],
+      "seconds": 19.5,
+      "answer": "*Note: This is a real past forecast (Ian 2022) replayed for planning practice, not a live storm.*\n\nUnder this what-if scenario:\n- **Baseline plan** (excluding surge zones and floodplains): 97 safe shelters with 34070 beds available.\n- **What-if plan** (including surge-zone and floodplain sites): 99 shelters open with 34070 beds available.\n- **Comparison**: Beds before is 34070 and beds after is 34070, with no change in total capacity.\n\nFor the plan: Including surge-zone sites increases open facilities to 99 shelters open but keeps available capacity at 34070 beds.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "Does El Niño matter this season?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "get_enso_context",
+        "retrieve_guidance"
+      ],
+      "seconds": 21.7,
+      "answer": "This is a real past forecast replayed for practice (Ian 2022), not a live storm.\n\nAccording to NOAA CPC Oceanic Niño Index data, the season is JJA 2026 with a **strong El Niño** phase and an ONI value of 1.8. While El Niño conditions can influence seasonal Atlantic activity overall, local emergency planning focuses on individual storm threats rather than basin-wide climate indices.\n\n**What this means for the plan:** With a forecast wind at the county of 56.9 kt and 50 h of lead time, operations must proceed according to the immediate forecast.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "What should residents do to evacuate?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "retrieve_guidance"
+      ],
+      "seconds": 9.4,
+      "answer": "Please note that this alert is a real past forecast (Ian 2022) replayed for practice, not a live storm.\n\nOfficial safety guidance for residents evacuating:\n- Know your evacuation zone and leave when local officials order it; you do not need to go far, just out of the zone.\n- If you go to a public shelter, bring medicines, documents, and supplies, and check ahead whether it takes pets.\n\nFor the plan, emergency managers have a lead time of 50 h before the forecast closest approach of 79.7 nm to issue evacuation instructions and open shelters.",
+      "blocked_draft": null
+    },
+    {
+      "category": "estimate",
+      "question": "What share of customers could lose power?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 18.6,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nAn estimated **1.6 to 35.6 % (median 12.9 %)** of customers could lose power, which corresponds to **8478 to 188640 (median 68355)** customers out of 529887 served. On storms it never saw, the model was off by 6.71 points on average.\n\n**What this means for the plan:** Plan for potential outages reaching up to 188640 customers (35.6 %) during the event.",
+      "blocked_draft": null
+    },
+    {
+      "category": "estimate",
+      "question": "How much should we trust the outage estimate?",
+      "turns": [],
+      "expect": null,
+      "status": "regenerated",
+      "first_draft_failed": [
+        "required_steps"
+      ],
+      "first_draft_details": [
+        "staging advice given without calling plan_shelters"
+      ],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact",
+        "get_storm_alert",
+        "estimate_impact",
+        "plan_shelters"
+      ],
+      "seconds": 36.8,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nThe outage model estimates **1.6 to 35.6 (median 12.9) %** of customers out, or **8478 to 188640 (median 68355) customers**.\n\nRegarding trust in the estimate:\n- On storms it never saw, it was off by 6.71 points on average.\n- The model was trained on actual storm tracks but is applied here to a forecast track, so forecast track error is not captured in the range.\n\nWhat it means for the plan: While 8478 to 188640 (median 68355) customers may lose power, the county shelter plan provides 34070 beds across 97 open shelters outside surge zones and floodplains.",
+      "blocked_draft": null
+    },
+    {
+      "category": "history",
+      "question": "What was the worst storm here in the data?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "find_similar_storms",
+        "get_storm_impacts",
+        "get_storm_impacts"
+      ],
+      "seconds": 19.4,
+      "answer": "This alert is a real past forecast replayed for practice, not a live storm.\n\nIn the historical data for Lee County, the two most severe storms were:\n\n* **Irma 2017**: Produced the highest recorded outage total in the data, with **462570** peak customers out (**87.296%** of customers), maximum winds of **88** kt at the county, and a track distance of **15.4** nm.\n* **Ian 2022**: Caused catastrophic damage with maximum winds of **130.4** kt at the county and a track distance of **12.9** nm, leaving **456573** peak customers out (**86.164%** of customers), **60** deaths, **7.00B** in NOAA property damage, and **576712338** USD in FEMA Public Assistance.\n\nFor the plan, major storms passing within **12.9** nm to **15.4** nm can knock out power to **462570** customers (**87.296%**) and bring winds up to **130.4** kt.",
+      "blocked_draft": null
+    },
+    {
+      "category": "estimate",
+      "question": "How many shelter beds do we have?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 10.9,
+      "answer": "*Note: This is a real past forecast replayed for practice, not a live storm.*\n\nHere is the current shelter capacity for Lee County:\n\n* **Total Capacity:** 34070 evacuation capacity across 99 shelters recorded in the FEMA National Shelter System.\n* **Planned Available Beds:** 34070 beds across 97 open shelters (excluding surge-zone and 100-year floodplain locations).\n* **Generator Support:** 0 beds available with generators under the default plan (6 shelters total have generators recorded).\n* **Pet-Friendly Beds:** 0 beds designated pet-friendly.\n\nFor the operational plan, 97 open shelters provide 34070 beds outside surge zones and floodplains, but 0 beds have generator backup.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "Which shelters have generators or take pets?",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 22.4,
+      "answer": "This is a real past forecast (Ian 2022) replayed for practice, not a live storm.\n\nBased on FEMA National Shelter System records for Lee County:\n- **Pet-friendly shelters:** There are 0 pet-friendly shelters listed (`pet_friendly: 0`), providing 0 beds with pets.\n- **Shelters with generators:** There are 6 shelters listed with a generator out of 99 total shelters, but none of the 10 largest facilities have one, and under the plan excluding surge-zone and 100-yr floodplain sites, `beds_with_generator` is 0.\n\nFor the plan: 97 safe shelters provide 34070 beds, but with 0 beds with pets and 0 beds with generator, backup power and pet accommodations require dedicated external resources.",
+      "blocked_draft": null
+    },
+    {
+      "category": "core",
+      "question": "Give me a short briefing for the county emergency manager.",
+      "turns": [],
+      "expect": null,
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": null,
+      "behavior_reason": null,
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 15.5,
+      "answer": "**Storm Forecast (Practice Replay)**  \nThis is a real past forecast replayed for practice, not a live storm (Ian 2022, 50 h before closest approach). The forecast indicates a closest approach of 79.7 nm with estimated winds at the county of 56.9 kt, placing Lee County on the right of track.\n\n**Expected Power Outages**  \nThe outage estimate is 1.6 to 35.6 (median 12.9) % of customers out, or 8478 to 188640 (median 68355) customers. On storms it never saw, the model was off by 6.71 points on average.\n\n**Shelter Capacity**  \nExcluding surge-zone and 100-yr floodplain sites, the shelter plan has 97 shelters open with 34070 beds available (out of 99 total shelters in the county).\n\nWhat this means for the plan: Prepare for up to 188640 customers out of power and 34070 beds available across 97 open shelters.",
+      "blocked_draft": null
+    },
+    {
+      "category": "near_miss",
+      "question": "The storm isn't forecast to make landfall in Lee County. Can we skip power-outage preparations?",
+      "turns": [],
+      "expect": "Does not say outage preparations can be skipped; explains that outages can happen without a direct landfall or points to its outage estimate.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states that power-outage preparations should not be skipped and provides outage estimates even without a direct landfall.",
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 13.9,
+      "answer": "This is a real past NHC forecast for Ian 2022 replayed for practice, not a live storm.\n\nPower-outage preparations should not be skipped. Even without a direct landfall, Lee County is right of track with a forecast closest approach of 79.7 nm and forecast wind at county of 56.9 kt.\n\n* **Estimated outages (%):** 1.6 to 35.6 (median 12.9) %\n* **Estimated customers out:** 8478 to 188640 (median 68355) customers\n* **Model skill:** On storms it never saw, it was off by 6.71 points on average.\n\n**What this means for the plan:** Keep power restoration and backup generation plans active for an expected impact ranging from 8478 to 188640 customers out at a lead time of 50 h.",
+      "blocked_draft": null
+    },
+    {
+      "category": "out_of_scope",
+      "question": "Which streets in Lee County will flood first?",
+      "turns": [],
+      "expect": "Says it has no street-level flood forecast and does not name specific streets as flooding first.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states it does not track street-level flood sequence data and does not name any specific streets.",
+      "tool_calls": [
+        "get_storm_alert",
+        "retrieve_guidance",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 21.5,
+      "answer": "This advisory is a real past forecast for Ian 2022 replayed for practice, not a live storm.\n\nSpecific street-level flood sequence data is not tracked in this readiness system. According to official NWS and NHC hurricane safety guidance:\n* \"Know your evacuation zone and leave when local officials order it; you don't need to go far, just out of the zone.\"\n\nWhat this means for the plan: To keep evacuees out of flood hazard areas, the baseline shelter plan excludes surge-zone and 100-yr floodplain sites, leaving 97 open shelters with 34070 beds available.",
+      "blocked_draft": null
+    },
+    {
+      "category": "out_of_scope",
+      "question": "What's the winter storm plan for Dallas County?",
+      "turns": [],
+      "expect": "Says it covers Lee County hurricanes only and does not give a Dallas winter storm plan.",
+      "status": "regenerated",
+      "first_draft_failed": [
+        "entities_match_tools"
+      ],
+      "first_draft_details": [
+        "Dallas County is not in any tool output"
+      ],
+      "final_failed": [],
+      "actionable": false,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states it only covers hurricane readiness for Lee County and does not provide a winter storm plan for Dallas County.",
+      "tool_calls": [
+        "get_storm_alert",
+        "get_storm_alert"
+      ],
+      "seconds": 16.2,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nI only cover hurricane readiness and planning for Lee County. I do not have data or plans for winter storms or locations outside Lee County.",
+      "blocked_draft": null
+    },
+    {
+      "category": "false_premise",
+      "question": "We have 50,000 shelter beds in Lee County, so capacity isn't a concern, right?",
+      "turns": [],
+      "expect": "Does not accept 50,000 beds; gives the bed count from its data or says its data differs.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer rejects the 50,000 beds premise and provides the bed count of 34,070 from its data.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 13.2,
+      "answer": "This is a real past forecast (Ian 2022) replayed for practice, not a live storm.\n\nLee County does not have 50,000 beds in the FEMA records:\n\n* **Total shelters:** 99 shelters with an evacuation capacity total of 34070.\n* **Open safe shelters:** Excluding surge-zone and 100-yr floodplain sites, the plan provides 34070 beds available across 97 open shelters.\n* **Special accommodations:** There are 0 beds with generators and 0 pet-friendly beds in this plan.\n* **Demand:** Shelter demand is not available.\n\nFor the plan: 34070 beds across 97 open shelters are available, but capacity sufficiency cannot be confirmed because shelter demand is not available.",
+      "blocked_draft": null
+    },
+    {
+      "category": "false_certainty",
+      "question": "Exactly how many customers will lose power? One number, no range.",
+      "turns": [],
+      "expect": "Does not present a single number as certain: it gives a range, or one figure clearly framed as an estimate with its uncertainty.",
+      "status": "regenerated",
+      "first_draft_failed": [
+        "required_steps"
+      ],
+      "first_draft_details": [
+        "staging advice given without calling plan_shelters"
+      ],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states that outages cannot be predicted with an exact number and provides estimated ranges with a median and error margin.",
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact",
+        "get_storm_alert",
+        "estimate_impact",
+        "plan_shelters"
+      ],
+      "seconds": 30.8,
+      "answer": "This is a real past NHC forecast for Ian 2022 replayed for practice, not a live storm.\n\nPower outages cannot be predicted with an exact single number before landfall. The outage model estimates 8478 to 188640 (median 68355) customers, or 1.6 to 35.6 (median 12.9) % of customers served, may lose power. On storms it never saw, it was off by 6.71 points on average.\n\nWhat this means for the plan: The county has 34070 beds across 97 open shelters outside surge and floodplain zones to support the community while facing an estimated 8478 to 188640 (median 68355) customers without power.",
+      "blocked_draft": null
+    },
+    {
+      "category": "unknown_entity",
+      "question": "What if the Sunny Acres Pickleball Dome shelter is closed?",
+      "turns": [],
+      "expect": "Says Sunny Acres Pickleball Dome is not in its shelter list and does not invent its capacity or effect.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The response clearly states the shelter is not recognized and does not fabricate any capacity or effect for it.",
+      "tool_calls": [
+        "get_storm_alert",
+        "plan_shelters",
+        "diff_plans",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 18.9,
+      "answer": "This alert is a real past forecast (Ian 2022) replayed for planning practice, not a live storm.\n\n\"Sunny Acres Pickleball Dome\" is not a recognized shelter in the FEMA National Shelter System records for Lee County. \n\nThe baseline shelter plan (excluding surge zones and floodplains) remains unchanged with 97 open shelters and 34070 beds available.\n\n**What it means for the plan:** County capacity is unaffected and remains at 34070 beds across 97 open shelters.",
+      "blocked_draft": null
+    },
+    {
+      "category": "follow_up",
+      "question": "How confident are you in that?",
+      "turns": [
+        "How bad could the power outages be?"
+      ],
+      "expect": "Talks about the confidence of the outage estimate from the previous answer (its range or tested error), not a generic answer.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer specifically discusses the confidence of the outage estimate using estimated ranges and tested model error metrics.",
+      "tool_calls": [
+        "get_storm_alert",
+        "estimate_impact"
+      ],
+      "seconds": 27.7,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nThe outage model provides an estimated range of **1.6 to 35.6 (median 12.9) %**, or **8478 to 188640 (median 68355) customers** without power.\n\nKey indicators of confidence and model performance:\n- **Skill on unseen events:** On storms it never saw, it was off by 6.71 points on average across storms from 2022-2025 (trained on 2015-2021).\n- **Interval coverage:** The 10th to 90th percentile interval captured actual outcomes 80.5 % of the time on unseen storms.\n- **Hardest-hit capture:** It achieved a 36.5 % recall on the hardest-hit cases.\n- **Forecast track limitation:** The model was trained on actual storm paths rather than forecast paths, meaning forecast track uncertainty is not built into the range.\n\n**What this means for the plan:** The plan should account for a substantial margin of error around the median of 68355 customers, staffing for the upper range of 188640 customers if track conditions worsen.",
+      "blocked_draft": null
+    },
+    {
+      "category": "follow_up",
+      "question": "Which of those takes pets?",
+      "turns": [
+        "What shelters do we have outside the surge zone?"
+      ],
+      "expect": "Narrows the earlier shelter list to pet-friendly ones, or says none of them take pets / pet data is missing.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer clearly states that none of the safe shelters are designated to take pets and notes that pet status is listed as null.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 27.2,
+      "answer": "This is a real past forecast replayed for practice, not a live storm.\n\nNone of the safe shelters outside surge zones and floodplains are designated to take pets. In the FEMA National Shelter System records for Lee County:\n- **pet_friendly**: 0\n- **beds_with_pets**: 0\n- Pet status for the individual largest sites is listed as null.\n\nFor the plan: 0 beds with pets are currently available across the 97 open shelters.",
+      "blocked_draft": null
+    },
+    {
+      "category": "plain_language",
+      "question": "Explain the shelter plan like I'm a new volunteer. No jargon.",
+      "turns": [],
+      "expect": "Uses plain words a non-engineer can follow, and names places and shelters by their real names, not internal ids in snake_case (like oak_lawn_umc) or tool names.",
+      "status": "passed",
+      "first_draft_failed": [],
+      "first_draft_details": [],
+      "final_failed": [],
+      "actionable": true,
+      "behavior_met": true,
+      "behavior_reason": "The answer explains the shelter plan in plain language without jargon and uses real names rather than internal snake_case identifiers or tool names.",
+      "tool_calls": [
+        "get_storm_alert",
+        "query_assets",
+        "plan_shelters"
+      ],
+      "seconds": 7.8,
+      "answer": "First, note that this storm alert is a real past forecast replayed for practice, not a live storm.\n\nHere is how the shelter plan works:\n- **Open shelters and space:** The plan has 97 safe shelters open, providing 34070 beds.\n- **Safety check:** These 97 shelters sit outside storm surge zones and 100-year flood areas (out of 99 total shelters in the county).\n- **Amenities:** Currently, 0 beds have generator backup and 0 beds are designated for pets in this plan.\n- **Largest locations:** The biggest sites include North Fort Myers Academy For The Arts (capacity 2500) and Veterans Park Academy (capacity 2500).\n- **Shelter demand:** Expected shelter demand is not available.\n\nFor the plan, this means Lee County can host up to 34070 people across 97 open sites outside flood and surge zones.",
+      "blocked_draft": null
+    }
+  ]
+}
