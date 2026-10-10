@@ -66,15 +66,17 @@ export default function DistrictMap({ geojson, values, format, legendTitle, sele
           <GeoJSON key={`${nums.join(",")}-${selected}`} data={geojson} style={style} onEachFeature={onEach} />
           <FitToDistricts geojson={geojson} />
         </MapContainer>
-      </div>
-      <div className={LEGEND}>
-        <span className="font-semibold">{legendTitle}:</span>
-        {BANDS.map((b, i) => (
-          <span key={b} className={LEGEND_ITEM}>
-            <span className={LEGEND_SWATCH} style={{ background: RISK_HEX[b] }} />
-            {i === 0 ? `≤ ${format(cuts[0] ?? 0)}` : i === 3 ? `> ${format(cuts[2] ?? 0)}` : `${format(cuts[i - 1])}–${format(cuts[i])}`}
-          </span>
-        ))}
+        {/* Inside MAP_FRAME (the `relative` box): LEGEND is `absolute`, so this pins it to the
+            map's bottom-left corner instead of a distant ancestor (same as CountyMap). */}
+        <div className={LEGEND}>
+          <span className="font-semibold">{legendTitle}:</span>
+          {BANDS.map((b, i) => (
+            <span key={b} className={LEGEND_ITEM}>
+              <span className={LEGEND_SWATCH} style={{ background: RISK_HEX[b] }} />
+              {i === 0 ? `≤ ${format(cuts[0] ?? 0)}` : i === 3 ? `> ${format(cuts[2] ?? 0)}` : `${format(cuts[i - 1])}–${format(cuts[i])}`}
+            </span>
+          ))}
+        </div>
       </div>
     </div>
   );
