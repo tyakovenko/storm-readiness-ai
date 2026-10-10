@@ -10,7 +10,7 @@ const utc = (iso) => new Date(iso).toLocaleString("en-US", { weekday: "short", h
 
 function Stat({ label, value, sub }) {
   return (
-    <div className="min-w-0 rounded-xl bg-slate-50 p-2.5 dark:bg-slate-800/60">
+    <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-100 p-2.5">
       <div className="text-[0.62rem] font-bold uppercase tracking-wide text-muted">{label}</div>
       <div className="text-sm font-extrabold text-navy">{value}</div>
       {sub && <div className="text-[0.68rem] leading-snug text-muted">{sub}</div>}

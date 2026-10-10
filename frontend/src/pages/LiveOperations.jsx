@@ -172,7 +172,7 @@ function LiveFeedConsole({ onOpenScenario, agents }) {
 
   return (
     <>
-    <div className="mt-12 overflow-hidden rounded-3xl border border-sky-100 dark:border-sky-500/20 bg-surface ocean-card-shadow">
+    <div className="mt-12 overflow-hidden rounded-3xl border border-sky-100 bg-surface ocean-card-shadow">
       {/* Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-gradient-to-r from-sky-950 via-[#0a2342] to-teal-950 px-6 py-4 text-white">
         <div className="flex items-center gap-3">
@@ -281,7 +281,7 @@ function LiveFeedConsole({ onOpenScenario, agents }) {
         <div className="flex min-w-0 flex-col p-6 bg-[#f8fafc]/50">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-[0.72rem] font-bold uppercase tracking-wider text-accent">Resource Staging Plan</span>
-            <span className="rounded-md border border-teal-200 bg-teal-50 px-2 py-0.5 text-[0.68rem] font-bold text-teal-800 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-300">
+            <span className="rounded-md border border-teal-200 bg-teal-50 px-2 py-0.5 text-[0.68rem] font-bold text-teal-800">
               Per storm · planning estimate
             </span>
           </div>

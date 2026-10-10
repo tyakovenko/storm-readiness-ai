@@ -81,7 +81,7 @@ export default function OperationalCountyScenarios({ agents, onOpen, hurricaneIm
               type="button"
               disabled={broken}
               onClick={() => onOpen(a.id)}
-              className="group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface p-0 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-sky-400 dark:hover:border-sky-400 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+              className="group relative flex h-full min-w-0 cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-surface p-0 text-left shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-sky-400 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
             >
               <img src={isHurricane ? hurricaneImage : winterImage}
                 alt={isHurricane ? "Illustrative hurricane scenery, not a live satellite forecast" : "Illustrative winter storm scenery"}
@@ -98,7 +98,7 @@ export default function OperationalCountyScenarios({ agents, onOpen, hurricaneIm
               <div className="flex min-w-0 flex-1 flex-col p-4">
                 {/* Top Badge & Hazard Icon */}
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                  <div className="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 dark:bg-sky-950/60 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wider text-accent-dark dark:text-sky-300">
+                  <div className="inline-flex items-center gap-1.5 rounded-lg bg-sky-50 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-wider text-accent-dark">
                     {isHurricane ? <HurricaneIcon /> : <SnowflakeIcon />}
                     <span>{isHurricane ? "Hurricane" : "Winter Storm"}</span>
                   </div>
@@ -107,8 +107,8 @@ export default function OperationalCountyScenarios({ agents, onOpen, hurricaneIm
                     broken
                       ? "bg-red-100 text-red-700"
                       : isHurricane
-                      ? "bg-teal-50 dark:bg-teal-950/80 text-teal-800 dark:text-teal-300 border border-teal-200/50 dark:border-teal-800"
-                      : "bg-blue-50 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-200/50 dark:border-blue-800"
+                      ? "bg-teal-50 text-teal-800 border border-teal-200/50"
+                      : "bg-blue-50 text-blue-800 border border-blue-200/50"
                   }`}>
                     {broken ? "Offline" : isHurricane ? (a.replay ? `Replay: ${a.replay}` : "Available scenario") : "Planning / alert"}
                   </span>
@@ -128,20 +128,20 @@ export default function OperationalCountyScenarios({ agents, onOpen, hurricaneIm
                 </p>
 
                 {/* Key Metrics Pills */}
-                <div className="mt-3 mb-3 flex flex-wrap gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="mt-3 mb-3 flex flex-wrap gap-2 pt-2 border-t border-slate-100">
                   {isHurricane ? (
                     <>
-                      <div className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-2 text-center">
+                      <div className="flex-1 rounded-xl border border-slate-200 bg-slate-100 p-2 text-center">
                         <div className="text-[0.68rem] font-bold uppercase text-muted">Past Storms</div>
                         <div className="text-sm font-extrabold text-navy">{fmt(a.storms)}</div>
                       </div>
-                      <div className="flex-1 rounded-xl bg-slate-50 dark:bg-slate-800/60 p-2 text-center">
+                      <div className="flex-1 rounded-xl border border-slate-200 bg-slate-100 p-2 text-center">
                         <div className="text-[0.68rem] font-bold uppercase text-muted">Shelters</div>
                         <div className="text-sm font-extrabold text-navy">{fmt(a.shelters)}</div>
                       </div>
                     </>
                   ) : (
-                    <div className="w-full rounded-xl bg-slate-50 dark:bg-slate-800/60 p-2">
+                    <div className="w-full rounded-xl border border-slate-200 bg-slate-100 p-2">
                       <div className="text-[0.72rem] font-semibold text-navy">Dallas Winter Response</div>
                       <div className="text-[0.68rem] text-muted">Outage predictions • Tree crews • 311 history</div>
                     </div>
@@ -149,7 +149,7 @@ export default function OperationalCountyScenarios({ agents, onOpen, hurricaneIm
                 </div>
 
                 {/* Action CTA */}
-                <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-slate-100/80 dark:border-slate-800 text-[0.78rem] font-semibold text-accent group-hover:text-accent-dark">
+                <div className="mt-auto flex items-center justify-between gap-2 pt-2 border-t border-slate-100/80 text-[0.78rem] font-semibold text-accent group-hover:text-accent-dark">
                   <span>Open Operations Dashboard</span>
                   <span className="transition-transform group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
                 </div>
