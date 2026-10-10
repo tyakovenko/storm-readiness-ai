@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 DALLAS = {"id": "dallas-winter", "name": "Dallas County winter storm", "hazard": "winter", "county": "Dallas County",
           "state": "TX", "fips": "48113", "status": "live"}
 
+LIVE_ID = "live-storms"  # agent/live_adk.py: the storms NHC is tracking now
+
 _lock = threading.Lock()
 _agents: dict[str, tuple] = {}
 
@@ -41,6 +43,10 @@ def get(agent_id: str, model_name: str | None = None):
     with _lock:
         if agent_id in _agents:
             return _agents[agent_id]
+        if agent_id == LIVE_ID:  # not a county card, so not in list_agents()
+            from agent.live_adk import build_live_agent
+            _agents[agent_id] = ("live", *build_live_agent(model_name))
+            return _agents[agent_id]
         meta = next((a for a in list_agents() if a["id"] == agent_id), None)
         if meta is None or str(meta.get("status", "")).startswith("error"):
             raise KeyError(agent_id)
@@ -56,7 +62,20 @@ def get(agent_id: str, model_name: str | None = None):
 
 
 def chat(agent_id: str, question: str, history: list[dict], judge=None) -> dict:
+    from agent.landing_router import scenario_for
+    from agent.live_adk import is_live_question, names_active_storm, run_live_agent
+    # A question about a storm NHC is tracking now goes to the live agent from any page; the open
+    # county's scenario is a replay and can't answer it. The reverse too: on the live page, a question
+    # naming a replay scenario (and no active storm) goes to that county's replay agent.
+    if agent_id != LIVE_ID and is_live_question(question, strict=True):
+        agent_id, history = LIVE_ID, []
+    elif agent_id == LIVE_ID and not names_active_storm(question):
+        replay = scenario_for(question, list_agents())
+        if replay:
+            agent_id, history = replay["id"], []
     kind, agent, ts = get(agent_id)
+    if kind == "live":
+        return run_live_agent(question, history, agent, ts, judge)
     if kind == "winter":
         from agent.dallas_adk import run_dallas_agent
         return run_dallas_agent(question, history, agent, judge)

@@ -48,9 +48,17 @@ def _resolve_horizon(replay: dict, slug: str, horizon_h: int | None) -> tuple[in
     return horizon_h, available
 
 
+def _is_published(fips: str) -> bool:
+    """A county has a pack only if the index lists it. Checked first so a county without one
+    doesn't cost an (uncached) failed bucket lookup on every overview request."""
+    return any(p.get("fips") == fips for p in store.index())
+
+
 def _shelters_for(fips: str) -> list[dict]:
     """Real shelters from that county's own pack, tagged with county_fips -- [] (never invented)
     for a county with no published pack."""
+    if not _is_published(fips):
+        return []
     try:
         shelters = store.table(fips, "assets.json").get("shelters", [])
     except store.PackUnavailable:
@@ -67,6 +75,8 @@ def _shelters_for(fips: str) -> list[dict]:
 
 
 def _has_local_pack(fips: str) -> bool:
+    if not _is_published(fips):
+        return False
     try:
         store.table(fips, "assets.json")
     except store.PackUnavailable:

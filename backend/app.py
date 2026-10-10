@@ -342,6 +342,72 @@ def live_storms():
     return get_poller().get_active_storms()
 
 
+@app.get("/api/live/storms/{storm_id}/track")
+def live_storm_track(storm_id: str):
+    """Official NHC forecast track (latest advisory cycle) for one active storm."""
+    from hurricane.live_feed import get_poller
+    from models.live_atcf_source import AtcfSourceError
+    try:
+        return get_poller().get_forecast_track(storm_id)
+    except (AtcfSourceError, ValueError) as e:
+        raise HTTPException(status_code=503, detail=f"Forecast track unavailable for {storm_id}: {e}")
+
+
+@app.get("/api/live/storms/{storm_id}/risk")
+def live_storm_risk(storm_id: str):
+    """At-risk US counties for one live storm (trained outage model on the NHC forecast), each with
+    shelters, hospitals, fire departments and storm history, plus a staging site for this storm."""
+    from hurricane.live_risk import storm_risk
+    from models.live_atcf_source import AtcfSourceError
+    try:
+        return storm_risk(storm_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"{storm_id} is not an active NHC storm")
+    except (AtcfSourceError, ValueError) as e:
+        raise HTTPException(status_code=503, detail=f"Risk view unavailable for {storm_id}: {e}")
+
+
+class SimulateRequest(BaseModel):
+    role: str
+    fips: str
+    mode: Literal["hypothetical", "live"] = "hypothetical"
+    storm_id: str | None = None
+    category: str = "3"
+    approach: str = "south"
+    offset: str = "direct"
+    hours_to_landfall: int = 72
+
+
+@app.get("/api/simulate/setup")
+def simulate_setup():
+    """Roles and storm settings for the Ask AI simulator."""
+    from hurricane.simulator import setup
+    return setup()
+
+
+@app.get("/api/simulate/counties")
+def simulate_counties(q: str = Query("", min_length=0)):
+    """US counties matching a name (optionally "Name, ST") for the simulator's county picker."""
+    from hurricane.simulator import search_counties
+    return search_counties(q)
+
+
+@app.post("/api/simulate")
+def simulate(body: SimulateRequest):
+    """A response-team hurricane exercise for one county: phased timeline, role actions, real resources,
+    and the trained model's outage estimate for a live or hypothetical storm."""
+    from hurricane.simulator import build
+    from models.live_atcf_source import AtcfSourceError
+    try:
+        return build(**body.model_dump())
+    except KeyError as e:
+        raise HTTPException(status_code=404, detail=f"Not found: {e}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except AtcfSourceError as e:
+        raise HTTPException(status_code=503, detail=f"Live forecast unavailable: {e}")
+
+
 @app.get("/api/live/alerts")
 def live_alerts(fips: str | None = Query(None)):
     """Active NWS tropical cyclone, hurricane, and storm surge watches and warnings."""

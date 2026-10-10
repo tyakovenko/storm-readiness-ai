@@ -2,8 +2,44 @@
 .live-operations .font-heading { font-family: inherit; }
 .live-operations .bg-surface-subtle { background-color: #f8fafc; }
 .live-operations .ocean-card-shadow { box-shadow: 0 4px 20px -2px rgba(10,37,64,.06), 0 2px 6px -1px rgba(10,37,64,.04); }
-@keyframes live-operations-radar { to { transform: rotate(360deg); } }
-.live-operations .animate-radar { animation: live-operations-radar 4s linear infinite; }
+
+/* Live storm map: spinning cyclone glyph (counter-clockwise, as Northern Hemisphere storms turn) */
+@keyframes live-ops-spin { to { transform: rotate(-360deg); } }
+@keyframes live-ops-pulse { from { transform: scale(0.6); opacity: 0.7; } to { transform: scale(2.4); opacity: 0; } }
+@keyframes live-ops-flow { to { stroke-dashoffset: -48; } }
+
+.live-storm-icon { position: relative; width: var(--s); height: var(--s); }
+.live-storm-icon__spin {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  filter: drop-shadow(0 0 6px var(--c));
+  animation: live-ops-spin 2.6s linear infinite;
+}
+.live-storm-icon__pulse {
+  position: absolute; inset: 0; border-radius: 9999px;
+  border: 2px solid var(--c);
+  animation: live-ops-pulse 2.2s ease-out infinite;
+}
+.live-storm-icon__label,
+.live-staging-icon__label {
+  position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%);
+  white-space: nowrap; font: 700 12px/1 system-ui, sans-serif; color: #fff;
+  text-shadow: 0 1px 3px #000, 0 0 8px #000;
+  pointer-events: none;
+}
+.live-storm-icon.is-selected .live-storm-icon__label { font-size: 14px; }
+
+.live-staging-icon { position: relative; width: 18px; height: 18px; }
+.live-staging-icon__box {
+  display: block; width: 100%; height: 100%; border-radius: 3px;
+  background: #38bdf8; border: 2px solid #fff; box-shadow: 0 0 10px rgba(56,189,248,.8);
+}
+.live-staging-icon__label { font-size: 11px; color: #bae6fd; }
+
+/* Dashes flowing along forecast tracks and staging-to-county truck routes */
+.live-operations .live-track-flow { animation: live-ops-flow 1.6s linear infinite; }
+.live-operations .live-route-flow { animation: live-ops-flow 2.4s linear infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .live-operations .animate-radar, .live-operations .animate-ping { animation: none; }
+  .live-storm-icon__spin, .live-storm-icon__pulse,
+  .live-operations .live-track-flow, .live-operations .live-route-flow { animation: none; }
 }
