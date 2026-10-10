@@ -33,9 +33,8 @@ def _names_for(agent: dict) -> set[str]:
     return {n for n in names if n}
 
 
-def route(question: str, agents: list[dict]) -> dict:
-    """{'kind': 'agent', 'agent_id': ...} if the question names a scenario, else
-    {'kind': 'none', 'agents': [...available scenarios...]}."""
+def scenario_for(question: str, agents: list[dict]) -> dict | None:
+    """The county replay scenario (or Dallas) a question names, if any."""
     live = [a for a in agents if not str(a.get("status", "")).startswith("error")]
     by_name: dict[str, dict] = {}
     for a in live:
@@ -45,8 +44,21 @@ def route(question: str, agents: list[dict]) -> dict:
     # Longest name first: "Miami-Dade County" must win over a shorter substring collision.
     for name in sorted(by_name, key=len, reverse=True):
         if re.search(rf"(?<!\w){re.escape(name)}(?!\w)", ql):
-            return {"kind": "agent", "agent_id": by_name[name]["id"]}
-    return {"kind": "none", "agents": live}
+            return by_name[name]
+    return None
+
+
+def route(question: str, agents: list[dict]) -> dict:
+    """{'kind': 'agent', 'agent_id': ...} if the question asks about the storms NHC is tracking now (the
+    live agent) or names a replay scenario, else {'kind': 'none', 'agents': [...available scenarios...]}."""
+    from .live_adk import is_live_question
+    from .registry import LIVE_ID
+    if is_live_question(question):
+        return {"kind": "agent", "agent_id": LIVE_ID}
+    match = scenario_for(question, agents)
+    if match:
+        return {"kind": "agent", "agent_id": match["id"]}
+    return {"kind": "none", "agents": [a for a in agents if not str(a.get("status", "")).startswith("error")]}
 
 
 def _describe(agent: dict) -> str:
@@ -65,7 +77,8 @@ def no_storm_selected_response(agents: list[dict]) -> dict:
     options = "; ".join(_describe(a) for a in agents)
     answer = (
         "No storm or county is selected yet, so I can't give an area-specific answer. "
-        f"Available scenarios: {options}. Open one from the home page, or name it here "
+        'For the storms happening now, just ask (e.g. "Which storms are active right now?"). '
+        f"Past-storm scenarios: {options}. Open one from the home page, or name it here "
         '(e.g. "Dallas" or "Hurricane Beryl in Harris County") and I\'ll answer for that one.'
     )
     return {

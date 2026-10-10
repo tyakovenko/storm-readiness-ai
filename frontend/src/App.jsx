@@ -320,9 +320,10 @@ function MultiAgentApp() {
   const isLiveOperations = kind === "live-operations";
   const isLandingPage = kind === "home" || (kind === "agent" && !agent);
 
-  const chatAgentId = isStorm ? (stormAgent ? slug : null) : agent ? agentId : null;
-  const chatHazard = isStorm ? "hurricane" : agent?.hazard ?? null;
-  const chatAgentName = isStorm ? stormAgent?.name : agent?.name;
+  // Live Operations asks the live-storms agent (backend/agent/live_adk.py): the storms NHC is tracking now.
+  const chatAgentId = isLiveOperations ? "live-storms" : isStorm ? (stormAgent ? slug : null) : agent ? agentId : null;
+  const chatHazard = isLiveOperations ? "live" : isStorm ? "hurricane" : agent?.hazard ?? null;
+  const chatAgentName = isLiveOperations ? "Live storms · NOAA National Hurricane Center" : isStorm ? stormAgent?.name : agent?.name;
 
   return (
     <div
@@ -427,9 +428,10 @@ function MultiAgentApp() {
       </main>
 
       {/* Single Ask AI instance.
-          A new agent resets the conversation. */}
+          A new agent resets the conversation; the home page and Live Operations share one, so a
+          conversation started on the home page carries over to the live-storms agent and back. */}
       <AskAI
-        key={chatAgentId ?? "none"}
+        key={isLiveOperations ? "none" : chatAgentId ?? "none"}
         open={askAIOpen && (!isLiveOperations || askAIMode !== "inline")}
         onClose={() => {
           setAskAIOpen(false);

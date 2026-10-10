@@ -176,3 +176,32 @@ def test_live_api_endpoints(client):
         threat = resp.json()
         assert threat["county_fips"] == "12123"
         assert "threat_level" in threat
+
+
+def _ofcl(cycle_h, tau_h, lat, lon, vmax):
+    from datetime import datetime, timedelta, timezone
+    from types import SimpleNamespace
+    cycle = datetime(2026, 10, 9, cycle_h, tzinfo=timezone.utc)
+    return SimpleNamespace(cycle_init_time_utc=cycle, tau_h=tau_h, valid_time_utc=cycle + timedelta(hours=tau_h),
+                           lat=lat, lon=lon, vmax_kt=vmax, mslp_mb=None)
+
+
+def test_forecast_track_uses_latest_cycle_and_caches():
+    points = [_ofcl(6, 0, 26.0, -88.0, 100), _ofcl(6, 12, 28.0, -87.5, 100),
+              _ofcl(12, 12, 29.7, -86.8, 100), _ofcl(12, 0, 27.0, -87.6, 105)]
+    poller = LiveFeedPoller()
+    with patch("models.live_atcf_source.fetch_current_adeck_bytes", return_value=b"") as fetch, \
+         patch("models.live_atcf_source.parse_current_adeck", return_value=points):
+        track = poller.get_forecast_track("al092026")
+        poller.get_forecast_track("AL092026")
+    assert fetch.call_count == 1
+    assert track["storm_id"] == "AL092026"
+    assert track["cycle_utc"].startswith("2026-10-09T12:00")
+    assert [(p["tau_h"], p["lat"]) for p in track["points"]] == [(0, 27.0), (12, 29.7)]
+
+
+def test_forecast_track_endpoint_reports_unavailable(client):
+    from models.live_atcf_source import AtcfNetworkError
+    with patch("models.live_atcf_source.fetch_current_adeck_bytes", side_effect=AtcfNetworkError("offline")):
+        resp = client.get("/api/live/storms/ZZ992026/track")
+    assert resp.status_code == 503

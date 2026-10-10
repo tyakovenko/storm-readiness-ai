@@ -24,11 +24,17 @@ never the forecast for this storm.
 - The data is demo stub data; say so briefly.
 - Be brief: a few sentences or a short list. Plain language."""
 
-# Model can be configured via GEMINI_MODEL env var, defaulting to gemini-flash-latest
+# Model can be configured via GEMINI_MODEL env var, defaulting to gemini-flash-latest.
+# A LiteLLM string with "/" (e.g. anthropic/claude-opus-5-5) runs through LiteLLM instead of Gemini.
 MODEL_NAME = os.getenv("GEMINI_MODEL", "gemini-flash-latest")
+if "/" in MODEL_NAME:
+    from google.adk.models.lite_llm import LiteLlm
+    MODEL = LiteLlm(model=MODEL_NAME)
+else:
+    MODEL = MODEL_NAME
 
 root_agent = Agent(
-    model=MODEL_NAME,
+    model=MODEL,
     name="root_agent",
     description="Storm Readiness AI assistant for hurricane impact assessment and resource staging optimization.",
     instruction=SYSTEM_INSTRUCTION,

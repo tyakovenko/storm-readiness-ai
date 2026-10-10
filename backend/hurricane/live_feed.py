@@ -79,6 +79,7 @@ class LiveFeedPoller:
         self._cached_storms: list[dict] = []
         self._cached_alerts: list[dict] = []
         self._is_connected: bool = False
+        self._tracks: dict[str, tuple[float, list]] = {}  # storm_id -> (fetched_ts, latest-cycle points)
 
     def poll(self, force: bool = False) -> dict[str, Any]:
         """Fetch latest active storms and alerts if cache expired or force=True."""
@@ -109,7 +110,7 @@ class LiveFeedPoller:
                             "lat": lat,
                             "lon": lon,
                             "movement_dir_deg": s.get("movementDir"),
-                            "movement_speed_kt": s.get("movementSpeed"),
+                            "movement_speed_mph": s.get("movementSpeed"),  # NHC reports mph, not kt
                             "last_update_utc": s.get("lastUpdate"),
                             "advisory_num": pa.get("advNum"),
                             "public_advisory_url": pa.get("url"),
@@ -165,6 +166,46 @@ class LiveFeedPoller:
         self.poll()
         with self._lock:
             return list(self._cached_storms)
+
+    def get_forecast_points(self, storm_id: str) -> list:
+        """Latest-cycle OFCL ForecastPoints for one storm, cached per storm for the poller TTL.
+        Raises AtcfSourceError when NHC can't supply one -- no track is ever invented."""
+        from models.live_atcf_source import fetch_current_adeck_bytes, parse_current_adeck
+
+        storm_id = storm_id.upper()
+        now_ts = datetime.now(timezone.utc).timestamp()
+        with self._lock:
+            cached = self._tracks.get(storm_id)
+            if cached and (now_ts - cached[0]) < self.ttl:
+                return cached[1]
+
+        points = parse_current_adeck(fetch_current_adeck_bytes(storm_id, timeout_s=HTTP_TIMEOUT_SEC))
+        cycle = max(p.cycle_init_time_utc for p in points)
+        latest = sorted((p for p in points if p.cycle_init_time_utc == cycle), key=lambda p: p.tau_h)
+        with self._lock:
+            self._tracks[storm_id] = (now_ts, latest)
+        return latest
+
+    def get_forecast_track(self, storm_id: str) -> dict:
+        """Official NHC (OFCL) forecast track from the storm's latest a-deck advisory cycle."""
+        storm_id = storm_id.upper()
+        latest = self.get_forecast_points(storm_id)
+        cycle = latest[0].cycle_init_time_utc
+        utc = lambda dt: (dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)).isoformat()  # ATCF times are UTC
+        track = {
+            "storm_id": storm_id,
+            "cycle_utc": utc(cycle),
+            "points": [{
+                "tau_h": p.tau_h,
+                "valid_utc": utc(p.valid_time_utc),
+                "lat": p.lat,
+                "lon": p.lon,
+                "vmax_kt": p.vmax_kt,
+                "mslp_mb": p.mslp_mb,
+            } for p in latest],
+            "source": "NOAA NHC ATCF a-deck (OFCL official forecast)",
+        }
+        return track
 
     def get_active_alerts(self, fips: str | None = None) -> list[dict]:
         """Return active tropical alerts, optionally filtered for a specific county FIPS."""

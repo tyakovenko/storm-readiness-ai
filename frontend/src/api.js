@@ -199,3 +199,28 @@ export function useStormOverview(slug, horizonH) {
   const isCurrent = state.key === key;
   return { overview: isCurrent ? state.overview : null, error: isCurrent ? state.error : "" };
 }
+// Official NHC forecast track (latest advisory cycle) for one live storm; 503 when NHC has none.
+export function fetchLiveTrack(stormId) {
+  return fetch(`/api/live/storms/${encodeURIComponent(stormId)}/track`).then(readJSON);
+}
+// At-risk counties (trained outage model on the NHC forecast) with their shelters, hospitals,
+// fire departments and storm history, plus this storm's own staging site.
+export function fetchLiveRisk(stormId) {
+  return fetch(`/api/live/storms/${encodeURIComponent(stormId)}/risk`).then(readJSON);
+}
+
+// Ask AI -> Simulate: response-team hurricane exercises (backend/hurricane/simulator.py).
+export function fetchSimulateSetup() {
+  return fetch("/api/simulate/setup").then(readJSON);
+}
+export function searchSimulateCounties(q) {
+  return fetch(`/api/simulate/counties?q=${encodeURIComponent(q)}`).then(readJSON);
+}
+export async function runSimulation(body) {
+  const res = await fetch("/api/simulate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!res.ok) {
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.detail || `HTTP ${res.status}`);
+  }
+  return res.json();
+}

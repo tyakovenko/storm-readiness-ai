@@ -2,32 +2,176 @@
 // Teammate console and scenario components, with explicit data provenance.
 import { useEffect, useState } from "react";
 import { fmt } from "../dallas/format.js";
-import { fetchLiveStatus, fetchLiveStorms, fetchStaging } from "../api.js";
+import RiskBadge from "../components/RiskBadge.jsx";
+import { getRiskLevel } from "../utils/riskTier.js";
+import { fetchLiveRisk, fetchLiveStatus, fetchLiveStorms, fetchLiveTrack } from "../api.js";
+import AtRiskCounties from "../components/live/AtRiskCounties.jsx";
+import LiveStormMap from "../components/live/LiveStormMap.jsx";
+import {
+  basinLabel, categoryFor, classificationLabel, compass, ktToMph, mphToKt, positionsFor,
+} from "../components/live/liveStorms.js";
 import "./LiveOperations.css";
+
+function FocusPill({ active, onClick, children }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1 font-semibold transition-all ${
+        active ? "bg-accent text-white shadow-xs" : "text-muted hover:text-ink"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+const hoursFromNow = (ms) => Math.round((ms - Date.now()) / 3.6e6);
+const UTC_STAMP = { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short" };
+
+function StormCard({ storm, track, trackState, risk, riskState, selected, onSelect }) {
+  const cat = categoryFor(storm.intensity_kt);
+  const points = positionsFor(storm, track);
+  const peak = points.reduce((m, p) => Math.max(m, Number(p.vmax_kt) || 0), 0);
+  const lastForecast = track && points.length > 1 ? points[points.length - 1] : null;
+  const updated = storm.last_update_utc ? new Date(storm.last_update_utc) : null;
+  const speedMph = storm.movement_speed_mph;
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onClick={onSelect}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
+      className={`flex cursor-pointer flex-col gap-2 rounded-2xl border bg-[#061527] p-3.5 text-left text-white transition-all ${
+        selected ? "border-sky-300 ring-2 ring-sky-400/40" : "border-sky-900/40 hover:border-sky-500/50"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="truncate font-heading text-base font-bold">{classificationLabel(storm.classification)} {storm.name}</div>
+          <div className="text-[0.7rem] text-sky-200/70">{storm.storm_id} · {basinLabel(storm.storm_id)}{storm.advisory_num ? ` · Adv ${storm.advisory_num}` : ""}</div>
+        </div>
+        <span className="shrink-0 rounded-md px-2 py-0.5 text-[0.68rem] font-extrabold text-[#061527]" style={{ background: cat.color }}>
+          {cat.short}
+        </span>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+        <div><dt className="text-[0.62rem] uppercase text-sky-300">Max wind</dt><dd className="font-bold">{storm.intensity_kt} kt ({ktToMph(storm.intensity_kt)} mph)</dd></div>
+        <div><dt className="text-[0.62rem] uppercase text-sky-300">Pressure</dt><dd className="font-bold">{storm.pressure_mb ? `${storm.pressure_mb} mb` : "—"}</dd></div>
+        <div><dt className="text-[0.62rem] uppercase text-sky-300">Moving</dt><dd className="font-bold">{speedMph != null ? `${compass(storm.movement_dir_deg)} at ${speedMph} mph` : "—"}</dd></div>
+        <div><dt className="text-[0.62rem] uppercase text-sky-300">Position</dt><dd className="font-bold">{Math.abs(storm.lat).toFixed(1)}°{storm.lat >= 0 ? "N" : "S"}, {Math.abs(storm.lon).toFixed(1)}°{storm.lon <= 0 ? "W" : "E"}</dd></div>
+      </dl>
+
+      <div className="border-t border-sky-800/50 pt-2 text-[0.72rem] leading-snug text-sky-100/90">
+        {track ? (
+          <>
+            Forecast peak <strong>{peak} kt ({categoryFor(peak).short})</strong>
+            {lastForecast && <> · reaches {lastForecast.lat.toFixed(1)}°N, {Math.abs(lastForecast.lon).toFixed(1)}°W in ~{hoursFromNow(lastForecast.ms)}h</>}
+          </>
+        ) : trackState === "loading" ? (
+          "Loading NHC forecast track…"
+        ) : (
+          <span className="text-amber-300">NHC forecast track unavailable; map shows current motion only ({speedMph != null ? `${mphToKt(speedMph)} kt` : "—"}).</span>
+        )}
+        <div className="mt-1">
+          {riskState === "loading" && <span className="text-sky-200/70">Scoring counties along the track…</span>}
+          {riskState === "error" && <span className="text-amber-300">County risk view unavailable.</span>}
+          {risk && (risk.counties.length ? (
+            <span className="font-semibold text-amber-300">
+              {risk.counties.length} US counties at risk · ~{fmt(risk.counties.reduce((a, c) => a + c.customers_out.median, 0))} customers out
+              {risk.staging && <span className="block font-normal text-sky-200/80">Staging: {risk.staging.county}, {risk.staging.state}</span>}
+            </span>
+          ) : (
+            <span className="text-sky-200/70">No US counties at risk on this forecast.</span>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-[0.66rem] text-sky-300/70">
+        <span>{updated ? `Updated ${updated.toLocaleString("en-US", UTC_STAMP)}` : ""}</span>
+        {storm.public_advisory_url && (
+          <a href={storm.public_advisory_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="font-semibold text-sky-300 hover:underline">
+            NHC advisory ↗
+          </a>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function LiveFeedConsole({ onOpenScenario, agents }) {
   const [liveStatus, setLiveStatus] = useState(null);
   const [liveStorms, setLiveStorms] = useState(null);
-  const [stagingData, setStagingData] = useState(null);
-  const [activeTab, setActiveTab] = useState("isaias"); // or 'staging'
+  const [risks, setRisks] = useState({});
+  const [riskState, setRiskState] = useState({});
+  const [tracks, setTracks] = useState({});
+  const [trackState, setTrackState] = useState({});
+  const [focus, setFocus] = useState(null); // null = all, a storm_id, or "resources"
   const [loading, setLoading] = useState(true);
+  const storms = liveStorms ?? [];
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
       fetchLiveStatus().catch(() => null),
       fetchLiveStorms().catch(() => null),
-      fetchStaging(14).catch(() => null),
-    ]).then(([status, storms, staging]) => {
+    ]).then(([status, storms]) => {
       if (cancelled) return;
       setLiveStatus(status);
       setLiveStorms(storms);
-      setStagingData(staging);
       setLoading(false);
     });
     return () => { cancelled = true; };
   }, []);
 
+  // One official-track request per live storm; a failure only affects that storm.
+  useEffect(() => {
+    if (!liveStorms?.length) return;
+    let cancelled = false;
+    setTrackState(Object.fromEntries(liveStorms.map((s) => [s.storm_id, "loading"])));
+    for (const s of liveStorms) {
+      fetchLiveTrack(s.storm_id)
+        .then((t) => {
+          if (cancelled) return;
+          setTracks((m) => ({ ...m, [s.storm_id]: t }));
+          setTrackState((m) => ({ ...m, [s.storm_id]: "ok" }));
+        })
+        .catch(() => { if (!cancelled) setTrackState((m) => ({ ...m, [s.storm_id]: "error" })); });
+    }
+    return () => { cancelled = true; };
+  }, [liveStorms]);
+
+  // Each storm's at-risk counties and its own staging site (slow on the backend's first run).
+  useEffect(() => {
+    if (!liveStorms?.length) return;
+    let cancelled = false;
+    setRiskState(Object.fromEntries(liveStorms.map((s) => [s.storm_id, "loading"])));
+    for (const s of liveStorms) {
+      fetchLiveRisk(s.storm_id)
+        .then((r) => {
+          if (cancelled) return;
+          setRisks((m) => ({ ...m, [s.storm_id]: r }));
+          setRiskState((m) => ({ ...m, [s.storm_id]: "ok" }));
+        })
+        .catch(() => { if (!cancelled) setRiskState((m) => ({ ...m, [s.storm_id]: "error" })); });
+    }
+    return () => { cancelled = true; };
+  }, [liveStorms]);
+
+  // The storm whose plan the side panel and county section show: the focused one, else the one
+  // needing the most trucks, else the first.
+  const focusedStorm = storms.find((s) => s.storm_id === focus);
+  const neediest = [...storms].sort((a, b) =>
+    (risks[b.storm_id]?.trucks_needed_total?.median ?? -1) - (risks[a.storm_id]?.trucks_needed_total?.median ?? -1))[0];
+  const planStorm = focusedStorm ?? neediest;
+  const plan = planStorm ? risks[planStorm.storm_id] : null;
+
   return (
+    <>
     <div className="mt-12 overflow-hidden rounded-3xl border border-sky-100 dark:border-sky-500/20 bg-surface ocean-card-shadow">
       {/* Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line bg-gradient-to-r from-sky-950 via-[#0a2342] to-teal-950 px-6 py-4 text-white">
@@ -43,7 +187,7 @@ function LiveFeedConsole({ onOpenScenario, agents }) {
               </span>
             </div>
             <p className="text-[0.75rem] text-sky-200/70">
-              {liveStatus?.source ?? "NOAA NHC Active Storms & NWS Tropical Alerts Feed"} &bull; Feed counts only • telemetry below is demo data
+              {liveStatus?.source ?? "NOAA NHC Active Storms & NWS Tropical Alerts Feed"} &bull; Live storm positions, NHC forecast tracks &amp; per-storm county risk
             </p>
           </div>
         </div>
@@ -62,188 +206,158 @@ function LiveFeedConsole({ onOpenScenario, agents }) {
       </div>
 
       <p className="px-6 py-3 text-xs text-muted" role="status">
-        {loading ? "Loading NOAA/NWS feeds and demo staging…" : "Feed counts use the backend’s five-minute cache; refresh this page to request an update."}
+        {loading ? "Loading NOAA/NWS feeds and demo staging…" : "Storms, tracks and counts use the backend’s five-minute cache; refresh this page to request an update."}
         {!loading && (!liveStatus || liveStatus.status !== "online" || !liveStorms) && " Some live feeds are unavailable; missing counts are not replaced with sample values."}
         {liveStatus?.last_polled_utc && " Last poll attempt: " + liveStatus.last_polled_utc + ". Cached data may be stale."}
       </p>
-      {/* Main Console Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] divide-y lg:divide-y-0 lg:divide-x divide-line">
-        {/* Left: Clickable Map / Radar Simulation */}
-        <div className="relative flex flex-col p-6">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <span className="text-[0.72rem] font-bold uppercase tracking-wider text-accent">Active System Telemetry · Demo</span>
-            {/* Storm Switcher Pills */}
-            <div className="flex items-center gap-1.5 rounded-xl border border-line bg-surface-subtle p-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setActiveTab("isaias")}
-                className={`cursor-pointer rounded-lg px-2.5 py-1 font-semibold transition-all ${
-                  activeTab === "isaias" ? "bg-accent text-white shadow-xs" : "text-muted hover:text-ink"
-                }`}
-              >
-                TS Isaias (Demo)
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("rachel")}
-                className={`cursor-pointer rounded-lg px-2.5 py-1 font-semibold transition-all ${
-                  activeTab === "rachel" ? "bg-accent text-white shadow-xs" : "text-muted hover:text-ink"
-                }`}
-              >
-                HU Rachel (Demo)
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("taylor")}
-                className={`cursor-pointer rounded-lg px-2.5 py-1 font-semibold transition-all ${
-                  activeTab === "taylor" ? "bg-accent text-white shadow-xs" : "text-muted hover:text-ink"
-                }`}
-              >
-                Taylor County (Replay)
-              </button>
-            </div>
-          </div>
-
-          <p className="mb-3 text-xs text-muted">Hardcoded illustrative telemetry and animated radar, not live satellite imagery. Tabs do not change the staging plan.</p>
-          {/* Radar Screen Area */}
-          <div className="relative flex min-h-[340px] w-full flex-col justify-between gap-4 overflow-hidden rounded-2xl border border-sky-900/30 bg-[#061527] p-5 text-white shadow-inner">
-            {/* Radar Grid & Concentric Rings */}
-            <div className="pointer-events-none absolute inset-0 [background-image:radial-gradient(circle_at_center,rgba(56,189,248,0.12)_1px,transparent_1px)] [background-size:24px_24px]" />
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="size-64 rounded-full border border-sky-500/20" />
-              <div className="size-44 rounded-full border border-teal-500/25" />
-              <div className="size-24 rounded-full border border-sky-400/30" />
-              {/* Radar sweep beam */}
-              <div className="animate-radar absolute size-64 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,transparent_300deg,rgba(56,189,248,0.25)_360deg)]" />
-            </div>
-
-            {/* Storm Coordinates Node */}
-            <div className="relative z-10 flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-heading text-lg font-bold text-white">
-                    {activeTab === "isaias" ? "Tropical Storm Isaias (AL092026)" : activeTab === "rachel" ? "Hurricane Rachel (EP182026)" : "Hurricane Idalia (Taylor County)"}
-                  </span>
-                  <span className="rounded bg-sky-500/30 border border-sky-400 px-2 py-0.5 text-[0.65rem] font-bold text-sky-200">
-                    {activeTab === "isaias" ? "55 KT • 994 MB" : activeTab === "rachel" ? "CAT 1 • 70 KT" : "CAT 3 • 110 KT"}
-                  </span>
-                </div>
-                <p className="text-xs text-sky-200/70">
-                  {activeTab === "isaias" ? "Gulf of Mexico • Lat 22.7°N, Lon 92.9°W" : activeTab === "rachel" ? "East Pacific • Lat 21.2°N, Lon 122.3°W" : "Florida Big Bend • Lat 29.8°N, Lon 83.6°W"}
-                </p>
-              </div>
-
-              {/* Pulsing Target Indicator */}
-              <div className="flex items-center gap-2 rounded-xl bg-sky-950/80 border border-sky-400/30 px-3 py-1.5 backdrop-blur-xs text-xs font-semibold">
-                <span className="size-2 rounded-full bg-rose-500 animate-ping" />
-                <span>Demo / Replay</span>
-              </div>
-            </div>
-
-            {/* Sea Surface & Environmental Telemetry Bar */}
-            <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-4 border-t border-sky-800/50 text-xs">
-              <div className="rounded-xl bg-white/5 p-2.5 backdrop-blur-xs">
-                <span className="text-[0.65rem] uppercase text-sky-300">Sea Surface Temp</span>
-                <div className="text-sm font-extrabold text-white">29.6°C / 85.3°F</div>
-                <span className="text-[0.65rem] text-emerald-400">Warm Loop Current</span>
-              </div>
-              <div className="rounded-xl bg-white/5 p-2.5 backdrop-blur-xs">
-                <span className="text-[0.65rem] uppercase text-sky-300">Central Pressure</span>
-                <div className="text-sm font-extrabold text-white">{activeTab === "isaias" ? "994 mb" : activeTab === "rachel" ? "979 mb" : "949 mb"}</div>
-                <span className="text-[0.65rem] text-sky-300">Deepening</span>
-              </div>
-              <div className="rounded-xl bg-white/5 p-2.5 backdrop-blur-xs">
-                <span className="text-[0.65rem] uppercase text-sky-300">Max Wind Gusts</span>
-                <div className="text-sm font-extrabold text-white">{activeTab === "isaias" ? "65 mph" : activeTab === "rachel" ? "85 mph" : "130 mph"}</div>
-                <span className="text-[0.65rem] text-amber-300">Tropical Force</span>
-              </div>
-              <div className="rounded-xl bg-white/5 p-2.5 backdrop-blur-xs">
-                <span className="text-[0.65rem] uppercase text-sky-300">Forward Motion</span>
-                <div className="text-sm font-extrabold text-white">8 kt (9 mph)</div>
-                <span className="text-[0.65rem] text-sky-300">ENE (65°)</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between text-xs text-muted">
-            {activeTab === "taylor" && (
-              <button
-                type="button"
-                disabled={!agents?.some((a) => a.id === "taylor-hurricane" && !String(a.status ?? "").startsWith("error"))}
-                onClick={() => onOpenScenario("taylor-hurricane")}
-                className="font-bold text-accent hover:underline flex items-center gap-1"
-              >
-                Launch Taylor County Dashboard &rarr;
-              </button>
-            )}
+      {/* Full-width live map: every active storm, its forecast track, and staged resources */}
+      <div className="border-b border-line px-6 pb-6">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[0.72rem] font-bold uppercase tracking-wider text-accent">Active Storms &amp; Resources · NOAA NHC</span>
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-line bg-surface-subtle p-1 text-xs" role="group" aria-label="Map focus">
+            <FocusPill active={focus === null} onClick={() => setFocus(null)}>All ({storms.length})</FocusPill>
+            {storms.map((s) => (
+              <FocusPill key={s.storm_id} active={focus === s.storm_id} onClick={() => setFocus(s.storm_id)}>
+                <span className="size-2 rounded-full" style={{ background: categoryFor(s.intensity_kt).color }} />
+                {s.name}
+              </FocusPill>
+            ))}
+            <FocusPill active={focus === "resources"} onClick={() => setFocus("resources")}>Resources</FocusPill>
           </div>
         </div>
 
-        {/* Right: Resource Optimizer & Allocation Status */}
-        <div className="flex flex-col p-6 bg-[#f8fafc]/50">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-[0.72rem] font-bold uppercase tracking-wider text-accent">Resource Staging Optimizer</span>
-            <span className="rounded-md bg-teal-50 dark:bg-teal-950 border border-teal-200 dark:border-teal-800 px-2 py-0.5 text-[0.68rem] font-bold text-teal-800 dark:text-teal-300">
-              Stub-based demo plan
+        <LiveStormMap
+          storms={storms}
+          tracks={tracks}
+          risks={risks}
+          focus={focus}
+          onFocus={setFocus}
+          emptyMessage={loading ? "Loading NOAA NHC storms…" : !liveStorms ? "Live storm feed unavailable" : storms.length === 0 ? "No active tropical cyclones reported by NHC" : null}
+        />
+        <p className="mt-2 text-[0.72rem] text-muted">
+          Storm positions and forecast tracks come from NHC (CurrentStorms.json and the latest ATCF official forecast). At-risk counties come from the trained outage model; each storm's staging site and truck routes are a planning estimate.
+        </p>
+      </div>
+
+      {/* Main Console Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] divide-y lg:divide-y-0 lg:divide-x divide-line">
+        {/* Left: one card per active storm */}
+        <div className="relative flex min-w-0 flex-col p-6">
+          <span className="mb-3 text-[0.72rem] font-bold uppercase tracking-wider text-accent">Active Systems · {storms.length}</span>
+          {!loading && storms.length === 0 && (
+            <p className="text-sm text-muted">{liveStorms ? "NHC reports no active tropical cyclones." : "Live storm feed unavailable. No sample storms substituted."}</p>
+          )}
+          {storms.length > 0 && (
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {storms.map((s) => (
+                <StormCard
+                  key={s.storm_id}
+                  storm={s}
+                  track={tracks[s.storm_id]}
+                  trackState={trackState[s.storm_id]}
+                  risk={risks[s.storm_id]}
+                  riskState={riskState[s.storm_id]}
+                  selected={focus === s.storm_id}
+                  onSelect={() => setFocus(focus === s.storm_id ? null : s.storm_id)}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="mt-4 flex items-center justify-between text-xs text-muted">
+            <span>Historical replay: Hurricane Idalia, Taylor County</span>
+            <button
+              type="button"
+              disabled={!agents?.some((a) => a.id === "taylor-hurricane" && !String(a.status ?? "").startsWith("error"))}
+              onClick={() => onOpenScenario("taylor-hurricane")}
+              className="flex items-center gap-1 font-bold text-accent hover:underline disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
+            >
+              Launch Taylor County Dashboard &rarr;
+            </button>
+          </div>
+        </div>
+
+        {/* Right: the selected storm's own staging plan */}
+        <div className="flex min-w-0 flex-col p-6 bg-[#f8fafc]/50">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[0.72rem] font-bold uppercase tracking-wider text-accent">Resource Staging Plan</span>
+            <span className="rounded-md border border-teal-200 bg-teal-50 px-2 py-0.5 text-[0.68rem] font-bold text-teal-800 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-300">
+              Per storm · planning estimate
             </span>
           </div>
 
-          <h4 className="font-heading text-lg font-bold text-navy">
-            {stagingData?.staging_area ?? "Staging unavailable"}
-          </h4>
-          <p className="text-xs text-muted mt-0.5">
-            Highest-need-first allocation using backend demo inputs and a fixed 14-truck budget; not live fleet or shelter availability.
-          </p>
-
-          {!loading && !stagingData && <p role="alert" className="mt-3 text-sm text-bad-text">Staging service unavailable. No sample allocations substituted.</p>}
-          {/* Staging KPI Tiles */}
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-line bg-surface p-3.5 shadow-2xs">
-              <span className="text-[0.68rem] font-bold uppercase text-muted">Utility Trucks</span>
-              <div className="font-heading text-2xl font-extrabold text-navy mt-1">
-                {stagingData?.trucks_available ?? "—"} <span className="text-sm text-muted font-normal">avail</span>
-              </div>
-              <span className="text-[0.72rem] text-accent font-medium">Demo truck budget</span>
+          {planStorm && (
+            <div className="mb-3 flex flex-wrap gap-1.5 text-xs" role="group" aria-label="Plan for storm">
+              {storms.map((s) => (
+                <FocusPill key={s.storm_id} active={s.storm_id === planStorm.storm_id} onClick={() => setFocus(s.storm_id)}>
+                  <span className="size-2 rounded-full" style={{ background: categoryFor(s.intensity_kt).color }} />
+                  {s.name}
+                </FocusPill>
+              ))}
             </div>
+          )}
 
-            <div className="rounded-2xl border border-line bg-surface p-3.5 shadow-2xs">
-              <span className="text-[0.68rem] font-bold uppercase text-muted">Demo Shelter Beds</span>
-              <div className="font-heading text-2xl font-extrabold text-navy mt-1">
-                {stagingData ? fmt(stagingData.shelter_beds_available) : "—"}
+          {!planStorm && !loading && <p className="text-sm text-muted">No active storms, so no staging plan.</p>}
+          {planStorm && riskState[planStorm.storm_id] === "loading" && <p role="status" className="text-sm text-muted">Building {planStorm.name}&apos;s plan from the outage model…</p>}
+          {planStorm && riskState[planStorm.storm_id] === "error" && <p role="alert" className="text-sm text-bad-text">{planStorm.name}&apos;s plan is unavailable. No sample plan substituted.</p>}
+          {plan && !plan.staging && <p className="text-sm text-muted">{plan.note ?? `No staging site needed for ${planStorm.name}.`}</p>}
+
+          {plan?.staging && (
+            <>
+              <h4 className="font-heading text-lg font-bold text-navy">{plan.staging.name}</h4>
+              <p className="mt-0.5 text-xs text-muted">
+                For {classificationLabel(planStorm.classification)} {planStorm.name}: {plan.staging.clearance_from_track_nm} nm clear of the forecast track,
+                avg {plan.staging.avg_distance_to_counties_nm} nm to the counties it serves.
+              </p>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-line bg-surface p-3.5 shadow-2xs">
+                  <span className="text-[0.68rem] font-bold uppercase text-muted">Utility trucks (est.)</span>
+                  <div className="mt-1 font-heading text-2xl font-extrabold text-navy">{fmt(plan.trucks_needed_total.median)}</div>
+                  <span className="text-[0.72rem] font-medium text-accent">range {fmt(plan.trucks_needed_total.low)}–{fmt(plan.trucks_needed_total.high)}</span>
+                </div>
+                <div className="rounded-2xl border border-line bg-surface p-3.5 shadow-2xs">
+                  <span className="text-[0.68rem] font-bold uppercase text-muted">Shelter beds</span>
+                  <div className="mt-1 font-heading text-2xl font-extrabold text-navy">{fmt(plan.counties.reduce((a, c) => a + c.shelters.evacuation_capacity, 0))}</div>
+                  <span className="text-[0.72rem] font-medium text-emerald-600">in {plan.counties.length} at-risk counties</span>
+                </div>
               </div>
-              <span className="text-[0.72rem] text-emerald-600 font-medium">Demand: {stagingData ? fmt(stagingData.shelter_demand_estimate) : "—"}</span>
-            </div>
-          </div>
 
-          {/* County Allocations List */}
-          <div className="mt-4 flex flex-1 flex-col justify-between">
-            <div>
-              <span className="text-[0.7rem] font-bold uppercase text-muted">County Truckload Allocations</span>
-              <div className="mt-2 space-y-1.5">
-                {(stagingData?.allocations ?? []).map((alloc) => (
-                  <div key={alloc.county} className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-xs">
-                    <span className="font-semibold text-ink">{alloc.county}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-extrabold text-navy">{alloc.truckloads_assigned} / {alloc.truckloads_needed} trucks</span>
-                      {alloc.truckloads_assigned === alloc.truckloads_needed ? (
-                        <span className="size-2 rounded-full bg-emerald-500" title="Met" />
-                      ) : (
-                        <span className="size-2 rounded-full bg-amber-500" title="Gap" />
-                      )}
+              <div className="mt-4">
+                <span className="text-[0.7rem] font-bold uppercase text-muted">Trucks by county</span>
+                <div className="mt-2 space-y-1.5">
+                  {plan.counties.map((c) => (
+                    <div key={c.fips} className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3 py-2 text-xs">
+                      <span className="min-w-0 truncate font-semibold text-ink">{c.name}, {c.state}</span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span className="text-muted">~{fmt(c.customers_out.median)} out</span>
+                        <span className="font-extrabold text-navy">{fmt(c.trucks_needed.median)} trucks</span>
+                        <RiskBadge level={getRiskLevel(c.risk_tier)}>{c.risk_tier === "red" ? "Severe" : c.risk_tier === "orange" ? "High" : c.risk_tier === "yellow" ? "Mod." : "Low"}</RiskBadge>
+                      </span>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="mt-4 pt-3 border-t border-line flex items-center justify-between text-xs">
-              <span className="text-muted">Method: highest-need-first (stub)</span>
-              <span className="font-bold text-accent">{stagingData ? `Demo shelter shortfall: ${fmt(stagingData.shelter_bed_shortfall)}` : "Shortfall unavailable"}</span>
-            </div>
-          </div>
+              <p className="mt-4 border-t border-line pt-3 text-[0.7rem] text-muted">
+                Site: {plan.staging.method}. {plan.assumptions.join(" ")}
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>
+
+    <AtRiskCounties
+      storms={storms}
+      risks={risks}
+      riskState={riskState}
+      selectedId={planStorm?.storm_id}
+      onSelect={setFocus}
+      agents={agents}
+      onOpenAgent={onOpenScenario}
+    />
+    </>
   );
 }
 
