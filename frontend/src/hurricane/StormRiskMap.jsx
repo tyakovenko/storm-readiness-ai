@@ -154,7 +154,11 @@ function CountyRow({ county, selected, homeFips, maxMedian, onSelect }) {
           <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${widthPct}%`, backgroundColor: RISK_HEX[level] }} />
         </span>
         <span className="w-11 shrink-0 text-right text-[0.8rem] font-bold text-navy">{fmt(county.pct_customers_out.median)}%</span>
-        {!county.has_local_pack && <span className="shrink-0 text-[0.65rem] font-normal text-muted">no plan data</span>}
+        {/* Fixed width even when empty: the bar track is flex-1, so a label in only some rows
+            would shorten those tracks and make the bars incomparable across rows. */}
+        <span className="w-[4.75rem] shrink-0 whitespace-nowrap text-[0.65rem] font-normal text-muted">
+          {county.has_local_pack ? "" : "no plan data"}
+        </span>
         <RiskBadge level={level} />
       </button>
     </li>
