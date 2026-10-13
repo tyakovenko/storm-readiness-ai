@@ -16,11 +16,11 @@ project-log.md
 CLAUDE.md
 .claude/
 **/*.pdf
-# All local data except the county boundaries (a parent directory can't be re-included
+# All top-level data/ (leading / so frontend/src/data stays in) except the county boundaries (a parent directory can't be re-included
 # once excluded, so each level is excluded with /* and the path back in is re-included).
-data/*
-!data/raw/
-data/raw/*
-!data/raw/census/
-data/raw/census/*
-!data/raw/census/counties/
+/data/*
+!/data/raw/
+/data/raw/*
+!/data/raw/census/
+/data/raw/census/*
+!/data/raw/census/counties/
