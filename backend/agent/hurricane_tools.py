@@ -129,15 +129,27 @@ class HurricaneToolset:
         r = self._replay()
         return f"{r['storm_id']}-{r['advisory_init_utc'][:13]}"
 
-    # ---- tools ----
-    def get_storm_alert(self) -> dict:
-        r = self._replay()
-        f = self._forecast_features()
+    def _storm_in_training(self, r: dict) -> bool:
+        """Whether the model that actually produces estimate_impact() was trained on this storm.
+        The bundle engine lists its training storms by name (all retired names, so never reused);
+        the legacy GCS model used a temporal split at train_end_year."""
+        if IMPACT_ENGINE != "legacy_gcs":
+            try:
+                storms = load_bundle(DEFAULT_BUNDLE_NAME).meta["training_dataset"]["storms"]
+                return r["storm_name"].upper() in {s.upper() for s in storms}
+            except (ModelBundleUnavailable, KeyError):  # unknown: don't claim an unseen test
+                return True
         try:
             train_end = store.model()[1].get("train_end_year", DEFAULT_TRAIN_END_YEAR)
         except Exception:  # model not loaded: the alert still works; estimate_impact reports the error
             train_end = DEFAULT_TRAIN_END_YEAR
-        in_train = r["year"] <= train_end
+        return r["year"] <= train_end
+
+    # ---- tools ----
+    def get_storm_alert(self) -> dict:
+        r = self._replay()
+        f = self._forecast_features()
+        in_train = self._storm_in_training(r)
         live_threat = None
         try:
             from hurricane.live_feed import get_poller
