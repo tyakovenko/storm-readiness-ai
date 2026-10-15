@@ -57,7 +57,9 @@ GUIDANCE = [
 
 
 def _rng(low, med, high, unit, nd=1) -> dict:
-    return {"low": round(float(low), nd), "median": round(float(med), nd), "high": round(float(high), nd), "unit": unit}
+    # nd=0 means whole counts (customers): ints, so answers quote "199238", not "199238.0".
+    r = (lambda v: int(round(float(v)))) if nd == 0 else (lambda v: round(float(v), nd))
+    return {"low": r(low), "median": r(med), "high": r(high), "unit": unit}
 
 
 def _phase(oni: float) -> tuple[str, str]:
