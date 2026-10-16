@@ -138,6 +138,21 @@ def get_static_tables() -> dict[str, Any]:
     return _CACHED_STATIC_TABLES
 
 
+_CACHED_DENOMINATORS: dict[str, int] | None = None
+
+
+def get_customer_denominators() -> dict[str, int]:
+    """Customers per county for converting a predicted % into a customer count: the EAGLE-I fall-2025
+    county counts (MCC only where missing) -- the denominator of the training target, so predicted
+    and actual outage counts are on the same footing. Not a model feature: customers_served_log
+    stays MCC, exactly as in training."""
+    global _CACHED_DENOMINATORS
+    if _CACHED_DENOMINATORS is None:
+        from .build_training_table import load_customers
+        _CACHED_DENOMINATORS = load_customers()
+    return _CACHED_DENOMINATORS
+
+
 def get_name_lookup() -> dict[str, dict]:
     """Display-only name/state lookup (NOT a model feature source -- see
     live_inference.py / county_context_features.py for the real feature
@@ -300,7 +315,10 @@ def run_impact_pipeline(
         )
         why = QuantileOutageModel.explain(explain_cf, cal.median)
 
-        customers_served = int(round(np.expm1(feats["customers_served_log"])))
+        # The model input above is MCC (as in training); turning % into customers uses the target's own
+        # EAGLE-I fall-2025 denominator, the same one the real outage records were divided by.
+        customers_served = get_customer_denominators().get(row.county_fips) \
+            or int(round(np.expm1(feats["customers_served_log"])))
 
         counties_output.append({
             "fips": row.county_fips,

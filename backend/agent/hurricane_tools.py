@@ -264,6 +264,14 @@ class HurricaneToolset:
         target_date = datetime.fromisoformat(replay["closest_approach_utc"])
         return oni_anomaly_for_date(read_bytes("oni/oni.ascii.txt").decode(), target_date)
 
+    def _mcc_customers(self, fallback: int) -> int:
+        """The bundle model's customers_served input is EAGLE-I MCC, as in its training rows (the pack's
+        fall-2025 count is the outage denominator, used below to turn % into customers)."""
+        from models.pipeline import get_static_tables
+        mcc = get_static_tables()["mcc"]
+        row = mcc.loc[mcc["county_fips"] == self.fips, "mcc_customers"]
+        return int(row.iloc[0]) if len(row) and row.iloc[0] > 0 else fallback
+
     def _estimate_impact_bundle(self) -> dict:
         try:
             bundle = load_bundle(DEFAULT_BUNDLE_NAME)
@@ -289,7 +297,7 @@ class HurricaneToolset:
                             max_wind_kt=sf.max_wind_kt, gust_wind_kt=sf.gust_wind_kt,
                             dist_to_track_nm=sf.dist_to_track_nm, forward_speed_kt=sf.forward_speed_kt,
                             quadrant_right=sf.quadrant_right, population=p["population"],
-                            customers_served=p["customers"], tree_canopy_pct=p["tree_canopy_pct"],
+                            customers_served=self._mcc_customers(p["customers"]), tree_canopy_pct=p["tree_canopy_pct"],
                             nri_risk_score=p["nri_hurricane_risk_score"],
                             nri_eal_building=p["nri_hurricane_eal_building_usd"], svi_overall=p["svi_overall"],
                             oni_anomaly=oni_anomaly, lead_time_h=sf.lead_time_h)
