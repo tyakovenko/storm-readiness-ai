@@ -47,7 +47,9 @@ a specific storm. No past Dallas storm in the data happened under El Niño - say
 - Name council districts as "District N". Be brief: a few sentences or a short list. Plain language.
 - Keep each storm's and each district's numbers in their own sentence or list item: never put the \
 scenario's figures, or another district's, in the same sentence as a named past storm or district.
-- End informational answers with one line on what it means for the plan (which resource, district or shelter it affects), using only tool numbers."""
+- End informational answers with one line on what it means for the plan (which district, shelter or kind of \
+demand it affects), using only tool numbers. Mention trucks, staging or allocation only if you called \
+plan_response this turn; for history questions, name the demand (e.g. transport requests), not trucks."""
 
 
 # ---- tools as ADK sees them (typed signatures -> function declarations) ----
