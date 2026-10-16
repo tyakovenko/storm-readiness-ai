@@ -181,3 +181,20 @@ def test_overview_endpoint_returns_contract_data_and_applies_what_if(monkeypatch
 
     none_left = client.get("/api/overview", params={"max_trucks": 0}).json()
     assert none_left["staging"]["trucks_available"] == 0  # 0 is a real what-if, not "unset"
+
+
+def test_service_names_311_911_are_not_read_as_numbers():
+    """\"Dallas 311\" names the city service line; a bare \"311 requests\" may be a count and is still checked."""
+    from agent import trust
+    out = [{"excess_requests": 204}]
+    assert trust.check_numbers("Dallas 311 data shows 204 excess requests.", out, "").passed
+    assert trust.check_numbers("204 excess transport 311 requests.", out, "").passed  # no year: 2023 is not in out
+    assert trust.check_numbers("Call 911 for emergencies.", out, "").passed
+    assert not trust.check_numbers("There were 311 requests.", out, "").passed
+
+
+def test_311_requests_is_the_service_when_the_data_names_it():
+    from agent import trust
+    dallas = [{"excess_requests": 204, "source": "Processed Dallas tables: EAGLE-I, Dallas 311"}]
+    assert trust.check_numbers("Extra 311 requests of 204 for transport.", dallas, "").passed
+    assert not trust.check_numbers("There were 311 requests.", [{"excess_requests": 204}], "").passed

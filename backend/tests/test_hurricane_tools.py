@@ -45,3 +45,16 @@ def test_find_similar_storms_defaults_missing_oni_anomaly(monkeypatch):
     by_id = {s["storm_id"]: s for s in out["storms"]}
     assert by_id["AL019999"]["oni_anomaly"] == 0.0
     assert by_id["AL029999"]["oni_anomaly"] == 1.2
+
+
+def test_in_training_flag_follows_the_model_that_makes_the_estimate():
+    """The bundle engine (default) was trained on Ian, so an Ian replay is not an unseen test;
+    Beryl and Irma are not among its training storms."""
+    from unittest.mock import patch
+    from agent import hurricane_tools as ht
+
+    bundle = type("B", (), {"meta": {"training_dataset": {"storms": ["FLORENCE", "IAN", "MILTON"]}}})()
+    with patch.object(ht, "IMPACT_ENGINE", "bundle"), patch.object(ht, "load_bundle", return_value=bundle):
+        ts = object.__new__(ht.HurricaneToolset)
+        assert ts._storm_in_training({"storm_name": "Ian", "year": 2022}) is True
+        assert ts._storm_in_training({"storm_name": "Beryl", "year": 2024}) is False

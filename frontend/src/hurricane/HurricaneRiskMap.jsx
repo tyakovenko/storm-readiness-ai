@@ -243,7 +243,7 @@ export default function HurricaneRiskMap({ overview, agent, onAsk }) {
         <SectionHeading title="Sources & explainability" subtitle="Where this page's numbers come from" />
         <ul className="mt-2 list-disc pl-5 text-[0.82rem] text-muted">
           <li>Forecast: {alert.source}</li>
-          {!impact.error && <li>Outage model: {impact.source} (run {impact.model_run})</li>}
+          {!impact.error && <li>Outage model: {impact.source}{impact.model_run ? ` (run ${impact.model_run})` : ""}</li>}
           <li>Shelters & exposure: {assets.source}</li>
           <li>County vulnerability & context: FEMA National Risk Index, CDC/ATSDR Social Vulnerability Index, USFS Tree Canopy Cover</li>
         </ul>

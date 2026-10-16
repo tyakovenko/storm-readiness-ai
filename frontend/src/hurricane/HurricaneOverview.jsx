@@ -241,7 +241,7 @@ export default function HurricaneOverview({ overview, agent, onAsk, stormOvervie
           <Collapsible title="Sources & trust" subtitle="Where this page's numbers come from">
             <ul className="list-disc pl-5 text-[0.82rem] text-muted">
               <li>Forecast: {alert.source}</li>
-              {!impact.error && <li>Outage model: {impact.source} (run {impact.model_run})</li>}
+              {!impact.error && <li>Outage model: {impact.source}{impact.model_run ? ` (run ${impact.model_run})` : ""}</li>}
               <li>Similar storms: {similar.source}</li>
               <li>Climate context (ENSO): {enso.source}</li>
               <li>

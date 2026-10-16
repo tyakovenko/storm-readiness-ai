@@ -57,7 +57,9 @@ GUIDANCE = [
 
 
 def _rng(low, med, high, unit, nd=1) -> dict:
-    return {"low": round(float(low), nd), "median": round(float(med), nd), "high": round(float(high), nd), "unit": unit}
+    # nd=0 means whole counts (customers): ints, so answers quote "199238", not "199238.0".
+    r = (lambda v: int(round(float(v)))) if nd == 0 else (lambda v: round(float(v), nd))
+    return {"low": r(low), "median": r(med), "high": r(high), "unit": unit}
 
 
 def _phase(oni: float) -> tuple[str, str]:
@@ -129,15 +131,27 @@ class HurricaneToolset:
         r = self._replay()
         return f"{r['storm_id']}-{r['advisory_init_utc'][:13]}"
 
-    # ---- tools ----
-    def get_storm_alert(self) -> dict:
-        r = self._replay()
-        f = self._forecast_features()
+    def _storm_in_training(self, r: dict) -> bool:
+        """Whether the model that actually produces estimate_impact() was trained on this storm.
+        The bundle engine lists its training storms by name (all retired names, so never reused);
+        the legacy GCS model used a temporal split at train_end_year."""
+        if IMPACT_ENGINE != "legacy_gcs":
+            try:
+                storms = load_bundle(DEFAULT_BUNDLE_NAME).meta["training_dataset"]["storms"]
+                return r["storm_name"].upper() in {s.upper() for s in storms}
+            except (ModelBundleUnavailable, KeyError):  # unknown: don't claim an unseen test
+                return True
         try:
             train_end = store.model()[1].get("train_end_year", DEFAULT_TRAIN_END_YEAR)
         except Exception:  # model not loaded: the alert still works; estimate_impact reports the error
             train_end = DEFAULT_TRAIN_END_YEAR
-        in_train = r["year"] <= train_end
+        return r["year"] <= train_end
+
+    # ---- tools ----
+    def get_storm_alert(self) -> dict:
+        r = self._replay()
+        f = self._forecast_features()
+        in_train = self._storm_in_training(r)
         live_threat = None
         try:
             from hurricane.live_feed import get_poller
@@ -250,6 +264,14 @@ class HurricaneToolset:
         target_date = datetime.fromisoformat(replay["closest_approach_utc"])
         return oni_anomaly_for_date(read_bytes("oni/oni.ascii.txt").decode(), target_date)
 
+    def _mcc_customers(self, fallback: int) -> int:
+        """The bundle model's customers_served input is EAGLE-I MCC, as in its training rows (the pack's
+        fall-2025 count is the outage denominator, used below to turn % into customers)."""
+        from models.pipeline import get_static_tables
+        mcc = get_static_tables()["mcc"]
+        row = mcc.loc[mcc["county_fips"] == self.fips, "mcc_customers"]
+        return int(row.iloc[0]) if len(row) and row.iloc[0] > 0 else fallback
+
     def _estimate_impact_bundle(self) -> dict:
         try:
             bundle = load_bundle(DEFAULT_BUNDLE_NAME)
@@ -275,7 +297,7 @@ class HurricaneToolset:
                             max_wind_kt=sf.max_wind_kt, gust_wind_kt=sf.gust_wind_kt,
                             dist_to_track_nm=sf.dist_to_track_nm, forward_speed_kt=sf.forward_speed_kt,
                             quadrant_right=sf.quadrant_right, population=p["population"],
-                            customers_served=p["customers"], tree_canopy_pct=p["tree_canopy_pct"],
+                            customers_served=self._mcc_customers(p["customers"]), tree_canopy_pct=p["tree_canopy_pct"],
                             nri_risk_score=p["nri_hurricane_risk_score"],
                             nri_eal_building=p["nri_hurricane_eal_building_usd"], svi_overall=p["svi_overall"],
                             oni_anomaly=oni_anomaly, lead_time_h=sf.lead_time_h)
