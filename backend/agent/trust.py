@@ -242,11 +242,12 @@ SERVICE_IN_DATA_RE = re.compile(r"[A-Za-z] (311|911)\b|\b(311|911) [A-Za-z]")
 
 
 def _mask_service_requests(text: str, tool_outputs: list[dict]) -> str:
-    """Where the tools' own data names a 311/911 service ("Dallas 311"), "311 requests" in an
-    answer is that service, not a count. Without that context it stays a number to check."""
+    """Where the tools' own data names a 311/911 service ("Dallas 311"), every standalone "311" in an
+    answer is that service (Dallas's non-emergency city line), not a count. Without that context it
+    stays a number to check."""
     services = {m.group(1) or m.group(2) for s in _strings_in_output(tool_outputs) for m in SERVICE_IN_DATA_RE.finditer(s)}
     for svc in services:
-        text = re.sub(rf"\b{svc}(?= (?:[\w/-]+ )?(?:service )?requests?\b)", "<name>", text)
+        text = re.sub(rf"(?<![\d,.]){svc}(?![\d]|[,.]\d)", "<name>", text)  # not part of 3,311 or 311.5
     return text
 
 
