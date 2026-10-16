@@ -221,7 +221,12 @@ def _numbers_by_unit(outputs) -> dict[str, set[float]]:
     return found
 
 
-NAME_WITH_DIGITS_RE = re.compile(r"\b(?:Council )?District \d+\b|\bShelter \d+\b")
+NAME_WITH_DIGITS_RE = re.compile(
+    r"\b(?:Council )?District \d+\b|\bShelter \d+\b"
+    # 311/911 the services, not quantities: "Dallas 311", "the 311 line", "transport 311 requests".
+    # A bare "311 requests" (could be a count) is left to the number checks.
+    r"|\b(?:Dallas|dallas|City|city|the|The|via|to|from|transport|transportation|excess|of|call|Call|dial|Dial) (?:311|911)\b"
+    r"|\b(?:311|911)(?= (?:service|line|system|non-emergency|data|record|ticket|call|center|app)s?\b)")
 
 
 def _mask_names(text: str, catalog: list[dict]) -> str:
