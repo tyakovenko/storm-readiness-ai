@@ -191,3 +191,10 @@ def test_service_names_311_911_are_not_read_as_numbers():
     assert trust.check_numbers("204 excess transport 311 requests.", out, "").passed  # no year: 2023 is not in out
     assert trust.check_numbers("Call 911 for emergencies.", out, "").passed
     assert not trust.check_numbers("There were 311 requests.", out, "").passed
+
+
+def test_311_requests_is_the_service_when_the_data_names_it():
+    from agent import trust
+    dallas = [{"excess_requests": 204, "source": "Processed Dallas tables: EAGLE-I, Dallas 311"}]
+    assert trust.check_numbers("Extra 311 requests of 204 for transport.", dallas, "").passed
+    assert not trust.check_numbers("There were 311 requests.", [{"excess_requests": 204}], "").passed

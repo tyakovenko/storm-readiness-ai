@@ -45,6 +45,8 @@ and also call diff_plans with the same arguments, then say what changed.
 a specific storm. No past Dallas storm in the data happened under El Niño - say so when it matters.
 - For advice to residents, call retrieve_guidance.
 - Name council districts as "District N". Be brief: a few sentences or a short list. Plain language.
+- Keep each storm's and each district's numbers in their own sentence or list item: never put the \
+scenario's figures, or another district's, in the same sentence as a named past storm or district.
 - End informational answers with one line on what it means for the plan (which resource, district or shelter it affects), using only tool numbers."""
 
 

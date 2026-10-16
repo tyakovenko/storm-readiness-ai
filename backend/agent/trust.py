@@ -238,10 +238,24 @@ def _mask_names(text: str, catalog: list[dict]) -> str:
     return NAME_WITH_DIGITS_RE.sub("<name>", text)
 
 
+SERVICE_IN_DATA_RE = re.compile(r"[A-Za-z] (311|911)\b|\b(311|911) [A-Za-z]")
+
+
+def _mask_service_requests(text: str, tool_outputs: list[dict]) -> str:
+    """Where the tools' own data names a 311/911 service ("Dallas 311"), "311 requests" in an
+    answer is that service, not a count. Without that context it stays a number to check."""
+    services = {m.group(1) or m.group(2) for s in _strings_in_output(tool_outputs) for m in SERVICE_IN_DATA_RE.finditer(s)}
+    for svc in services:
+        text = re.sub(rf"\b{svc}(?= (?:[\w/-]+ )?(?:service )?requests?\b)", "<name>", text)
+    return text
+
+
 def check_numbers(answer: str, tool_outputs: list[dict], question: str,
                   catalog: list[dict] | None = None) -> Check:
     name = "numbers_match_tools"
     catalog = catalog or []
+    answer = _mask_service_requests(answer, tool_outputs)
+    question = _mask_service_requests(question, tool_outputs)
     everywhere = _numbers_in_output(tool_outputs)
     asked = _numbers_in_text(_mask_names(question, catalog))
     masked = _mask_names(answer, catalog)
