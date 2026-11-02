@@ -11,6 +11,8 @@ import logging
 import os
 from dataclasses import dataclass, field
 
+from .provider_errors import normalize_provider_error
+
 log = logging.getLogger(__name__)
 
 MAX_TOKENS = 16000
@@ -43,10 +45,16 @@ class LiteLLMClient:
         self.model = model
 
     def complete(self, messages: list[dict], tools: list[dict]) -> Turn:
-        resp = self._litellm.completion(
-            model=self.model, messages=messages, tools=tools,
-            max_tokens=MAX_TOKENS, timeout=TIMEOUT_S,
-        )
+        try:
+            resp = self._litellm.completion(
+                model=self.model, messages=messages, tools=tools,
+                max_tokens=MAX_TOKENS, timeout=TIMEOUT_S,
+            )
+        except Exception as exc:
+            provider_error = normalize_provider_error(exc, allow_builtin_timeout=True)
+            if provider_error is None:
+                raise
+            raise provider_error from exc
         msg = resp.choices[0].message
         calls = []
         for tc in msg.tool_calls or []:

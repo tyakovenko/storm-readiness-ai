@@ -21,6 +21,7 @@ from typing import Literal
 
 from dotenv import find_dotenv, load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 # Ensure backend directory is in sys.path
@@ -33,6 +34,7 @@ load_dotenv(find_dotenv())  # finds the repo-root .env
 from agent.judge import build_judge  # noqa: E402
 from agent.llm import build_llm  # noqa: E402
 from agent.loop import run_agent  # noqa: E402
+from agent.provider_errors import ModelProviderError  # noqa: E402
 from agent.tools import run_tool  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
@@ -66,6 +68,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Storm Readiness AI agent", lifespan=lifespan)
+
+
+@app.exception_handler(ModelProviderError)
+async def model_provider_error_response(_request: Request, exc: ModelProviderError) -> JSONResponse:
+    body: dict[str, str | int | None] = {"error": exc.code}
+    headers = None
+    if exc.code == "model_quota_exhausted":
+        body["retry_after"] = exc.retry_after
+        if exc.retry_after is not None:
+            headers = {"Retry-After": str(exc.retry_after)}
+    return JSONResponse(status_code=exc.status_code, content=body, headers=headers)
 
 
 class HistoryItem(BaseModel):
