@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { chatUrl } from "../api.js";
+import { chatErrorMessage, DEFAULT_CHAT_ERROR } from "./chatErrors.js";
 import Simulator, { useSimulator } from "./simulate/Simulator.jsx";
 
 // All agent/trust logic lives in the backend. This panel only sends a question to the chat endpoint
@@ -304,11 +305,14 @@ export default function AskAI({ open, onClose, agentId = null, hazard = null, ag
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: question, history }),
       });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      if (!r.ok) {
+        setError(await chatErrorMessage(r));
+        return;
+      }
       const result = await r.json();
       setMessages((prev) => [...prev, { role: "assistant", result }]);
     } catch {
-      setError("Something went wrong getting that answer. Please try again in a moment.");
+      setError(DEFAULT_CHAT_ERROR);
     } finally {
       sendingRef.current = false;
       setLoading(false);

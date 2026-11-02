@@ -23,6 +23,7 @@ from google.genai import types
 from . import judge as judge_mod
 from . import trust
 from .llm import ConfigError
+from .provider_errors import normalize_provider_error
 
 log = logging.getLogger(__name__)
 APP = "storm_readiness"
@@ -114,7 +115,13 @@ async def _run(agent, question: str, history: list[dict], profile, catalog: list
 
 
 def run_with_trust(question: str, history: list[dict], agent, judge, profile, catalog: list[dict]) -> dict:
-    attempts, all_calls, outputs, status = asyncio.run(_run(agent, question, history, profile, catalog))
+    try:
+        attempts, all_calls, outputs, status = asyncio.run(_run(agent, question, history, profile, catalog))
+    except Exception as exc:
+        provider_error = normalize_provider_error(exc)
+        if provider_error is None:
+            raise
+        raise provider_error from exc
     final = (judge_mod.grade_or_report(judge, question, attempts[-1]["text"]) if status != "blocked"
              else trust.Check(judge_mod.NAME, None, False, "Not graded: answer was blocked"))
     attempts[-1]["checks"] += trust.to_dicts([final])
